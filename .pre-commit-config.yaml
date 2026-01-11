@@ -1,0 +1,33 @@
+fail_fast: true
+default_language_version:
+    python: python3.10
+repos:
+
+-   repo: local
+    hooks:
+    - id: black
+      name: black
+      language: python
+      pass_filenames: false
+      entry: ./tools/apply_black.sh
+    - id: pylint
+      name: pylint
+      language: python
+      pass_filenames: false
+      entry: ./tools/run_pylint.sh
+    - id: isort
+      name: isort
+      language: python
+      pass_filenames: false
+      entry: ./tools/apply_isort.sh
+    - id: mypy
+      name: mypy
+      language: python
+      pass_filenames: false
+      entry: ./tools/run_mypy.sh
+    - id: pytest
+      name: pytest
+      language: python
+      stages: [push]
+      pass_filenames: false
+      entry: ./tools/run_tests.sh

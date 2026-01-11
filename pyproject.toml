@@ -1,0 +1,67 @@
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.isort]
+extra_standard_library = "setuptools,typing_extensions"
+force_grid_wrap = 0
+include_trailing_comma = true
+line_length = 100
+multi_line_output = 3
+skip = ["/home/circleci/repo/venv", "./venv", "./.venv"]
+use_parentheses = true
+
+[tool.mypy]
+allow_redefinition = false
+check_untyped_defs = true
+disallow_any_explicit = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+mypy_path = ".:test:gpu_box_benchmark"
+no_implicit_optional = true
+scripts_are_modules = true
+strict_optional = false
+warn_incomplete_stub = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.poetry]
+authors = ["Devon Bray"]
+description = "A set of benchmarks selected to compare different GPU server builds."
+name = "gpu_box_benchmark"
+readme = "README.md"
+version = "0.0.1"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+isort = "*"
+mypy = "*"
+pre-commit = "*"
+pylint = "*"
+pydevd-pycharm = ">=231.8109.197,<231.8110.0"
+wheel = "^0.38"
+
+[tool.poetry.group.test.dependencies]
+coverage = "*"
+pytest = "*"
+pytest-cov = "*"
+
+[tool.pytest.ini_options]
+addopts = "-rsxX --showlocals --strict-markers"
+
+[tool.pytest.ini_options.markers]
+devtest = "temporary development mark that can be used as needed (should not be merged to master)"
+integration = "tests that access outside services (s3, APIs), don't run in CircleCI"
+timeout = "timeout for test in seconds, from `pytest-timeout` module"
