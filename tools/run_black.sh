@@ -9,4 +9,4 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd ${DIR}/..
 source ./.venv/bin/activate
 
-black . gpu_box_benchmark/ test/ --diff --check
+black . ./bench_cli.py gpu_box_benchmark/ test/ --diff --check

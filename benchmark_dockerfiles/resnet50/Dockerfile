@@ -17,13 +17,30 @@ RUN pip install --extra-index-url https://developer.download.nvidia.com/compute/
 
 WORKDIR /workspace/DeepLearningExamples/PyTorch/Classification/ConvNets
 
-# Default environment variables
-ENV BATCH_SIZE=64
+# ---------------------------
+# Benchmark parameters
+# ---------------------------
+ENV BATCH_SIZE=32
 ENV NGPUS=1
-ENV PRECISION_FLAG=""
+ENV AMP=1
+ENV NUM_WORKERS=8
 
-# Entry point runs training
-ENTRYPOINT ["torchrun", "--nproc_per_node=1", "main.py", "--data-backend", "synthetic", "--arch", "resnet50", "--training-only", "--no-checkpoints", "--amp", "-b", "32", "--run-epochs", "1", "--prof", "300", "--raport-file", "/results/output.json", "/workspace/dataset"]
-
-
-
+# ---------------------------
+# Fixed benchmark entrypoint
+# ---------------------------
+ENTRYPOINT ["/bin/bash", "-lc", "\
+torchrun \
+  --nproc_per_node=${NGPUS} \
+  main.py \
+    --arch resnet50 \
+    --data-backend synthetic \
+    --training-only \
+    --no-checkpoints \
+    --run-epochs 1 \
+    --prof 300 \
+    --workers ${NUM_WORKERS} \
+    -b ${BATCH_SIZE} \
+    $( [ \"${AMP}\" = \"1\" ] && echo \"--amp\" ) \
+    --raport-file /results/output.json \
+    /workspace/dataset \
+"]

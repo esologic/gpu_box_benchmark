@@ -43,6 +43,8 @@ version = "0.0.1"
 
 [tool.poetry.dependencies]
 python = "^3.10"
+docker = "^7.1.0"
+bonus-click = "^0.1.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "*"

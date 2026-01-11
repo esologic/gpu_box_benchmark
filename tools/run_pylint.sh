@@ -12,4 +12,4 @@ source ./.venv/bin/activate
 
 export PYTHONPATH=".:./test${PYTHONPATH+:}${PYTHONPATH:-}"
 
-pylint gpu_box_benchmark test
+pylint bench_cli.py gpu_box_benchmark test
