@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  resnet50-training:
+    build: ./resnet50
+    runtime: nvidia
+    environment:
+      BATCH_SIZE: 64     # per-GPU batch size
+      NGPUS: 1           # change to 4 for multi-GPU
+      PRECISION_FLAG: "" # "--amp" for mixed precision
+    volumes:
+      - ./results:/results

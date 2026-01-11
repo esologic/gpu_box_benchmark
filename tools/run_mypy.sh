@@ -11,6 +11,5 @@ source ./.venv/bin/activate
 
 export PYTHONPATH=".:./test${PYTHONPATH+:}${PYTHONPATH:-}"
 
-mypy --show-error-codes main.py  # Run on loose files within this project
 mypy --show-error-codes -p gpu_box_benchmark -p test  # Run on sub-packages within this project
 
