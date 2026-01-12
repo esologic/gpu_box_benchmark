@@ -9,7 +9,9 @@ RUN pip install --upgrade pip
 RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
 # Clone NVIDIA DeepLearningExamples
-RUN git clone https://github.com/NVIDIA/DeepLearningExamples.git /workspace/DeepLearningExamples
+RUN git clone https://github.com/NVIDIA/DeepLearningExamples.git /workspace/DeepLearningExamples \
+    && cd /workspace/DeepLearningExamples \
+    && git checkout 729963dd47e7c8bd462ad10bfac7a7b0b604e6dd
 
 # Install Python dependencies for NVIDIA ConvNets
 RUN pip install -r /workspace/DeepLearningExamples/PyTorch/Classification/ConvNets/requirements.txt
@@ -17,30 +19,9 @@ RUN pip install --extra-index-url https://developer.download.nvidia.com/compute/
 
 WORKDIR /workspace/DeepLearningExamples/PyTorch/Classification/ConvNets
 
-# ---------------------------
-# Benchmark parameters
-# ---------------------------
-ENV BATCH_SIZE=32
-ENV NGPUS=1
-ENV AMP=1
-ENV NUM_WORKERS=8
+# Copy the bash script into the container
+COPY ./run_resnet_benchmark.sh /workspace/DeepLearningExamples/PyTorch/Classification/ConvNets/run_resnet_benchmark.sh
+RUN chmod +x /workspace/DeepLearningExamples/PyTorch/Classification/ConvNets/run_resnet_benchmark.sh
 
-# ---------------------------
-# Fixed benchmark entrypoint
-# ---------------------------
-ENTRYPOINT ["/bin/bash", "-lc", "\
-torchrun \
-  --nproc_per_node=${NGPUS} \
-  main.py \
-    --arch resnet50 \
-    --data-backend synthetic \
-    --training-only \
-    --no-checkpoints \
-    --run-epochs 1 \
-    --prof 300 \
-    --workers ${NUM_WORKERS} \
-    -b ${BATCH_SIZE} \
-    $( [ \"${AMP}\" = \"1\" ] && echo \"--amp\" ) \
-    --raport-file /results/output.txt \
-    /workspace/dataset \
-"]
+# Set ENTRYPOINT to the script
+ENTRYPOINT ["/workspace/DeepLearningExamples/PyTorch/Classification/ConvNets/run_resnet_benchmark.sh"]

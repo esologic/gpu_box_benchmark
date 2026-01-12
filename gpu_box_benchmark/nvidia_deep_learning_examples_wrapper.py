@@ -24,7 +24,7 @@ class ReportFileNumerical(NamedTuple):
     result_max: float
 
 
-def parse_report_file(report_path: Path) -> ReportFileNumerical:
+def parse_report_file(report_path: Path, mode_training: bool = True) -> ReportFileNumerical:
     """
     Parse a report file to the standard set of numerical results.
     :param report_path: Path to the report file on disk.
@@ -36,7 +36,12 @@ def parse_report_file(report_path: Path) -> ReportFileNumerical:
         complete_df = pd.DataFrame.from_records(loaded_dicts)
 
     data_only_df = pd.DataFrame.from_records(complete_df[complete_df["type"] == "LOG"]["data"])
-    summary_dict = data_only_df["train.total_ips"].dropna().describe().to_dict()
+    summary_dict = (
+        data_only_df["train.total_ips" if mode_training else "val.total_ips"]
+        .dropna()
+        .describe()
+        .to_dict()
+    )
 
     output = ReportFileNumerical(
         sample_count=summary_dict["count"],

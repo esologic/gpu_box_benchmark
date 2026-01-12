@@ -7,6 +7,8 @@ from tempfile import NamedTemporaryFile
 import click
 import docker
 
+from gpu_box_benchmark import nvidia_deep_learning_examples_wrapper
+
 _DIRECTORY_ROOT = Path(__file__).parent.resolve()
 
 BENCHMARK_DOCKERFILE_DIR = _DIRECTORY_ROOT / "benchmark_dockerfiles"
@@ -44,6 +46,8 @@ def benchmark() -> (  # pylint: disable=too-many-arguments, too-many-positional-
 
     \f
 
+    TODO: We may want to check how loaded down the system is before starting benchmarks.
+
     :return: None
     """
 
@@ -62,6 +66,8 @@ def benchmark() -> (  # pylint: disable=too-many-arguments, too-many-positional-
 
     LOGGER.info("Image Built. Running")
 
+    mode_training = True
+
     with NamedTemporaryFile(suffix=".txt") as f:
 
         client.containers.run(
@@ -76,6 +82,7 @@ def benchmark() -> (  # pylint: disable=too-many-arguments, too-many-positional-
             environment={
                 "BATCH_SIZE": "32",
                 "NGPUS": "1",
+                "MODE_TRAINING": str(int(mode_training)),
             },
             volumes={
                 str(f.name): {
@@ -87,8 +94,11 @@ def benchmark() -> (  # pylint: disable=too-many-arguments, too-many-positional-
 
         f.seek(0)
 
-        with open("test/assets/resnet50_output.json", "w", encoding="utf-8") as test:
-            test.write(f.read().decode("utf-8"))
+        print(
+            nvidia_deep_learning_examples_wrapper.parse_report_file(
+                Path(f.name), mode_training=mode_training
+            )
+        )
 
 
 if __name__ == "__main__":
