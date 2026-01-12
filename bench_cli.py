@@ -62,7 +62,7 @@ def benchmark() -> (  # pylint: disable=too-many-arguments, too-many-positional-
 
     LOGGER.info("Image Built. Running")
 
-    with NamedTemporaryFile(suffix=".json") as f:
+    with NamedTemporaryFile(suffix=".txt") as f:
 
         client.containers.run(
             image=image,
@@ -79,7 +79,7 @@ def benchmark() -> (  # pylint: disable=too-many-arguments, too-many-positional-
             },
             volumes={
                 str(f.name): {
-                    "bind": "/results/output.json",
+                    "bind": "/results/output.txt",
                     "mode": "rw",
                 }
             },
@@ -87,7 +87,8 @@ def benchmark() -> (  # pylint: disable=too-many-arguments, too-many-positional-
 
         f.seek(0)
 
-        print(f.read())
+        with open("test/assets/resnet50_output.json", "w", encoding="utf-8") as test:
+            test.write(f.read().decode("utf-8"))
 
 
 if __name__ == "__main__":

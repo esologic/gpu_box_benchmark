@@ -41,6 +41,6 @@ torchrun \
     --workers ${NUM_WORKERS} \
     -b ${BATCH_SIZE} \
     $( [ \"${AMP}\" = \"1\" ] && echo \"--amp\" ) \
-    --raport-file /results/output.json \
+    --raport-file /results/output.txt \
     /workspace/dataset \
 "]

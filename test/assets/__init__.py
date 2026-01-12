@@ -4,4 +4,4 @@ from pathlib import Path
 
 _ASSETS_DIRECTORY = Path(__file__).parent.resolve()
 
-ASSETS_DIRECTORY_PATH = str(_ASSETS_DIRECTORY)
+RESNET50_OUTPUT_PATH = _ASSETS_DIRECTORY / "resnet50_output.txt"

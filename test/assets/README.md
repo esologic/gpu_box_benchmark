@@ -4,6 +4,6 @@ A description of what each of the test assets in this directory are.
 
 ## Table
 
-| **Relative Path**   | **Explanation**                        |
-|---------------------|----------------------------------------|
-| ./path/to/file.json | Contains a sample response for the API |
+| **Relative Path**     | **Explanation**                                                                                                             |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| resnet_50_output.json | A sample output from the `DeepLearningExamples/PyTorch/Classification/ConvNets/main.py` script to the `--raport-file` flag. |
