@@ -8,7 +8,7 @@ from test.assets import RESNET50_OUTPUT_PATH
 import pytest
 
 from gpu_box_benchmark import nvidia_deep_learning_examples_wrapper
-from gpu_box_benchmark.nvidia_deep_learning_examples_wrapper import ReportFileNumerical
+from gpu_box_benchmark.nvidia_deep_learning_examples_wrapper import _ReportFileNumerical
 
 
 @pytest.mark.parametrize(
@@ -16,7 +16,7 @@ from gpu_box_benchmark.nvidia_deep_learning_examples_wrapper import ReportFileNu
     [
         (
             RESNET50_OUTPUT_PATH,
-            ReportFileNumerical(
+            _ReportFileNumerical(
                 sample_count=31.0,
                 mean=27.360552390625422,
                 std=0.4914936826285199,
@@ -29,7 +29,7 @@ from gpu_box_benchmark.nvidia_deep_learning_examples_wrapper import ReportFileNu
         ),
     ],
 )
-def test_parse_report_file(report_file: Path, expected_result: ReportFileNumerical) -> None:
+def test__parse_report_file(report_file: Path, expected_result: _ReportFileNumerical) -> None:
     """
     Test to make sure we can parse some known output in a report file.
     :param report_file: Path to test asset.
@@ -37,4 +37,9 @@ def test_parse_report_file(report_file: Path, expected_result: ReportFileNumeric
     :return: None
     """
 
-    assert nvidia_deep_learning_examples_wrapper.parse_report_file(report_file) == expected_result
+    assert (
+        nvidia_deep_learning_examples_wrapper._parse_report_file(  # pylint: disable=protected-access
+            report_file
+        )
+        == expected_result
+    )

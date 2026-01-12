@@ -2,9 +2,11 @@
 Set of types to describe benchmarking runs.
 """
 
-from typing import Dict
+from typing import Dict, List, Tuple
 
 from pydantic import BaseModel
+
+from gpu_box_benchmark.gpu_discovery import GPUDescription
 
 
 class NumericalBenchmarkResult(BaseModel):
@@ -33,11 +35,15 @@ class NumericalBenchmarkResult(BaseModel):
     verbose_unit: str
     unit: str
 
-    count: float
-    result_max: float
-    result_min: float
+    sample_count: float
+
+    percentile_25: float
+    percentile_50: float
+    percentile_75: float
     mean: float
-    std_dev: float
+    std: float
+    result_min: float
+    result_max: float
 
 
 class SystemEvaluation(BaseModel):
@@ -59,3 +65,7 @@ class SystemEvaluation(BaseModel):
     cpu_name: str
     cpu_count: int
     memory_mb: float
+
+    gpus: Tuple[GPUDescription, ...]
+
+    results: List[NumericalBenchmarkResult]
