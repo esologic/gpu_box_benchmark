@@ -15,7 +15,7 @@ from gpu_box_benchmark.benchmark_jobs import (
     BenchmarkName,
     CreateBenchmarkExecutor,
 )
-from gpu_box_benchmark.gpu_discovery import GPUDescription, discover_gpus
+from gpu_box_benchmark.locate_describe_gpu import GPU_CLICK_OPTION, GPUIdentity, discover_gpus
 from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, SystemEvaluation
 
 LOGGER_FORMAT = "[%(asctime)s - %(process)s - %(name)20s - %(levelname)s] %(message)s"
@@ -61,16 +61,7 @@ def cli() -> None:
     input_enum=BenchmarkName,
     multiple=True,
 )
-@click.option(
-    "--gpu",
-    "-g",
-    type=click.Choice(choices=discover_gpus()),
-    help=(
-        "The GPU(s) to use for computation. Can be given multiple times. "
-        "If not given, all GPUs will be used."
-    ),
-    multiple=True,
-)
+@GPU_CLICK_OPTION
 @click.option(
     "--output-path",
     type=click.Path(exists=False, writable=True, file_okay=True, dir_okay=False, path_type=Path),
@@ -94,7 +85,7 @@ def cli() -> None:
 )
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     test: Tuple[BenchmarkName, ...],
-    gpu: Tuple[GPUDescription, ...],
+    gpu: Tuple[GPUIdentity, ...],
     output_path: Path,
     title: str,
     description: str,

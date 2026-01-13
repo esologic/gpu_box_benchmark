@@ -13,7 +13,7 @@ import pandas as pd
 
 from benchmark_dockerfiles import RESNET50_DOCKERFILE
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
-from gpu_box_benchmark.gpu_discovery import GPUDescription
+from gpu_box_benchmark.locate_describe_gpu import GPUIdentity
 from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult
 
 LOGGER = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ def _parse_report_file(report_path: Path, mode_training: bool) -> _ReportFileNum
 
 
 def create_resnet50_executor(
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUDescription, ...]
+    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some resnet50 benchmarks.
@@ -142,7 +142,7 @@ def create_resnet50_executor(
                 image=image,
                 device_requests=[
                     docker.types.DeviceRequest(
-                        device_ids=list(map(str, gpus)),
+                        device_ids=list(str(gpu.id) for gpu in gpus),
                         capabilities=[["gpu"]],
                     )
                 ],
@@ -162,6 +162,7 @@ def create_resnet50_executor(
                     }
                 },
                 detach=True,
+                ipc_mode="host",
             )
 
             try:
