@@ -18,6 +18,8 @@ from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult
 
 LOGGER = logging.getLogger(__name__)
 
+_RESNET50_BENCHMARK_VERSION = "0.1.0"
+
 
 class _ResNet50Params(NamedTuple):
     """
@@ -48,7 +50,7 @@ class _ReportFileNumerical(NamedTuple):
     result_max: float
 
 
-def _parse_report_file(report_path: Path, mode_training: bool = True) -> _ReportFileNumerical:
+def _parse_report_file(report_path: Path, mode_training: bool) -> _ReportFileNumerical:
     """
     Parse a report file to the standard set of numerical results.
     :param report_path: Path to the report file on disk.
@@ -82,22 +84,46 @@ def _parse_report_file(report_path: Path, mode_training: bool = True) -> _Report
     return output
 
 
-def deep_learning_examples_lookup(
+def create_resnet50_executor(
     benchmark_name: BenchmarkName, gpus: Tuple[GPUDescription, ...]
 ) -> Optional[BenchmarkExecutor]:
     """
-
-    :param benchmark_name:
-    :return:
+    Creates an executor that uses docker to run some resnet50 benchmarks.
+    The args here fit the outer API.
+    :param benchmark_name: To lookup.
+    :param gpus: GPUs to use in the benchmark.
+    :return: The callable to run the benchmark, None if the input name is not a resnet benchmark.
     """
 
-    print(benchmark_name, gpus)
+    name_to_parameters = {
+        BenchmarkName.resnet50_train_batch_1_amp: _ResNet50Params(
+            mode_training=True, batch_size=1, amp_enabled=True
+        ),
+        BenchmarkName.resnet50_train_batch_64_amp: _ResNet50Params(
+            mode_training=True, batch_size=64, amp_enabled=True
+        ),
+        BenchmarkName.resnet50_infer_batch_1_amp: _ResNet50Params(
+            mode_training=False, batch_size=1, amp_enabled=True
+        ),
+        BenchmarkName.resnet50_infer_batch_256_amp: _ResNet50Params(
+            mode_training=False, batch_size=256, amp_enabled=True
+        ),
+    }
 
-    def output() -> NumericalBenchmarkResult:
+    resnet_parameters: Optional[_ResNet50Params] = name_to_parameters.get(benchmark_name, None)
+
+    if resnet_parameters is None:
+        return None
+
+    def run_resnet50_docker() -> NumericalBenchmarkResult:
+        """
+        Build and run the docker image that runs the resnet50 benchmark.
+        :return: Parsed results.
+        """
 
         client = docker.from_env()
 
-        LOGGER.info("Building Image")
+        LOGGER.debug("Building Image")
 
         build_directory = RESNET50_DOCKERFILE.parent
 
@@ -105,14 +131,12 @@ def deep_learning_examples_lookup(
             path=str(build_directory),
             dockerfile=str(RESNET50_DOCKERFILE),
             nocache=False,
-            tag="resnet50",
+            tag=benchmark_name.value,
         )
 
-        LOGGER.info("Image Built. Running")
+        LOGGER.debug("Image Built. Running")
 
-        mode_training = False
-
-        with NamedTemporaryFile(suffix=".txt") as f:
+        with NamedTemporaryFile(suffix=".txt") as temporary_file:
 
             container = client.containers.create(
                 image=image,
@@ -123,12 +147,16 @@ def deep_learning_examples_lookup(
                     )
                 ],
                 environment={
-                    "BATCH_SIZE": "256",
-                    "MODE_TRAINING": str(int(mode_training)),
-                    "NUM_GPUS": str(len(gpus)),
+                    key: str(value)
+                    for key, value in [
+                        ("BATCH_SIZE", resnet_parameters.batch_size),
+                        ("MODE_TRAINING", int(resnet_parameters.mode_training)),
+                        ("NUM_GPUS", len(gpus)),
+                    ]
                 },
                 volumes={
-                    str(f.name): {
+                    str(temporary_file.name): {
+                        # This location is baked into the dockerfile.
                         "bind": "/results/output.txt",
                         "mode": "rw",
                     }
@@ -148,19 +176,21 @@ def deep_learning_examples_lookup(
                     LOGGER.error("Container logs:\n%s", logs)
                     raise RuntimeError("Container execution failed")
 
-                LOGGER.info("Container completed successfully")
+                LOGGER.debug("Container completed successfully")
                 LOGGER.debug("Container logs:\n%s", logs)
 
             finally:
                 container.remove(force=True)
 
-            f.seek(0)
+            temporary_file.seek(0)
 
-            results = _parse_report_file(Path(f.name), mode_training=mode_training)
+            results = _parse_report_file(
+                Path(temporary_file.name), mode_training=resnet_parameters.mode_training
+            )
 
         return NumericalBenchmarkResult(
             name=benchmark_name.value,
-            benchmark_version="1.0.0",
+            benchmark_version=_RESNET50_BENCHMARK_VERSION,
             override_parameters={},
             larger_better=True,
             verbose_unit="Images Processed / Second",
@@ -175,4 +205,4 @@ def deep_learning_examples_lookup(
             result_max=results.result_max,
         )
 
-    return output
+    return run_resnet50_docker

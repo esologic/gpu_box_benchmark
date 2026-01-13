@@ -63,8 +63,11 @@ class SystemEvaluation(BaseModel):
     """
 
     cpu_name: str
-    cpu_count: int
-    memory_mb: float
+
+    physical_cpus: int
+    logical_cpus: int
+
+    total_memory_gb: float
 
     gpus: Tuple[GPUDescription, ...]
 

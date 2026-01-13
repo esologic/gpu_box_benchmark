@@ -30,7 +30,7 @@ torchrun \
     --prof 300 \
     --workers 5 \
     --data-backend synthetic \
-    $MODE_FLAG \
+    "$MODE_FLAG" \
     -b "$BATCH_SIZE" \
     $( [ "$AMP" = "1" ] && echo "--amp" ) \
     --raport-file /results/output.txt \

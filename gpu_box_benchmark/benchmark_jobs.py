@@ -15,7 +15,7 @@ class BenchmarkName(str, Enum):
     """
 
     resnet50_train_batch_1_amp = "resnet50_train_batch_1_amp"
-    resnet50_train_batch_256_amp = "resnet50_train_batch_256_amp"
+    resnet50_train_batch_64_amp = "resnet50_train_batch_64_amp"
     resnet50_infer_batch_1_amp = "resnet50_infer_batch_1_amp"
     resnet50_infer_batch_256_amp = "resnet50_infer_batch_256_amp"
 

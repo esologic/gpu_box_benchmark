@@ -39,7 +39,7 @@ def test__parse_report_file(report_file: Path, expected_result: _ReportFileNumer
 
     assert (
         nvidia_deep_learning_examples_wrapper._parse_report_file(  # pylint: disable=protected-access
-            report_file
+            report_file, mode_training=True
         )
         == expected_result
     )

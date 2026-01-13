@@ -2,14 +2,19 @@
 
 import logging
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, NamedTuple, Tuple
 
 import click
+import cpuinfo
+import psutil
 from bonus_click import options
-from click_option_group import RequiredMutuallyExclusiveOptionGroup, optgroup
 
 from gpu_box_benchmark import nvidia_deep_learning_examples_wrapper
-from gpu_box_benchmark.benchmark_jobs import BenchmarkName, CreateBenchmarkExecutor
+from gpu_box_benchmark.benchmark_jobs import (
+    BenchmarkExecutor,
+    BenchmarkName,
+    CreateBenchmarkExecutor,
+)
 from gpu_box_benchmark.gpu_discovery import GPUDescription, discover_gpus
 from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, SystemEvaluation
 
@@ -24,7 +29,16 @@ logging.basicConfig(
 
 LOGGER = logging.getLogger(__name__)
 
-_GPU_BOX_BENCHMARK_VERSION = "1.0.0"
+_GPU_BOX_BENCHMARK_VERSION = "0.1.0"
+
+
+class NamedExecutor(NamedTuple):
+    """
+    Intermediate Type for labeling executors.
+    """
+
+    benchmark_name: BenchmarkName
+    executor: BenchmarkExecutor
 
 
 @click.group()
@@ -45,38 +59,55 @@ def cli() -> None:
     help_message="Decides which benchmark to run.",
     default=BenchmarkName.resnet50_infer_batch_256_amp,
     input_enum=BenchmarkName,
+    multiple=True,
 )
-@optgroup.group(
-    "GPU Configuration", help="Decide which GPUs to use.", cls=RequiredMutuallyExclusiveOptionGroup
-)
-@optgroup.option(
+@click.option(
     "--gpu",
     "-g",
     type=click.Choice(choices=discover_gpus()),
-    help="The GPU(s) to use for computation. Can be given multiple times.",
-    required=False,
+    help=(
+        "The GPU(s) to use for computation. Can be given multiple times. "
+        "If not given, all GPUs will be used."
+    ),
     multiple=True,
-)
-@optgroup.option(
-    "--all-gpus",
-    type=click.BOOL,
-    is_flag=True,
-    help="Use all GPUs attached to the system",
-    required=False,
-    default=True,
 )
 @click.option(
     "--output-path",
     type=click.Path(exists=False, writable=True, file_okay=True, dir_okay=False, path_type=Path),
     default=Path("./benchmark_result.json").resolve(),
     show_default=True,
-    help="Output path",
+    help="The resulting system evaluation is written to this path.",
 )
-def benchmark(
-    test: BenchmarkName, gpu: Tuple[GPUDescription, ...], all_gpus: bool, output_path: Path
-) -> None:  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+@click.option(
+    "--title",
+    type=click.STRING,
+    help="A short few words to describe the run. Will be a plot title in resulting visualizations.",
+    default="Sample Title",
+    show_default=True,
+)
+@click.option(
+    "--description",
+    type=click.STRING,
+    help="Longer text field to qualitatively describe the run in a more verbose way.",
+    default="Sample Description. This run was completed on a computer made of corn!",
+    show_default=True,
+)
+def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    test: Tuple[BenchmarkName, ...],
+    gpu: Tuple[GPUDescription, ...],
+    output_path: Path,
+    title: str,
+    description: str,
+) -> None:
     """
     Run one or more benchmarks and records the results.
+
+    :param test: See click help for docs!
+    :param gpu: See click help for docs!
+    :param output_path: See click help for docs!
+    :param title: See click help for docs!
+    :param description: See click help for docs!
+    :return: None
 
     \f
 
@@ -85,53 +116,76 @@ def benchmark(
     :return: None
     """
 
-    if all_gpus:
+    if not gpu:
         gpu = discover_gpus()
 
+    # Read the system info first. If there are problems we want errors before running any tests.
+
+    cpu_info = cpuinfo.get_cpu_info()
+    mem_info = psutil.virtual_memory()
+
+    cpu_name = cpu_info.get("brand_raw", "Unknown")
+    physical_cpus = psutil.cpu_count(logical=False)
+    logical_cpus = psutil.cpu_count(logical=True)
+    total_memory_bytes = mem_info.total
+
+    # Create the tests the user requested and run them.
+
     creation_functions: List[CreateBenchmarkExecutor] = [
-        nvidia_deep_learning_examples_wrapper.deep_learning_examples_lookup
+        nvidia_deep_learning_examples_wrapper.create_resnet50_executor
     ]
 
-    requested_tests = [test]
-
-    executors = [
-        next(
-            filter(
-                None,
-                (
-                    creation_function(benchmark_name=requested_test, gpus=gpu)
-                    for creation_function in creation_functions
-                ),
-            )
+    named_executors: List[NamedExecutor] = [
+        NamedExecutor(
+            benchmark_name=requested_test,
+            executor=next(
+                filter(
+                    None,
+                    (
+                        creation_function(benchmark_name=requested_test, gpus=gpu)
+                        for creation_function in creation_functions
+                    ),
+                )
+            ),
         )
-        for requested_test in requested_tests
+        for requested_test in test
     ]
 
-    results: List[NumericalBenchmarkResult] = [executor() for executor in executors]
+    results: List[NumericalBenchmarkResult] = []
+
+    for named_executor in named_executors:
+        LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
+        results.append(named_executor.executor())
+
+    # Tests are complete, write the output.
+
+    LOGGER.info("Benchmarking Complete!")
 
     system_evaluation = SystemEvaluation(
-        title="Title",
-        description="Description",
+        title=title,
+        description=description,
         gpu_box_benchmark_version=_GPU_BOX_BENCHMARK_VERSION,
-        cpu_name="CPU Name",
-        cpu_count=1,
-        memory_mb=32000,
+        cpu_name=cpu_name,
+        physical_cpus=physical_cpus,
+        logical_cpus=logical_cpus,
+        total_memory_gb=total_memory_bytes / (1024**3),
         gpus=gpu,
         results=results,
     )
 
-    evaluation_string = system_evaluation.model_dump_json()
+    evaluation_string = system_evaluation.model_dump_json(indent=2)
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(evaluation_string)
 
-    print(evaluation_string)
+    LOGGER.info(f"Output written to {output_path}")
+    LOGGER.info(f"System Evaluation: {evaluation_string}")
 
 
 @cli.command(short_help="Prints a description about what each of the supported benchmarks do.")
-def explain_benchmarks() -> (  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+def explain_benchmarks() -> (
     None
-):
+):  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     """
     To try to keep the main benchmark command clean, this command describes each of the included
     benchmarks and their variants.
