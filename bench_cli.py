@@ -53,11 +53,10 @@ def cli() -> None:
     """
 
 
-@cli.command(short_help="Run one or more benchmarks and records the results.")
+@cli.command(short_help="Run one or more benchmarks and recods the results.")
 @options.create_enum_option(
     "--test",
     help_message="Decides which benchmark to run.",
-    default=BenchmarkName.resnet50_infer_batch_256_amp,
     input_enum=BenchmarkName,
     multiple=True,
 )
@@ -106,6 +105,9 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
 
     :return: None
     """
+
+    if not test:
+        test = tuple(test for test in BenchmarkName)
 
     if not gpu:
         gpu = discover_gpus()
