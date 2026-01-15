@@ -6,7 +6,7 @@ from typing import Dict, List, NamedTuple, Tuple
 
 from pydantic import BaseModel
 
-from gpu_box_benchmark.locate_describe_gpu import GPUIdentity
+from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
 
 
 class NumericalBenchmarkResult(BaseModel):
@@ -62,10 +62,7 @@ class SystemEvaluation(BaseModel):
     Version of the entire suite of benchmarks. 
     """
 
-    cpu_name: str
-
-    physical_cpus: int
-    logical_cpus: int
+    cpu: CPUIdentity
 
     total_memory_gb: float
 

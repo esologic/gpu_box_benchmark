@@ -6,3 +6,4 @@ _ASSETS_DIRECTORY = Path(__file__).parent.resolve()
 
 RESNET50_DOCKERFILE = _ASSETS_DIRECTORY / "resnet50" / "Dockerfile"
 LLAMA_BENCH_DOCKERFILE = _ASSETS_DIRECTORY / "llama_bench" / "Dockerfile"
+BLENDER_BENCHMARK_DOCKERFILE = _ASSETS_DIRECTORY / "blender_benchmark" / "Dockerfile"

@@ -1,24 +1,17 @@
 """
-Code for running the "nvidia deep learning examples" benchmarks and parsing the output.
-
-There's a bit of duplicated code here. I'm waiting to do so abstraction once I have the complete
-suite implemented.
+Code for running the llama-bench benchmarks in llama.cpp and parsing the output.
 """
-
-# pylint: disable=duplicate-code
 
 import json
 import logging
-from pathlib import Path
-from typing import List, NamedTuple, Optional, Tuple, Union
+from typing import NamedTuple, Optional, Tuple
 
-import docker
 import pandas as pd
-from docker.errors import APIError, BuildError
 
 from benchmark_dockerfiles import LLAMA_BENCH_DOCKERFILE
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
-from gpu_box_benchmark.locate_describe_gpu import GPUIdentity
+from gpu_box_benchmark.docker_wrapper import build_run_dockerfile_read_logs
+from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
 from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, ReportFileNumerical
 
 LOGGER = logging.getLogger(__name__)
@@ -73,100 +66,15 @@ def _parse_docker_logs(docker_logs: str) -> ReportFileNumerical:
     return output
 
 
-def build_run_dockerfile_read_logs(
-    dockerfile_path: Path,
-    tag: str,
-    gpus: Tuple[GPUIdentity, ...],
-    env_vars: List[Tuple[str, Union[str, float, bool, int]]],
-) -> Optional[str]:
-    """
-    Builds and runs a dockerfile, returning the logs from the container.
-    :param dockerfile_path: Path to the dockerfile. Parent to this path will be used as the build
-    directory.
-    :param tag: Image will be assigned this tag.
-    :param gpus: Docker container will have access to these GPUs.
-    :param env_vars: List of Tuples of string and whatever that will be passed as environment
-    variables to the container at runtime.
-    :return: Logs from the container.
-    """
-
-    LOGGER.debug("Building Image")
-
-    client = docker.from_env()
-
-    build_directory = dockerfile_path.parent
-
-    try:
-        image, _build_logs = client.images.build(
-            path=str(build_directory),
-            dockerfile=str(dockerfile_path),
-            nocache=False,
-            tag=tag,
-        )
-
-    except BuildError as e:
-        LOGGER.error("Docker build failed!\n")
-
-        for entry in e.build_log:
-            # entries are dicts with keys like 'stream', 'error', 'status'
-            if "stream" in entry:
-                LOGGER.error(entry["stream"])
-            elif "error" in entry:
-                LOGGER.error(entry["error"])
-
-        raise  # re-raise if you want the failure to propagate
-
-    except APIError:
-        # Docker daemon / API-level failure
-        LOGGER.error("Docker API error", exc_info=True)
-        raise
-
-    LOGGER.debug("Image Built. Running")
-
-    container = client.containers.create(
-        image=image,
-        device_requests=[
-            docker.types.DeviceRequest(
-                device_ids=list(str(gpu.id) for gpu in gpus),
-                capabilities=[["gpu"]],
-            )
-        ],
-        environment={key: str(value) for key, value in env_vars},
-        ipc_mode="host",
-        detach=True,
-    )
-
-    logs: Optional[str] = None
-
-    try:
-        container.start()
-        result = container.wait()  # blocks until exit
-
-        logs = container.logs(stdout=True, stderr=True).decode()
-        status_code = result["StatusCode"]
-
-        if status_code != 0:
-            LOGGER.error("Container failed with exit code %s", status_code)
-            LOGGER.error("Container logs:\n%s", logs)
-            raise RuntimeError("Container execution failed")
-
-        LOGGER.debug("Container completed successfully")
-        LOGGER.debug("Container logs:\n%s", logs)
-
-    finally:
-        container.remove(force=True)
-
-    return logs
-
-
 def create_llama_bench_executor(
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
+    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], cpu: CPUIdentity
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some llama bench benchmarks.
     The args here fit the outer API.
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
+    :param cpu: CPU to use in the benchmark.
     :return: The callable to run the benchmark.
     """
 

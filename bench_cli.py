@@ -9,13 +9,18 @@ import cpuinfo
 import psutil
 from bonus_click import options
 
-from gpu_box_benchmark import llama_bench, nvidia_deep_learning_examples_wrapper
+from gpu_box_benchmark import blender_benchmark, llama_bench, nvidia_deep_learning_examples_wrapper
 from gpu_box_benchmark.benchmark_jobs import (
     BenchmarkExecutor,
     BenchmarkName,
     CreateBenchmarkExecutor,
 )
-from gpu_box_benchmark.locate_describe_gpu import GPU_CLICK_OPTION, GPUIdentity, discover_gpus
+from gpu_box_benchmark.locate_describe_hardware import (
+    GPU_CLICK_OPTION,
+    CPUIdentity,
+    GPUIdentity,
+    discover_gpus,
+)
 from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, SystemEvaluation
 
 LOGGER_FORMAT = "[%(asctime)s - %(process)s - %(name)20s - %(levelname)s] %(message)s"
@@ -117,9 +122,12 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     cpu_info = cpuinfo.get_cpu_info()
     mem_info = psutil.virtual_memory()
 
-    cpu_name = cpu_info.get("brand_raw", "Unknown")
-    physical_cpus = psutil.cpu_count(logical=False)
-    logical_cpus = psutil.cpu_count(logical=True)
+    cpu = CPUIdentity(
+        name=cpu_info.get("brand_raw", "Unknown"),
+        physical_cpus=psutil.cpu_count(logical=False),
+        logical_cpus=psutil.cpu_count(logical=True),
+    )
+
     total_memory_bytes = mem_info.total
 
     # Create the tests the user requested and run them.
@@ -127,6 +135,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     creation_functions: List[CreateBenchmarkExecutor] = [
         nvidia_deep_learning_examples_wrapper.create_resnet50_executor,
         llama_bench.create_llama_bench_executor,
+        blender_benchmark.create_blender_benchmark_executor,
     ]
 
     named_executors: List[NamedExecutor] = [
@@ -136,7 +145,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
                 filter(
                     None,
                     (
-                        creation_function(benchmark_name=requested_test, gpus=gpu)
+                        creation_function(benchmark_name=requested_test, gpus=gpu, cpu=cpu)
                         for creation_function in creation_functions
                     ),
                 )
@@ -159,9 +168,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         title=title,
         description=description,
         gpu_box_benchmark_version=_GPU_BOX_BENCHMARK_VERSION,
-        cpu_name=cpu_name,
-        physical_cpus=physical_cpus,
-        logical_cpus=logical_cpus,
+        cpu=cpu,
         total_memory_gb=total_memory_bytes / (1024**3),
         gpus=gpu,
         results=results,

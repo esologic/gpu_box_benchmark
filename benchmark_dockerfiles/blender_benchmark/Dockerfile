@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
 
 RUN apt-get update && apt-get install -y \
     wget xz-utils libgl1-mesa-glx libglib2.0-0 \
@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 ENV BLENDER_VERSION=4.5.0
-ENV TEST_DEVICE=CUDA
+ENV DEVICE_TYPE=CUDA
 
 WORKDIR /app
 
@@ -20,15 +20,9 @@ RUN ./benchmark-launcher-cli blender download ${BLENDER_VERSION}
 RUN ./benchmark-launcher-cli devices --blender-version ${BLENDER_VERSION}  # sanity check to make sure we can actually run benchmarks.
 RUN ./benchmark-launcher-cli scenes download monster --blender-version ${BLENDER_VERSION}
 
-RUN echo '#!/bin/bash' > /app/entrypoint.sh \
- && echo 'set -e' >> /app/entrypoint.sh \
- && echo '' >> /app/entrypoint.sh \
- && echo '# Use default env vars if not provided' >> /app/entrypoint.sh \
- && echo 'BLENDER_VERSION="${BLENDER_VERSION}"' >> /app/entrypoint.sh \
- && echo 'TEST_DEVICE="${TEST_DEVICE}"' >> /app/entrypoint.sh \
- && echo '' >> /app/entrypoint.sh \
- && echo 'exec ./benchmark-launcher-cli benchmark --blender-version "$BLENDER_VERSION" --device-type "$TEST_DEVICE" --json monster' >> /app/entrypoint.sh \
- && chmod +x /app/entrypoint.sh
+# Copy the bash script into the container
+COPY ./run_blender_benchmark.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # ---------------------------
 # Entrypoint

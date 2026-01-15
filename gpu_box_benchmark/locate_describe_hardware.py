@@ -11,6 +11,16 @@ from click import Context, Parameter
 from pydantic import BaseModel
 
 
+class CPUIdentity(BaseModel):
+    """
+    Describes a CPU. This struct is versioned along with the main version in SystemEvaluation.
+    """
+
+    name: str
+    physical_cpus: int
+    logical_cpus: int
+
+
 class GPUIdentity(BaseModel):
     """
     Describes a GPU. This struct is versioned along with the main version in SystemEvaluation.
