@@ -138,25 +138,24 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         blender_benchmark.create_blender_benchmark_executor,
     ]
 
-    named_executors: List[Optional[NamedExecutor]] = [
-        NamedExecutor(
-            benchmark_name=requested_test,
-            executor=next(
-                filter(
-                    None,
-                    (
-                        creation_function(benchmark_name=requested_test, gpus=gpu)
-                        for creation_function in creation_functions
+    try:
+        named_executors: List[Optional[NamedExecutor]] = [
+            NamedExecutor(
+                benchmark_name=requested_test,
+                executor=next(
+                    filter(
+                        None,
+                        (
+                            creation_function(benchmark_name=requested_test, gpus=gpu)
+                            for creation_function in creation_functions
+                        ),
                     ),
                 ),
-                None,
-            ),
-        )
-        for requested_test in test
-    ]
-
-    if not any(named_executors):
-        raise ValueError("No valid tests for the given input.")
+            )
+            for requested_test in test
+        ]
+    except StopIteration as e:
+        raise ValueError("No valid tests for the given input.") from e
 
     results: List[NumericalBenchmarkResult] = []
 
