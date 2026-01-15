@@ -14,7 +14,7 @@ import pandas as pd
 from benchmark_dockerfiles import RESNET50_DOCKERFILE
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
 from gpu_box_benchmark.locate_describe_gpu import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult
+from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, ReportFileNumerical
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,22 +35,7 @@ class _ResNet50Params(NamedTuple):
     """
 
 
-class _ReportFileNumerical(NamedTuple):
-    """
-    Intermediate type to contain the numerical result.
-    """
-
-    sample_count: float
-    mean: float
-    std: float
-    result_min: float
-    percentile_25: float
-    percentile_50: float
-    percentile_75: float
-    result_max: float
-
-
-def _parse_report_file(report_path: Path, mode_training: bool) -> _ReportFileNumerical:
+def _parse_report_file(report_path: Path, mode_training: bool) -> ReportFileNumerical:
     """
     Parse a report file to the standard set of numerical results.
     :param report_path: Path to the report file on disk.
@@ -70,7 +55,7 @@ def _parse_report_file(report_path: Path, mode_training: bool) -> _ReportFileNum
         .to_dict()
     )
 
-    output = _ReportFileNumerical(
+    output = ReportFileNumerical(
         sample_count=summary_dict["count"],
         mean=summary_dict["mean"],
         std=summary_dict["std"],

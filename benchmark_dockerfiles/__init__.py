@@ -5,3 +5,4 @@ from pathlib import Path
 _ASSETS_DIRECTORY = Path(__file__).parent.resolve()
 
 RESNET50_DOCKERFILE = _ASSETS_DIRECTORY / "resnet50" / "Dockerfile"
+LLAMA_BENCH_DOCKERFILE = _ASSETS_DIRECTORY / "llama_bench" / "Dockerfile"

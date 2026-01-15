@@ -2,7 +2,7 @@
 Set of types to describe benchmarking runs.
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, NamedTuple, Tuple
 
 from pydantic import BaseModel
 
@@ -72,3 +72,18 @@ class SystemEvaluation(BaseModel):
     gpus: Tuple[GPUIdentity, ...]
 
     results: List[NumericalBenchmarkResult]
+
+
+class ReportFileNumerical(NamedTuple):
+    """
+    Intermediate type to contain the numerical result.
+    """
+
+    sample_count: float
+    mean: float
+    std: float
+    result_min: float
+    percentile_25: float
+    percentile_50: float
+    percentile_75: float
+    result_max: float

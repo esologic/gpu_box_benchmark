@@ -19,6 +19,11 @@ class BenchmarkName(str, Enum):
     resnet50_infer_batch_1_amp = "resnet50_infer_batch_1_amp"
     resnet50_infer_batch_256_amp = "resnet50_infer_batch_256_amp"
 
+    llama_bench_tiny_model_prompt = "llama_bench_tiny_model_prompt"
+    llama_bench_tiny_model_generation = "llama_bench_tiny_model_generation"
+    llama_bench_standard_model_prompt = "llama_bench_standard_model_prompt"
+    llama_bench_standard_model_generation = "llama_bench_standard_model_generation"
+
 
 class BenchmarkExecutor(Protocol):
     """
