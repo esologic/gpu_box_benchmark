@@ -1,3 +1,5 @@
+# See: https://opendata.blender.org/
+
 FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
 
 RUN apt-get update && apt-get install -y \
@@ -20,11 +22,7 @@ RUN ./benchmark-launcher-cli blender download ${BLENDER_VERSION}
 RUN ./benchmark-launcher-cli devices --blender-version ${BLENDER_VERSION}  # sanity check to make sure we can actually run benchmarks.
 RUN ./benchmark-launcher-cli scenes download monster --blender-version ${BLENDER_VERSION}
 
-# Copy the bash script into the container
-COPY ./run_blender_benchmark.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+COPY ./run_blender_benchmark.sh /app/run_blender_benchmark.sh
+RUN chmod +x /app/run_blender_benchmark.sh
 
-# ---------------------------
-# Entrypoint
-# ---------------------------
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/run_blender_benchmark.sh"]

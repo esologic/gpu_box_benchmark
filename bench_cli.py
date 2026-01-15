@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import List, NamedTuple, Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 import click
 import cpuinfo
@@ -138,27 +138,32 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         blender_benchmark.create_blender_benchmark_executor,
     ]
 
-    named_executors: List[NamedExecutor] = [
+    named_executors: List[Optional[NamedExecutor]] = [
         NamedExecutor(
             benchmark_name=requested_test,
             executor=next(
                 filter(
                     None,
                     (
-                        creation_function(benchmark_name=requested_test, gpus=gpu, cpu=cpu)
+                        creation_function(benchmark_name=requested_test, gpus=gpu)
                         for creation_function in creation_functions
                     ),
-                )
+                ),
+                None,
             ),
         )
         for requested_test in test
     ]
 
+    if not any(named_executors):
+        raise ValueError("No valid tests for the given input.")
+
     results: List[NumericalBenchmarkResult] = []
 
     for named_executor in named_executors:
-        LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
-        results.append(named_executor.executor())
+        if named_executor is not None:
+            LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
+            results.append(named_executor.executor())
 
     # Tests are complete, write the output.
 

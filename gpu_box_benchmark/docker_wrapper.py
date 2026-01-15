@@ -1,3 +1,7 @@
+"""
+Convince wrappers around the docker python API.
+"""
+
 import logging
 from pathlib import Path
 from typing import List, Optional, Tuple, Union

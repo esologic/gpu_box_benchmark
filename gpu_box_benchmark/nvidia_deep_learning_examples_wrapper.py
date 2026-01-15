@@ -2,6 +2,8 @@
 Code for running the "nvidia deep learning examples" benchmarks and parsing the output.
 """
 
+# pylint: disable=duplicate-code
+
 import json
 import logging
 from pathlib import Path
@@ -13,7 +15,7 @@ import pandas as pd
 
 from benchmark_dockerfiles import RESNET50_DOCKERFILE
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
-from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
+from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, ReportFileNumerical
 
 LOGGER = logging.getLogger(__name__)
@@ -70,14 +72,13 @@ def _parse_report_file(report_path: Path, mode_training: bool) -> ReportFileNume
 
 
 def create_resnet50_executor(
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], cpu: CPUIdentity
+    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some resnet50 benchmarks.
     The args here fit the outer API.
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
-    :param cpu: CPU to use in the benchmark.
     :return: The callable to run the benchmark, None if the input name is not a resnet benchmark.
     """
 

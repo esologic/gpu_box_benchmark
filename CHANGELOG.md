@@ -1,10 +1,11 @@
 # Changelog
 
 
-0.2.0 - (2026-01-14)
+0.2.0 - (2026-01-??)
 ------------------
 
 * Adds `llama-bench` benchmarks for quantifying LLM performance.
+* Adds the blender benchmark for a non AI reference point. 
 
 
 0.1.0 - (2026-01-13)

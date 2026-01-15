@@ -11,7 +11,7 @@ import pandas as pd
 from benchmark_dockerfiles import LLAMA_BENCH_DOCKERFILE
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
 from gpu_box_benchmark.docker_wrapper import build_run_dockerfile_read_logs
-from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
+from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, ReportFileNumerical
 
 LOGGER = logging.getLogger(__name__)
@@ -53,12 +53,12 @@ def _parse_docker_logs(docker_logs: str) -> ReportFileNumerical:
     )
 
     output = ReportFileNumerical(
+        percentile_25=summary_dict["25%"],
+        percentile_50=summary_dict["50%"],
         sample_count=summary_dict["count"],
         mean=summary_dict["mean"],
         std=summary_dict["std"],
         result_min=summary_dict["min"],
-        percentile_25=summary_dict["25%"],
-        percentile_50=summary_dict["50%"],
         percentile_75=summary_dict["75%"],
         result_max=summary_dict["max"],
     )
@@ -67,14 +67,13 @@ def _parse_docker_logs(docker_logs: str) -> ReportFileNumerical:
 
 
 def create_llama_bench_executor(
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], cpu: CPUIdentity
+    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some llama bench benchmarks.
     The args here fit the outer API.
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
-    :param cpu: CPU to use in the benchmark.
     :return: The callable to run the benchmark.
     """
 

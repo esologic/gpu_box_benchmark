@@ -5,7 +5,7 @@ Abstractions to define different named benchmarks and how they get run.
 from enum import Enum
 from typing import Optional, Protocol, Tuple
 
-from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
+from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult
 
 
@@ -52,12 +52,11 @@ class CreateBenchmarkExecutor(Protocol):
     """
 
     def __call__(
-        self, benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], cpu: CPUIdentity
+        self, benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
     ) -> Optional[BenchmarkExecutor]:
         """
         :param benchmark_name: To look up.
         :param gpus: List of GPUs to run the benchmark on. Jobs can utilize the GPU or decide not
         to use them.
-        :param cpu: CPU description. Some benchmarks require CPU name.
         :return: Returns None if the wrapper module does not contain the desired benchmark.
         """
