@@ -23,6 +23,11 @@ class BenchmarkName(str, Enum):
     llama_bench_tiny_model_generation = "llama_bench_tiny_model_generation"
     llama_bench_standard_model_prompt = "llama_bench_standard_model_prompt"
     llama_bench_standard_model_generation = "llama_bench_standard_model_generation"
+    """
+    Prompt processing is compute speed bound. Very paralellizable. 
+    Token generation is memory bandwidth bound. This is a good test to see how fast data can move
+    from card to card and is a good test of the PCIe architecture. 
+    """
 
 
 class BenchmarkExecutor(Protocol):

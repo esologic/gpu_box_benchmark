@@ -1,6 +1,12 @@
 # Changelog
 
 
+0.2.0 - (2026-01-14)
+------------------
+
+* Adds `llama-bench` benchmarks for quantifying LLM performance.
+
+
 0.1.0 - (2026-01-13)
 ------------------
 

@@ -1,3 +1,7 @@
+# See:
+# * https://github.com/ggml-org/llama.cpp/blob/master/docs/docker.md
+# * https://github.com/ggml-org/llama.cpp/blob/master/tools/llama-bench/README.md
+
 FROM ghcr.io/ggml-org/llama.cpp:full-cuda
 
 # Install curl
