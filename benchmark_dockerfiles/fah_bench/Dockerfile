@@ -19,10 +19,8 @@ RUN git clone https://github.com/fahbench/fahbench.git
 
 WORKDIR /opt/fahbench
 
-# ---- Initialize submodules (Boost, OpenMM) ----
 RUN git submodule update --init --recursive
 
-# ---- Build ----
 RUN mkdir build
 WORKDIR /opt/fahbench/build
 

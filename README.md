@@ -57,6 +57,12 @@ Options:
   --help              Show this message and exit.
 ```
 
+## Benchmarks
+
+TODO: For benchmarks that can only be run on one GPU at a time cumuluative results are provided.
+
+
+
 ## Getting Started
 
 ### Python Dependencies

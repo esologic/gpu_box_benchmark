@@ -62,6 +62,9 @@ def create_blender_benchmark_executor(  # pylin
     """
     Creates an executor that uses docker to run some blender-based benchmarks.
     The args here fit the outer API.
+
+    TODO: We should probably just run once per GPU.
+
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
     :return: The callable to run the benchmark.
