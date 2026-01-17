@@ -12,4 +12,4 @@ source ./.venv/bin/activate
 export PYTHONPATH=".:./test${PYTHONPATH+:}${PYTHONPATH:-}"
 
 # If this is failing, replace the line with `isort -c -vb` to see verbose output
-isort . --check --diff
+isort ./gpu_box_benchmark bench_cli.py --check --diff

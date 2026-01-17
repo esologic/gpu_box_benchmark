@@ -10,4 +10,4 @@ source ./.venv/bin/activate
 
 export PYTHONPATH=".:./test${PYTHONPATH+:}${PYTHONPATH:-}"
 
-isort .
+isort ./gpu_box_benchmark bench_cli.py
