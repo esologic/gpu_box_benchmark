@@ -7,7 +7,7 @@ from test.assets import RESNET50_OUTPUT_PATH
 
 import pytest
 
-from gpu_box_benchmark import nvidia_deep_learning_examples_wrapper
+from gpu_box_benchmark.benchmark_dockerfile_wrappers import nvidia_deep_learning_examples
 from gpu_box_benchmark.numeric_benchmark_result import ReportFileNumerical
 
 
@@ -38,7 +38,7 @@ def test__parse_report_file(report_file: Path, expected_result: ReportFileNumeri
     """
 
     assert (
-        nvidia_deep_learning_examples_wrapper._parse_report_file(  # pylint: disable=protected-access
+        nvidia_deep_learning_examples._parse_report_file(  # pylint: disable=protected-access
             report_file, mode_training=True
         )
         == expected_result

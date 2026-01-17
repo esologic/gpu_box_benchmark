@@ -18,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 _LLAMA_BENCH_VERSION = "0.1.0"
 
-_NUM_TEST_TOKENS = 2048
+_NUM_TEST_TOKENS = 512
 
 
 class _LlamaBenchParams(NamedTuple):

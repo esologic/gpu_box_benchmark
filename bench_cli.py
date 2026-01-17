@@ -9,11 +9,11 @@ import cpuinfo
 import psutil
 from bonus_click import options
 
-from gpu_box_benchmark import (
+from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     blender_benchmark,
     folding_at_home,
     llama_bench,
-    nvidia_deep_learning_examples_wrapper,
+    nvidia_deep_learning_examples,
 )
 from gpu_box_benchmark.benchmark_jobs import (
     BenchmarkExecutor,
@@ -138,7 +138,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     # Create the tests the user requested and run them.
 
     creation_functions: List[CreateBenchmarkExecutor] = [
-        nvidia_deep_learning_examples_wrapper.create_resnet50_executor,
+        nvidia_deep_learning_examples.create_resnet50_executor,
         llama_bench.create_llama_bench_executor,
         blender_benchmark.create_blender_benchmark_executor,
         folding_at_home.create_fah_bench_executor,
