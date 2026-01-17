@@ -32,6 +32,9 @@ class BenchmarkName(str, Enum):
     blender_monster_cpu = "blender_monster_cpu"
     blender_monster_gpu = "blender_monster_gpu"
 
+    fah_bench_single = "fah_bench_single"
+    fah_bench_double = "fah_bench_double"
+
 
 class BenchmarkExecutor(Protocol):
     """

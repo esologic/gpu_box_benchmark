@@ -9,7 +9,12 @@ import cpuinfo
 import psutil
 from bonus_click import options
 
-from gpu_box_benchmark import blender_benchmark, llama_bench, nvidia_deep_learning_examples_wrapper
+from gpu_box_benchmark import (
+    blender_benchmark,
+    folding_at_home,
+    llama_bench,
+    nvidia_deep_learning_examples_wrapper,
+)
 from gpu_box_benchmark.benchmark_jobs import (
     BenchmarkExecutor,
     BenchmarkName,
@@ -136,6 +141,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         nvidia_deep_learning_examples_wrapper.create_resnet50_executor,
         llama_bench.create_llama_bench_executor,
         blender_benchmark.create_blender_benchmark_executor,
+        folding_at_home.create_fah_bench_executor,
     ]
 
     try:

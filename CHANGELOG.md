@@ -4,6 +4,7 @@
 0.2.0 - (2026-01-??)
 ------------------
 
+* Adds Folding@Home support via FAHBench.
 * Adds `llama-bench` benchmarks for quantifying LLM performance.
 * Adds the blender benchmark for a non AI reference point. 
 
