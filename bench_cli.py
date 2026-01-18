@@ -27,7 +27,7 @@ from gpu_box_benchmark.locate_describe_hardware import (
     GPUIdentity,
     discover_gpus,
 )
-from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, SystemEvaluation
+from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, SystemEvaluation
 
 LOGGER_FORMAT = "[%(asctime)s - %(process)s - %(name)20s - %(levelname)s] %(message)s"
 LOGGER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -165,7 +165,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     except StopIteration as e:
         raise ValueError("No valid tests for the given input.") from e
 
-    results: List[NumericalBenchmarkResult] = []
+    results: List[BenchmarkResult] = []
 
     for named_executor in named_executors:
         if named_executor is not None:

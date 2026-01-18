@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Optional, Protocol, Tuple
 
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult
+from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult
 
 
 class BenchmarkName(str, Enum):
@@ -43,7 +43,7 @@ class BenchmarkExecutor(Protocol):
     Defines the callables that run to produce the benchmark results.
     """
 
-    def __call__(self) -> NumericalBenchmarkResult:
+    def __call__(self) -> BenchmarkResult:
         """
         Takes no arguments and produces the benchmark results.
         :return: The filled benchmark results.

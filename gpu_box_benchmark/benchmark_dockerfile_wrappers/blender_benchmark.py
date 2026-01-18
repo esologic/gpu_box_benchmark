@@ -6,34 +6,30 @@ Doesn't yet support multiple GPUs.
 import json
 import logging
 import re
-from typing import Dict, List, Optional, Tuple, Union
-
-import pandas as pd
+from typing import List, Optional, Tuple
 
 from benchmark_dockerfiles import BLENDER_BENCHMARK_DOCKERFILE
+from gpu_box_benchmark import docker_wrapper
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
-from gpu_box_benchmark.docker_wrapper import build_run_dockerfile_read_logs
+from gpu_box_benchmark.docker_wrapper import ContainerOutputs
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, ReportFileNumerical
+from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult
 
 LOGGER = logging.getLogger(__name__)
 
 _BLENDER_BENCHMARK_VERSION = "0.1.0"
-_RUNS_PER_BENCHMARK = 3
 
 
-def parallelize_runs():
-    """
-
-    :return:
-    """
-
-
-def _parse_samples_per_minute(docker_logs: str) -> float:
+def _parse_samples_per_minute(container_outputs: ContainerOutputs) -> float:
     """
     Finds and parses the JSON result array from docker logs,
     even if interleaved with progress bars.
+    :param container_outputs: Contains all the different outputs from the container.
+    :return: Samples per minute as a float.
     """
+
+    docker_logs = container_outputs.logs
+
     try:
         # Regex to find a JSON array: starts with [ and ends with ]
         # We use re.DOTALL so that '.' matches newlines
@@ -70,87 +66,80 @@ def create_blender_benchmark_executor(  # pylin
     Creates an executor that uses docker to run some blender-based benchmarks.
     The args here fit the outer API.
 
-    TODO: We should probably just run once per GPU.
-
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
     :return: The callable to run the benchmark.
     """
 
-    if len(gpus) > 1 and benchmark_name != BenchmarkName.blender_monster_cpu:
-        LOGGER.debug("Multi-GPU not yet supported in blender benchmark.")
+    if benchmark_name not in (BenchmarkName.blender_monster_cpu, BenchmarkName.blender_monster_gpu):
         return None
 
-    gpu_device_name = " ".join([f'--device-name "{gpu.name}"' for gpu in gpus])
+    def create_runtime_env_vars(
+        runtime_gpus: Tuple[GPUIdentity, ...],
+    ) -> List[Tuple[str, str]]:
+        """
+        Blender benchmark needs to know the name of the GPU it should run on.
+        :param runtime_gpus: The GPUs the test will be run on.
+        :return: Rendered environment variables.
+        """
 
-    name_to_parameters: Dict[BenchmarkName, List[Tuple[str, Union[str, float, bool, int]]]] = {
-        BenchmarkName.blender_monster_cpu: [
-            ("RUN_ENV", "--blender-version 4.5.0 --device-type CPU --json --verbosity 0 monster"),
-        ],
-        BenchmarkName.blender_monster_gpu: [
+        if benchmark_name == BenchmarkName.blender_monster_cpu:
+            hardware_description: str = "--device-type CPU"
+        elif benchmark_name == BenchmarkName.blender_monster_gpu:
+
+            if len(runtime_gpus) > 1:
+                raise ValueError(
+                    "Multiple GPUs not supported for a single Blender "
+                    f"Benchmark Run. Input: {runtime_gpus}"
+                )
+
+            gpu_device_name: str = " ".join([f'--device-name "{gpu.name}"' for gpu in runtime_gpus])
+            hardware_description = " ".join(["--device-type CUDA", gpu_device_name])
+        else:
+            raise ValueError(f"Bad benchmark type for blender benchmark: {benchmark_name}")
+
+        output: List[Tuple[str, str]] = [
             (
                 "RUN_ENV",
-                (
-                    "--blender-version 4.5.0  --device-type "
-                    f"CUDA {gpu_device_name} --json --verbosity 0 monster"
+                " ".join(
+                    [
+                        "--blender-version 4.5.0",
+                        "--verbosity 0",
+                        "--json",
+                        hardware_description,
+                        "monster",
+                    ]
                 ),
-            ),
-        ],
-    }
+            )
+        ]
 
-    blender_benchmark_envs: Optional[List[Tuple[str, Union[str, float, bool, int]]]] = (
-        name_to_parameters.get(benchmark_name, None)
-    )
+        return output
 
-    if blender_benchmark_envs is None:
-        return None
-
-    def run_blender_benchmark_docker() -> NumericalBenchmarkResult:
+    def run_blender_benchmark_docker() -> BenchmarkResult:
         """
         Build and run the docker image that runs the benchmark.
         :return: Parsed results.
         """
 
-        samples_per_minute = [
-            _parse_samples_per_minute(
-                build_run_dockerfile_read_logs(
-                    dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
-                    tag=benchmark_name.value,
-                    gpus=gpus,
-                    env_vars=blender_benchmark_envs,
-                )
-            )
-            for _ in range(_RUNS_PER_BENCHMARK)
-        ]
+        multi_gpu_native = False
 
-        summary_dict = pd.Series(samples_per_minute).dropna().describe().to_dict()
-
-        results = ReportFileNumerical(
-            sample_count=summary_dict["count"],
-            mean=summary_dict["mean"],
-            std=summary_dict["std"],
-            result_min=summary_dict["min"],
-            percentile_25=summary_dict["25%"],
-            percentile_50=summary_dict["50%"],
-            percentile_75=summary_dict["75%"],
-            result_max=summary_dict["max"],
+        results = docker_wrapper.benchmark_dockerfile(
+            dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
+            tag=benchmark_name.value,
+            gpus=gpus,
+            create_runtime_env_vars=create_runtime_env_vars,
+            multi_gpu_native=multi_gpu_native,
+            outputs_to_result=_parse_samples_per_minute,
         )
 
-        return NumericalBenchmarkResult(
-            percentile_50=results.percentile_50,
-            percentile_75=results.percentile_75,
-            result_max=results.result_max,
+        return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_BLENDER_BENCHMARK_VERSION,
             override_parameters={},
             larger_better=True,
-            verbose_unit="Samples / Minute",
-            unit="s/min",
-            sample_count=results.sample_count,
-            std=results.std,
-            mean=results.mean,
-            result_min=results.result_min,
-            percentile_25=results.percentile_25,
+            verbose_unit="Nanoseconds / Day",
+            unit="ns/day",
+            numerical_results=results,
         )
 
     return run_blender_benchmark_docker

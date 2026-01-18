@@ -6,15 +6,14 @@ Doesn't yet support multiple GPUs.
 # pylint: disable=duplicate-code
 
 import logging
-from typing import Dict, List, Optional, Tuple, Union
-
-import pandas as pd
+from typing import Dict, List, Optional, Tuple
 
 from benchmark_dockerfiles import FAHBENCH_BENCHMARK_DOCKERFILE
 from gpu_box_benchmark import docker_wrapper
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
+from gpu_box_benchmark.docker_wrapper import ContainerOutputs
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, ReportFileNumerical
+from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,19 +21,17 @@ _FAH_BENCHMARK_VERSION = "0.1.0"
 _RUNS_PER_BENCHMARK = 3
 
 
-def _parse_final_score(docker_logs: str) -> float:
+def _parse_final_score(container_outputs: ContainerOutputs) -> float:
     """
     Finds and returns the final score from some FAHBench logs.
-    :param docker_logs: Full output from the docker container post run.
+    :param container_outputs: All outputs from the container, contains the logs which are the full
+    output from the docker container post run.
     :return: Final score.
     """
 
-    lines = docker_logs.splitlines()
-
+    lines = container_outputs.logs.splitlines()
     final_score_line = next(iter([line for line in lines if "Final score" in line]))
-
     final_score = float(final_score_line.split(":")[1].strip())
-
     return final_score
 
 
@@ -50,7 +47,7 @@ def create_fah_bench_executor(  # pylin
     :return: The callable to run the benchmark.
     """
 
-    name_to_parameters: Dict[BenchmarkName, List[Tuple[str, Union[str, float, bool, int]]]] = {
+    name_to_parameters: Dict[BenchmarkName, List[Tuple[str, str]]] = {
         BenchmarkName.fah_bench_single: [
             ("FAHBENCH_PRECISION", "single"),
         ],
@@ -59,14 +56,12 @@ def create_fah_bench_executor(  # pylin
         ],
     }
 
-    envs: Optional[List[Tuple[str, Union[str, float, bool, int]]]] = name_to_parameters.get(
-        benchmark_name, None
-    )
+    envs: Optional[List[Tuple[str, str]]] = name_to_parameters.get(benchmark_name, None)
 
     if envs is None:
         return None
 
-    def run_fah_bench_docker() -> NumericalBenchmarkResult:
+    def run_fah_bench_docker() -> BenchmarkResult:
         """
         Build and run the docker image that runs the benchmark.
         :return: Parsed results.
@@ -78,25 +73,19 @@ def create_fah_bench_executor(  # pylin
             dockerfile_path=FAHBENCH_BENCHMARK_DOCKERFILE,
             tag=benchmark_name.value,
             gpus=gpus,
-            env_vars=envs,
+            create_runtime_env_vars=lambda runtime_gpus: envs,
             multi_gpu_native=multi_gpu_native,
-            logs_to_result=_parse_final_score,
+            outputs_to_result=_parse_final_score,
         )
 
-        return NumericalBenchmarkResult(
+        return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_FAH_BENCHMARK_VERSION,
             override_parameters={},
             larger_better=True,
             verbose_unit="Nanoseconds / Day",
             unit="ns/day",
-            multi_gpu_native=multi_gpu_native,
-            min_by_gpu_type=results.min_by_gpu_type,
-            max_by_gpu_type=results.max_by_gpu_type,
-            mean_by_gpu_type=results.mean_by_gpu_type,
-            theoretical_sum=results.theoretical_sum,
-            parallel_mean=results.parallel_mean,
-            experimental_sum=results.experimental_sum,
+            numerical_results=results,
         )
 
     return run_fah_bench_docker

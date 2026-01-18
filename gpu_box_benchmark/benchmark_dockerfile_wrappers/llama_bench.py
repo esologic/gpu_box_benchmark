@@ -9,10 +9,11 @@ from typing import NamedTuple, Optional, Tuple
 import pandas as pd
 
 from benchmark_dockerfiles import LLAMA_BENCH_DOCKERFILE
+from gpu_box_benchmark import docker_wrapper
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
-from gpu_box_benchmark.docker_wrapper import build_run_dockerfile_read_logs
+from gpu_box_benchmark.docker_wrapper import ContainerOutputs
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, ReportFileNumerical
+from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,19 +32,21 @@ class _LlamaBenchParams(NamedTuple):
     generation_tokens: int
 
 
-def _parse_docker_logs(docker_logs: str) -> ReportFileNumerical:
+def _parse_docker_logs(container_outputs: ContainerOutputs) -> float:
     """
     Parse a report file to the standard set of numerical results.
-    :param docker_logs: Logs from the docker container as a string! These logs contain our results
-    and we need to extract.
+    :param container_outputs: Contains the logs from the docker container as a string! These logs
+    contain our results and we need to extract.
     :return: Numerical results
     """
+
+    docker_logs = container_outputs.logs
 
     start = docker_logs.find("[")
     end = docker_logs.rfind("]")
 
     if start == -1 or end == -1 or end < start:
-        raise ValueError("No JSON array found in log")
+        raise ValueError(f"No JSON array found in log. Complete Logs: {docker_logs}")
 
     json_blob = docker_logs[start : end + 1]
     loaded = next(iter(json.loads(json_blob)))
@@ -52,18 +55,7 @@ def _parse_docker_logs(docker_logs: str) -> ReportFileNumerical:
         pd.Series(loaded["samples_ts"]).dropna().describe().to_dict()  # Tokens/Sample results.
     )
 
-    output = ReportFileNumerical(
-        percentile_25=summary_dict["25%"],
-        percentile_50=summary_dict["50%"],
-        sample_count=summary_dict["count"],
-        mean=summary_dict["mean"],
-        std=summary_dict["std"],
-        result_min=summary_dict["min"],
-        percentile_75=summary_dict["75%"],
-        result_max=summary_dict["max"],
-    )
-
-    return output
+    return float(summary_dict["mean"])
 
 
 def create_llama_bench_executor(
@@ -107,40 +99,35 @@ def create_llama_bench_executor(
     if llama_bench_parameters is None:
         return None
 
-    def run_llama_bench_docker() -> NumericalBenchmarkResult:
+    def run_llama_bench_docker() -> BenchmarkResult:
         """
         Build and run the docker image that runs the benchmark.
         :return: Parsed results.
         """
 
-        logs = build_run_dockerfile_read_logs(
+        multi_gpu_native = True
+
+        results = docker_wrapper.benchmark_dockerfile(
             dockerfile_path=LLAMA_BENCH_DOCKERFILE,
             tag=benchmark_name.value,
             gpus=gpus,
-            env_vars=[
-                ("MODEL_PATH", llama_bench_parameters.internal_model_path),
-                ("NUM_PROMPT_TOKENS", llama_bench_parameters.prompt_tokens),
-                ("NUM_GENERATION_TOKENS", llama_bench_parameters.generation_tokens),
+            create_runtime_env_vars=lambda runtime_gpus: [
+                ("MODEL_PATH", str(llama_bench_parameters.internal_model_path)),
+                ("NUM_PROMPT_TOKENS", str(llama_bench_parameters.prompt_tokens)),
+                ("NUM_GENERATION_TOKENS", str(llama_bench_parameters.generation_tokens)),
             ],
+            multi_gpu_native=multi_gpu_native,
+            outputs_to_result=_parse_docker_logs,
         )
 
-        results = _parse_docker_logs(docker_logs=logs)
-
-        return NumericalBenchmarkResult(
+        return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_LLAMA_BENCH_VERSION,
             override_parameters={},
             larger_better=True,
             verbose_unit="Tokens / Second",
             unit="toks/s",
-            sample_count=results.sample_count,
-            mean=results.mean,
-            std=results.std,
-            result_min=results.result_min,
-            percentile_25=results.percentile_25,
-            percentile_50=results.percentile_50,
-            percentile_75=results.percentile_75,
-            result_max=results.result_max,
+            numerical_results=results,
         )
 
     return run_llama_bench_docker

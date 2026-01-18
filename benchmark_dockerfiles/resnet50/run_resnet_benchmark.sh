@@ -27,5 +27,5 @@ torchrun \
     "$MODE_FLAG" \
     -b "$BATCH_SIZE" \
     $( [ "$AMP" = "1" ] && echo "--amp" ) \
-    --raport-file /results/output.txt \
+    --raport-file /results/result.txt \
     /workspace/dataset

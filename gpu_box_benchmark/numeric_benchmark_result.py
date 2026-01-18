@@ -11,18 +11,18 @@ from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
 
 class ReportFileNumerical(NamedTuple):
     """
-    Intermediate type to contain the numerical result.
+    Contain the numerical results for the run
     """
 
     min_by_gpu_type: float
     max_by_gpu_type: float
     mean_by_gpu_type: float
-    theoretical_sum: float
-    parallel_mean: float
-    experimental_sum: float
+
+    theoretical: float
+    experimental: float
 
 
-class NumericalBenchmarkResult(BaseModel):
+class BenchmarkResult(BaseModel):
     """
     Describes an individual benchmark result. This should be the output of a single test.
     """
@@ -48,14 +48,7 @@ class NumericalBenchmarkResult(BaseModel):
     verbose_unit: str
     unit: str
 
-    multi_gpu_native: bool
-
-    min_by_gpu_type: float
-    max_by_gpu_type: float
-    mean_by_gpu_type: float
-    parallel_mean: float
-    theoretical_sum: float
-    experimental_sum: float
+    numerical_results: ReportFileNumerical
 
 
 class SystemEvaluation(BaseModel):
@@ -80,4 +73,4 @@ class SystemEvaluation(BaseModel):
 
     gpus: Tuple[GPUIdentity, ...]
 
-    results: List[NumericalBenchmarkResult]
+    results: List[BenchmarkResult]

@@ -6,17 +6,17 @@ Code for running the "nvidia deep learning examples" benchmarks and parsing the 
 
 import json
 import logging
-from pathlib import Path
-from tempfile import NamedTemporaryFile
+from functools import partial
 from typing import NamedTuple, Optional, Tuple
 
-import docker
 import pandas as pd
 
 from benchmark_dockerfiles import RESNET50_DOCKERFILE
+from gpu_box_benchmark import docker_wrapper
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
+from gpu_box_benchmark.docker_wrapper import ContainerOutputs
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, ReportFileNumerical
+from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,14 +37,14 @@ class _ResNet50Params(NamedTuple):
     """
 
 
-def _parse_report_file(report_path: Path, mode_training: bool) -> ReportFileNumerical:
+def _parse_report_file(mode_training: bool, container_output: ContainerOutputs) -> float:
     """
     Parse a report file to the standard set of numerical results.
-    :param report_path: Path to the report file on disk.
+    :param container_output: Contains the path to the report file on disk.
     :return: Numerical results
     """
 
-    with open(report_path, encoding="utf-8", mode="r") as report_file:
+    with open(container_output.file, encoding="utf-8", mode="r") as report_file:
         loaded_dicts = [json.loads(line.replace("DLLL ", "")) for line in report_file.readlines()]
         complete_df = pd.DataFrame.from_records(loaded_dicts)
 
@@ -57,18 +57,9 @@ def _parse_report_file(report_path: Path, mode_training: bool) -> ReportFileNume
         .to_dict()
     )
 
-    output = ReportFileNumerical(
-        sample_count=summary_dict["count"],
-        mean=summary_dict["mean"],
-        std=summary_dict["std"],
-        result_min=summary_dict["min"],
-        percentile_25=summary_dict["25%"],
-        percentile_50=summary_dict["50%"],
-        percentile_75=summary_dict["75%"],
-        result_max=summary_dict["max"],
-    )
+    output = summary_dict["mean"]
 
-    return output
+    return float(output)
 
 
 def create_resnet50_executor(
@@ -102,95 +93,35 @@ def create_resnet50_executor(
     if resnet_parameters is None:
         return None
 
-    def run_resnet50_docker() -> NumericalBenchmarkResult:
+    def run_resnet50_docker() -> BenchmarkResult:
         """
         Build and run the docker image that runs the resnet50 benchmark.
         :return: Parsed results.
         """
 
-        client = docker.from_env()
+        multi_gpu_native = True
 
-        LOGGER.debug("Building Image")
-
-        build_directory = RESNET50_DOCKERFILE.parent
-
-        image, _logs = client.images.build(
-            path=str(build_directory),
-            dockerfile=str(RESNET50_DOCKERFILE),
-            nocache=False,
+        results = docker_wrapper.benchmark_dockerfile(
+            dockerfile_path=RESNET50_DOCKERFILE,
             tag=benchmark_name.value,
+            gpus=gpus,
+            create_runtime_env_vars=lambda runtime_gpus: [
+                ("BATCH_SIZE", str(resnet_parameters.batch_size)),
+                ("MODE_TRAINING", str(int(resnet_parameters.mode_training))),
+                ("NUM_GPUS", str(len(runtime_gpus))),
+            ],
+            multi_gpu_native=multi_gpu_native,
+            outputs_to_result=partial(_parse_report_file, resnet_parameters.mode_training),
         )
 
-        LOGGER.debug("Image Built. Running")
-
-        with NamedTemporaryFile(suffix=".txt") as temporary_file:
-
-            container = client.containers.create(
-                image=image,
-                device_requests=[
-                    docker.types.DeviceRequest(
-                        device_ids=list(str(gpu.id) for gpu in gpus),
-                        capabilities=[["gpu"]],
-                    )
-                ],
-                environment={
-                    key: str(value)
-                    for key, value in [
-                        ("BATCH_SIZE", resnet_parameters.batch_size),
-                        ("MODE_TRAINING", int(resnet_parameters.mode_training)),
-                        ("NUM_GPUS", len(gpus)),
-                    ]
-                },
-                volumes={
-                    str(temporary_file.name): {
-                        # This location is baked into the dockerfile.
-                        "bind": "/results/output.txt",
-                        "mode": "rw",
-                    }
-                },
-                detach=True,
-                ipc_mode="host",
-            )
-
-            try:
-                container.start()
-                result = container.wait()  # blocks until exit
-
-                exit_code = result["StatusCode"]
-                logs = container.logs(stdout=True, stderr=True).decode()
-
-                if exit_code != 0:
-                    LOGGER.error("Container failed with exit code %s", exit_code)
-                    LOGGER.error("Container logs:\n%s", logs)
-                    raise RuntimeError("Container execution failed")
-
-                LOGGER.debug("Container completed successfully")
-                LOGGER.debug("Container logs:\n%s", logs)
-
-            finally:
-                container.remove(force=True)
-
-            temporary_file.seek(0)
-
-            results = _parse_report_file(
-                Path(temporary_file.name), mode_training=resnet_parameters.mode_training
-            )
-
-        return NumericalBenchmarkResult(
+        return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_RESNET50_BENCHMARK_VERSION,
             override_parameters={},
             larger_better=True,
             verbose_unit="Images Processed / Second",
             unit="i/s",
-            sample_count=results.sample_count,
-            mean=results.mean,
-            std=results.std,
-            result_min=results.result_min,
-            percentile_25=results.percentile_25,
-            percentile_50=results.percentile_50,
-            percentile_75=results.percentile_75,
-            result_max=results.result_max,
+            numerical_results=results,
         )
 
     return run_resnet50_docker
