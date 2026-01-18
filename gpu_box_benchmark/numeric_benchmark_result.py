@@ -9,6 +9,19 @@ from pydantic import BaseModel
 from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
 
 
+class ReportFileNumerical(NamedTuple):
+    """
+    Intermediate type to contain the numerical result.
+    """
+
+    min_by_gpu_type: float
+    max_by_gpu_type: float
+    mean_by_gpu_type: float
+    theoretical_sum: float
+    parallel_mean: float
+    experimental_sum: float
+
+
 class NumericalBenchmarkResult(BaseModel):
     """
     Describes an individual benchmark result. This should be the output of a single test.
@@ -35,15 +48,14 @@ class NumericalBenchmarkResult(BaseModel):
     verbose_unit: str
     unit: str
 
-    sample_count: float
+    multi_gpu_native: bool
 
-    percentile_25: float
-    percentile_50: float
-    percentile_75: float
-    mean: float
-    std: float
-    result_min: float
-    result_max: float
+    min_by_gpu_type: float
+    max_by_gpu_type: float
+    mean_by_gpu_type: float
+    parallel_mean: float
+    theoretical_sum: float
+    experimental_sum: float
 
 
 class SystemEvaluation(BaseModel):
@@ -69,18 +81,3 @@ class SystemEvaluation(BaseModel):
     gpus: Tuple[GPUIdentity, ...]
 
     results: List[NumericalBenchmarkResult]
-
-
-class ReportFileNumerical(NamedTuple):
-    """
-    Intermediate type to contain the numerical result.
-    """
-
-    sample_count: float
-    mean: float
-    std: float
-    result_min: float
-    percentile_25: float
-    percentile_50: float
-    percentile_75: float
-    result_max: float

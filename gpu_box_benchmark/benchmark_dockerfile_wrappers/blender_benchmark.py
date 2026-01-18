@@ -22,6 +22,13 @@ _BLENDER_BENCHMARK_VERSION = "0.1.0"
 _RUNS_PER_BENCHMARK = 3
 
 
+def parallelize_runs():
+    """
+
+    :return:
+    """
+
+
 def _parse_samples_per_minute(docker_logs: str) -> float:
     """
     Finds and parses the JSON result array from docker logs,

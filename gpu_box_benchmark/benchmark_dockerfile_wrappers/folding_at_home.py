@@ -11,8 +11,8 @@ from typing import Dict, List, Optional, Tuple, Union
 import pandas as pd
 
 from benchmark_dockerfiles import FAHBENCH_BENCHMARK_DOCKERFILE
+from gpu_box_benchmark import docker_wrapper
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
-from gpu_box_benchmark.docker_wrapper import build_run_dockerfile_read_logs
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 from gpu_box_benchmark.numeric_benchmark_result import NumericalBenchmarkResult, ReportFileNumerical
 
@@ -50,10 +50,6 @@ def create_fah_bench_executor(  # pylin
     :return: The callable to run the benchmark.
     """
 
-    if len(gpus) > 1:
-        LOGGER.debug("Multi-GPU not yet supported in the FAHBench benchmark.")
-        return None
-
     name_to_parameters: Dict[BenchmarkName, List[Tuple[str, Union[str, float, bool, int]]]] = {
         BenchmarkName.fah_bench_single: [
             ("FAHBENCH_PRECISION", "single"),
@@ -76,46 +72,31 @@ def create_fah_bench_executor(  # pylin
         :return: Parsed results.
         """
 
-        final_scores = [
-            _parse_final_score(
-                build_run_dockerfile_read_logs(
-                    dockerfile_path=FAHBENCH_BENCHMARK_DOCKERFILE,
-                    tag=benchmark_name.value,
-                    gpus=gpus,
-                    env_vars=envs,
-                )
-            )
-            for _ in range(_RUNS_PER_BENCHMARK)
-        ]
+        multi_gpu_native = False
 
-        summary_dict = pd.Series(final_scores).dropna().describe().to_dict()
-
-        results = ReportFileNumerical(
-            sample_count=summary_dict["count"],
-            mean=summary_dict["mean"],
-            std=summary_dict["std"],
-            result_min=summary_dict["min"],
-            percentile_25=summary_dict["25%"],
-            percentile_50=summary_dict["50%"],
-            percentile_75=summary_dict["75%"],
-            result_max=summary_dict["max"],
+        results = docker_wrapper.benchmark_dockerfile(
+            dockerfile_path=FAHBENCH_BENCHMARK_DOCKERFILE,
+            tag=benchmark_name.value,
+            gpus=gpus,
+            env_vars=envs,
+            multi_gpu_native=multi_gpu_native,
+            logs_to_result=_parse_final_score,
         )
 
         return NumericalBenchmarkResult(
-            percentile_50=results.percentile_50,
-            percentile_75=results.percentile_75,
-            result_max=results.result_max,
             name=benchmark_name.value,
             benchmark_version=_FAH_BENCHMARK_VERSION,
             override_parameters={},
             larger_better=True,
             verbose_unit="Nanoseconds / Day",
             unit="ns/day",
-            sample_count=results.sample_count,
-            std=results.std,
-            mean=results.mean,
-            result_min=results.result_min,
-            percentile_25=results.percentile_25,
+            multi_gpu_native=multi_gpu_native,
+            min_by_gpu_type=results.min_by_gpu_type,
+            max_by_gpu_type=results.max_by_gpu_type,
+            mean_by_gpu_type=results.mean_by_gpu_type,
+            theoretical_sum=results.theoretical_sum,
+            parallel_mean=results.parallel_mean,
+            experimental_sum=results.experimental_sum,
         )
 
     return run_fah_bench_docker

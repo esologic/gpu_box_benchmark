@@ -10,6 +10,7 @@ import psutil
 from bonus_click import options
 
 from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
+    ai_benchmark,
     blender_benchmark,
     folding_at_home,
     llama_bench,
@@ -142,6 +143,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         llama_bench.create_llama_bench_executor,
         blender_benchmark.create_blender_benchmark_executor,
         folding_at_home.create_fah_bench_executor,
+        ai_benchmark.create_ai_benchmark_executor,
     ]
 
     try:

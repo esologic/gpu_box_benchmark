@@ -35,6 +35,8 @@ class BenchmarkName(str, Enum):
     fah_bench_single = "fah_bench_single"
     fah_bench_double = "fah_bench_double"
 
+    ai_benchmark = "ai_benchmark"
+
 
 class BenchmarkExecutor(Protocol):
     """
