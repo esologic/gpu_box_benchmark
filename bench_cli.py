@@ -15,6 +15,7 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     folding_at_home,
     llama_bench,
     nvidia_deep_learning_examples,
+    whisper,
 )
 from gpu_box_benchmark.benchmark_jobs import (
     BenchmarkExecutor,
@@ -144,6 +145,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         blender_benchmark.create_blender_benchmark_executor,
         folding_at_home.create_fah_bench_executor,
         ai_benchmark.create_ai_benchmark_executor,
+        whisper.create_whisper_executor,
     ]
 
     try:

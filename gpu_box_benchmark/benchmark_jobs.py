@@ -37,7 +37,7 @@ class BenchmarkName(str, Enum):
 
     ai_benchmark = "ai_benchmark"
 
-    whisper_large_v3_fp16 = "whisper_large_v3_fp16"
+    whisper_medium_fp16 = "whisper_medium_fp16"
 
 
 class BenchmarkExecutor(Protocol):

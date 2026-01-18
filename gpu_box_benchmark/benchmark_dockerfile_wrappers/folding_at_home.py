@@ -3,8 +3,6 @@ Code for running the FAHBench and parsing the output.
 Doesn't yet support multiple GPUs.
 """
 
-# pylint: disable=duplicate-code
-
 import logging
 from typing import Dict, List, Optional, Tuple
 
@@ -18,7 +16,6 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult
 LOGGER = logging.getLogger(__name__)
 
 _FAH_BENCHMARK_VERSION = "0.1.0"
-_RUNS_PER_BENCHMARK = 3
 
 
 def _parse_final_score(container_outputs: ContainerOutputs) -> float:

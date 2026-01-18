@@ -128,8 +128,8 @@ def create_blender_benchmark_executor(  # pylin
             benchmark_version=_BLENDER_BENCHMARK_VERSION,
             override_parameters={},
             larger_better=True,
-            verbose_unit="Nanoseconds / Day",
-            unit="ns/day",
+            verbose_unit="Samples / Minute",
+            unit="s/min",
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
                 tag=benchmark_name.value,
