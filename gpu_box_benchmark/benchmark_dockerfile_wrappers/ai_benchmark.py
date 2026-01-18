@@ -53,15 +53,6 @@ def create_ai_benchmark_executor(  # pylin
 
         multi_gpu_native = True
 
-        results = docker_wrapper.benchmark_dockerfile(
-            dockerfile_path=AI_BENCHMARK_DOCKERFILE,
-            tag=benchmark_name.value,
-            gpus=gpus,
-            create_runtime_env_vars=lambda runtime_gpus: [],
-            multi_gpu_native=multi_gpu_native,
-            outputs_to_result=_parse_ai_score,
-        )
-
         return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_AI_BENCHMARK_VERSION,
@@ -69,7 +60,14 @@ def create_ai_benchmark_executor(  # pylin
             larger_better=True,
             verbose_unit="AI Score",
             unit="pts",
-            numerical_results=results,
+            numerical_results=docker_wrapper.benchmark_dockerfile(
+                dockerfile_path=AI_BENCHMARK_DOCKERFILE,
+                tag=benchmark_name.value,
+                gpus=gpus,
+                create_runtime_env_vars=lambda runtime_gpus: [],
+                multi_gpu_native=multi_gpu_native,
+                outputs_to_result=_parse_ai_score,
+            ),
         )
 
     return run_ai_benchmark_docker

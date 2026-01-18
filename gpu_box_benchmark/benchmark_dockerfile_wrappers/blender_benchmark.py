@@ -123,15 +123,6 @@ def create_blender_benchmark_executor(  # pylin
 
         multi_gpu_native = False
 
-        results = docker_wrapper.benchmark_dockerfile(
-            dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
-            tag=benchmark_name.value,
-            gpus=gpus,
-            create_runtime_env_vars=create_runtime_env_vars,
-            multi_gpu_native=multi_gpu_native,
-            outputs_to_result=_parse_samples_per_minute,
-        )
-
         return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_BLENDER_BENCHMARK_VERSION,
@@ -139,7 +130,14 @@ def create_blender_benchmark_executor(  # pylin
             larger_better=True,
             verbose_unit="Nanoseconds / Day",
             unit="ns/day",
-            numerical_results=results,
+            numerical_results=docker_wrapper.benchmark_dockerfile(
+                dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
+                tag=benchmark_name.value,
+                gpus=gpus,
+                create_runtime_env_vars=create_runtime_env_vars,
+                multi_gpu_native=multi_gpu_native,
+                outputs_to_result=_parse_samples_per_minute,
+            ),
         )
 
     return run_blender_benchmark_docker

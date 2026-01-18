@@ -107,19 +107,6 @@ def create_llama_bench_executor(
 
         multi_gpu_native = True
 
-        results = docker_wrapper.benchmark_dockerfile(
-            dockerfile_path=LLAMA_BENCH_DOCKERFILE,
-            tag=benchmark_name.value,
-            gpus=gpus,
-            create_runtime_env_vars=lambda runtime_gpus: [
-                ("MODEL_PATH", str(llama_bench_parameters.internal_model_path)),
-                ("NUM_PROMPT_TOKENS", str(llama_bench_parameters.prompt_tokens)),
-                ("NUM_GENERATION_TOKENS", str(llama_bench_parameters.generation_tokens)),
-            ],
-            multi_gpu_native=multi_gpu_native,
-            outputs_to_result=_parse_docker_logs,
-        )
-
         return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_LLAMA_BENCH_VERSION,
@@ -127,7 +114,18 @@ def create_llama_bench_executor(
             larger_better=True,
             verbose_unit="Tokens / Second",
             unit="toks/s",
-            numerical_results=results,
+            numerical_results=docker_wrapper.benchmark_dockerfile(
+                dockerfile_path=LLAMA_BENCH_DOCKERFILE,
+                tag=benchmark_name.value,
+                gpus=gpus,
+                create_runtime_env_vars=lambda runtime_gpus: [
+                    ("MODEL_PATH", str(llama_bench_parameters.internal_model_path)),
+                    ("NUM_PROMPT_TOKENS", str(llama_bench_parameters.prompt_tokens)),
+                    ("NUM_GENERATION_TOKENS", str(llama_bench_parameters.generation_tokens)),
+                ],
+                multi_gpu_native=multi_gpu_native,
+                outputs_to_result=_parse_docker_logs,
+            ),
         )
 
     return run_llama_bench_docker

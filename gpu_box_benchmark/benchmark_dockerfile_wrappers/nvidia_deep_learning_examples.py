@@ -101,19 +101,6 @@ def create_resnet50_executor(
 
         multi_gpu_native = True
 
-        results = docker_wrapper.benchmark_dockerfile(
-            dockerfile_path=RESNET50_DOCKERFILE,
-            tag=benchmark_name.value,
-            gpus=gpus,
-            create_runtime_env_vars=lambda runtime_gpus: [
-                ("BATCH_SIZE", str(resnet_parameters.batch_size)),
-                ("MODE_TRAINING", str(int(resnet_parameters.mode_training))),
-                ("NUM_GPUS", str(len(runtime_gpus))),
-            ],
-            multi_gpu_native=multi_gpu_native,
-            outputs_to_result=partial(_parse_report_file, resnet_parameters.mode_training),
-        )
-
         return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_RESNET50_BENCHMARK_VERSION,
@@ -121,7 +108,18 @@ def create_resnet50_executor(
             larger_better=True,
             verbose_unit="Images Processed / Second",
             unit="i/s",
-            numerical_results=results,
+            numerical_results=docker_wrapper.benchmark_dockerfile(
+                dockerfile_path=RESNET50_DOCKERFILE,
+                tag=benchmark_name.value,
+                gpus=gpus,
+                create_runtime_env_vars=lambda runtime_gpus: [
+                    ("BATCH_SIZE", str(resnet_parameters.batch_size)),
+                    ("MODE_TRAINING", str(int(resnet_parameters.mode_training))),
+                    ("NUM_GPUS", str(len(runtime_gpus))),
+                ],
+                multi_gpu_native=multi_gpu_native,
+                outputs_to_result=partial(_parse_report_file, resnet_parameters.mode_training),
+            ),
         )
 
     return run_resnet50_docker

@@ -69,15 +69,6 @@ def create_fah_bench_executor(  # pylin
 
         multi_gpu_native = False
 
-        results = docker_wrapper.benchmark_dockerfile(
-            dockerfile_path=FAHBENCH_BENCHMARK_DOCKERFILE,
-            tag=benchmark_name.value,
-            gpus=gpus,
-            create_runtime_env_vars=lambda runtime_gpus: envs,
-            multi_gpu_native=multi_gpu_native,
-            outputs_to_result=_parse_final_score,
-        )
-
         return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_FAH_BENCHMARK_VERSION,
@@ -85,7 +76,14 @@ def create_fah_bench_executor(  # pylin
             larger_better=True,
             verbose_unit="Nanoseconds / Day",
             unit="ns/day",
-            numerical_results=results,
+            numerical_results=docker_wrapper.benchmark_dockerfile(
+                dockerfile_path=FAHBENCH_BENCHMARK_DOCKERFILE,
+                tag=benchmark_name.value,
+                gpus=gpus,
+                create_runtime_env_vars=lambda runtime_gpus: envs,
+                multi_gpu_native=multi_gpu_native,
+                outputs_to_result=_parse_final_score,
+            ),
         )
 
     return run_fah_bench_docker
