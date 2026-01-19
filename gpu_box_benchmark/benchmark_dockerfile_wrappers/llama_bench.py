@@ -114,6 +114,7 @@ def create_llama_bench_executor(
             larger_better=True,
             verbose_unit="Tokens / Second",
             unit="toks/s",
+            multi_gpu_native=multi_gpu_native,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=LLAMA_BENCH_DOCKERFILE,
                 tag=benchmark_name.value,

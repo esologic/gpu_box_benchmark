@@ -60,6 +60,7 @@ def create_ai_benchmark_executor(  # pylin
             larger_better=True,
             verbose_unit="AI Score",
             unit="pts",
+            multi_gpu_native=multi_gpu_native,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=AI_BENCHMARK_DOCKERFILE,
                 tag=benchmark_name.value,

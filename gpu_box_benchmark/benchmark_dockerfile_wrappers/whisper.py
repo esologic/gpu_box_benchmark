@@ -60,6 +60,7 @@ def create_whisper_executor(  # pylin
             larger_better=True,
             verbose_unit="Audio Frames / Second",
             unit="f/s",
+            multi_gpu_native=multi_gpu_native,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=WHISPER_DOCKERFILE,
                 tag=benchmark_name.value,

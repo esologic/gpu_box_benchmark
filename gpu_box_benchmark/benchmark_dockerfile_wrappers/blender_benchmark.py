@@ -130,6 +130,7 @@ def create_blender_benchmark_executor(  # pylin
             larger_better=True,
             verbose_unit="Samples / Minute",
             unit="s/min",
+            multi_gpu_native=multi_gpu_native,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
                 tag=benchmark_name.value,

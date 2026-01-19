@@ -2,14 +2,14 @@
 Set of types to describe benchmarking runs.
 """
 
-from typing import Dict, List, NamedTuple, Tuple
+from typing import Dict, List, Tuple
 
 from pydantic import BaseModel
 
 from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
 
 
-class ReportFileNumerical(NamedTuple):
+class ReportFileNumerical(BaseModel):
     """
     Contain the numerical results for the run
     """
@@ -44,6 +44,8 @@ class BenchmarkResult(BaseModel):
     """
     Flag on how to interpret results vs other runs. 
     """
+
+    multi_gpu_native: bool
 
     verbose_unit: str
     unit: str

@@ -73,6 +73,7 @@ def create_fah_bench_executor(  # pylin
             larger_better=True,
             verbose_unit="Nanoseconds / Day",
             unit="ns/day",
+            multi_gpu_native=multi_gpu_native,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=FAHBENCH_BENCHMARK_DOCKERFILE,
                 tag=benchmark_name.value,

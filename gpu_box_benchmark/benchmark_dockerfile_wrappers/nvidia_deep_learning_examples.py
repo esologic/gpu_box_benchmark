@@ -108,6 +108,7 @@ def create_resnet50_executor(
             larger_better=True,
             verbose_unit="Images Processed / Second",
             unit="i/s",
+            multi_gpu_native=multi_gpu_native,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=RESNET50_DOCKERFILE,
                 tag=benchmark_name.value,
