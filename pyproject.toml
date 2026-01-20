@@ -38,7 +38,7 @@ plugins = "pydantic.mypy"
 
 [tool.poetry]
 authors = ["Devon Bray"]
-description = "A set of benchmarks selected to compare different GPU server builds."
+description = "A set of benchmarks selected to compare different GPU server builds. Uses docker to force parallelization of normally single GPU tests."
 name = "gpu_box_benchmark"
 readme = "README.md"
 version = "0.2.0"
@@ -54,6 +54,7 @@ nvsmi = "^0.4.2"
 click-option-group = "^0.5.9"
 psutil = "^7.2.1"
 py-cpuinfo = "^9.0.0"
+jinja2 = "^3.1.6"
 
 [tool.poetry.group.dev.dependencies]
 black = "*"

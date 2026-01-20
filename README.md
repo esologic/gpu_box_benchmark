@@ -2,7 +2,7 @@
 
 ![](./art.png)
 
-A set of benchmarks selected to compare different GPU server builds.
+A set of benchmarks selected to compare different GPU server builds. Uses docker to force parallelization of normally single GPU tests.
 
 Benchmarks are defined as dockerfiles and run as docker containers for portability. The outer
 python code is responsible for configuring, running and collecting the results from the internal
@@ -14,7 +14,7 @@ After creating a virtual environment, it should be easy to start running the ben
 just a series of CLIs with sensible defaults.
 
 ```
-(.venv) devon@ESO-3-DEV-VM:~/Documents/bray_airways/gpu_box_benchmark$ python bench_cli.py --help
+$ python bench_cli.py --help
 Usage: bench_cli.py [OPTIONS] COMMAND [ARGS]...
 
   Uses Docker to run GPU related benchmarks with the goal of comparing system
@@ -27,40 +27,15 @@ Commands:
   benchmark           Run one or more benchmarks and records the results.
   explain-benchmarks  Prints a description about what each of the supported
                       benchmarks do.
-(.venv) devon@ESO-3-DEV-VM:~/Documents/bray_airways/gpu_box_benchmark$ python bench_cli.py benchmark --help
-Usage: bench_cli.py benchmark [OPTIONS]
-
-  Run one or more benchmarks and records the results.
-
-  :param test: See click help for docs! :param gpu: See click help for docs!
-  :param output_path: See click help for docs! :param title: See click help
-  for docs! :param description: See click help for docs! :return: None
-
-Options:
-  --test TEXT         Decides which benchmark to run.
-                      Options below. Either provide index or value:
-                         0: resnet50_train_batch_1_amp
-                         1: resnet50_train_batch_64_amp
-                         2: resnet50_infer_batch_1_amp
-                         3: resnet50_infer_batch_256_amp  [default: resnet50_infer_batch_256_amp]
-  -g, --gpu [0|1]     The GPU(s) to use for computation. Can be given multiple
-                      times. If not given, all GPUs will be used.
-  --output-path FILE  The resulting system evaluation is written to this path.
-                      [default: /home/devon/Documents/bray_airways/gpu_box_ben
-                      chmark/benchmark_result.json]
-  --title TEXT        A short few words to describe the run. Will be a plot
-                      title in resulting visualizations.  [default: Sample
-                      Title]
-  --description TEXT  Longer text field to qualitatively describe the run in a
-                      more verbose way.  [default: Sample Description. This
-                      run was completed on a computer made of corn!]
-  --help              Show this message and exit.
+  render-systemd      Creates a systemd unit that will start the run at boot.
 ```
 
+The `render-systemd` command exists to create a systemd unit that runs the full benchmarking suite
+at boot. This is useful for working through a large number of hardware combinations because all
+you have to do is start the PC to run the benchmarking suite. Output can be written anywhere
+including a NAS. 
+
 ## Benchmarks
-
-TODO: For benchmarks that can only be run on one GPU at a time cumuluative results are provided.
-
 
 
 ## Getting Started

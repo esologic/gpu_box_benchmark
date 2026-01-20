@@ -4,8 +4,10 @@
 
 Tracks changes of the codebase. 
 
-### 0.2.0 - (2026-01-19)
+### 0.2.0 - (2026-01-20)
 
+* Multi GPU native tests will also be run in parallelized mode to compare with native performance.
+* Implements `render-systemd` command to run the complete benchmarking suite at boot. 
 * Adds content aware timelapse benchmark to measure frames per second.
 * Adds whisper throughput benchmark.
 * Implements a mechanism to run single GPU benchmarks (FAHBench, Blender, Ai-B) on multiple GPUs

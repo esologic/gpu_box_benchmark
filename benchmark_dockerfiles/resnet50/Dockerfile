@@ -9,9 +9,7 @@ RUN pip install --upgrade pip
 RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
 # Clone NVIDIA DeepLearningExamples
-RUN git clone https://github.com/NVIDIA/DeepLearningExamples.git /workspace/DeepLearningExamples \
-    && cd /workspace/DeepLearningExamples \
-    && git checkout 729963dd47e7c8bd462ad10bfac7a7b0b604e6dd
+RUN git clone https://github.com/NVIDIA/DeepLearningExamples.git /workspace/DeepLearningExamples
 
 # Install Python dependencies for NVIDIA ConvNets
 RUN pip install -r /workspace/DeepLearningExamples/PyTorch/Classification/ConvNets/requirements.txt

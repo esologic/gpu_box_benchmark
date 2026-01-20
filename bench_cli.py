@@ -1,13 +1,14 @@
 """Main module."""
 
 import logging
+import os
 from pathlib import Path
-from typing import List, NamedTuple, Optional, Tuple
+from typing import Callable, List, NamedTuple, Optional, Tuple
 
 import click
-import cpuinfo
 import psutil
 from bonus_click import options
+from click.decorators import FC
 
 from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     ai_benchmark,
@@ -23,13 +24,19 @@ from gpu_box_benchmark.benchmark_jobs import (
     BenchmarkName,
     CreateBenchmarkExecutor,
 )
+from gpu_box_benchmark.cli_common import (
+    BENCHMARK_COMMAND_NAME,
+    ENV_VAR_MAPPING,
+    create_default_output_name,
+)
 from gpu_box_benchmark.locate_describe_hardware import (
     GPU_CLICK_OPTION,
-    CPUIdentity,
     GPUIdentity,
+    discover_cpu,
     discover_gpus,
 )
 from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, SystemEvaluation
+from gpu_box_benchmark.render_systemd import render_systemd_file
 
 LOGGER_FORMAT = "[%(asctime)s - %(process)s - %(name)20s - %(levelname)s] %(message)s"
 LOGGER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -54,6 +61,67 @@ class NamedExecutor(NamedTuple):
     executor: BenchmarkExecutor
 
 
+def run_options() -> Callable[[FC], FC]:
+    """
+    Creates the group of click options that define a run.
+    :return: Wrapped command.
+    """
+
+    def output(command: FC) -> FC:
+        """
+        Wrap the input command.
+        :param command: To wrap.
+        :return: Wrapped input.
+        """
+
+        decorators = [
+            click.option(
+                "--output-parent",
+                type=click.Path(
+                    exists=True,
+                    file_okay=False,
+                    dir_okay=True,
+                    writable=True,
+                    readable=True,
+                    path_type=Path,
+                ),
+                default=Path("./").resolve(),
+                show_default=True,
+                help="The resulting system evaluation is written into this directory",
+                envvar=ENV_VAR_MAPPING["output_parent"],
+                show_envvar=True,
+            ),
+            click.option(
+                "--title",
+                type=click.STRING,
+                help=(
+                    "A short few words to describe the run."
+                    " Will be a plot title in resulting visualizations."
+                ),
+                default="GPU Box Test",
+                show_default=True,
+                envvar=ENV_VAR_MAPPING["title"],
+                show_envvar=True,
+            ),
+            click.option(
+                "--description",
+                type=click.STRING,
+                help="Longer text field to qualitatively describe the run in a more verbose way.",
+                default="Sample Description. This run was completed on a computer made of corn!",
+                show_default=True,
+                envvar=ENV_VAR_MAPPING["description"],
+                show_envvar=True,
+            ),
+        ]
+
+        for dec in reversed(decorators):
+            dec(command)
+
+        return command
+
+    return output
+
+
 @click.group()
 def cli() -> None:
     """
@@ -66,7 +134,9 @@ def cli() -> None:
     """
 
 
-@cli.command(short_help="Run one or more benchmarks and recods the results.")
+@cli.command(
+    name=BENCHMARK_COMMAND_NAME, short_help="Run one or more benchmarks and records the results."
+)
 @options.create_enum_option(
     "--test",
     help_message="Decides which benchmark to run.",
@@ -75,66 +145,55 @@ def cli() -> None:
 )
 @GPU_CLICK_OPTION
 @click.option(
-    "--output-path",
-    type=click.Path(exists=False, writable=True, file_okay=True, dir_okay=False, path_type=Path),
-    default=Path("./benchmark_result.json").resolve(),
-    show_default=True,
-    help="The resulting system evaluation is written to this path.",
-)
-@click.option(
-    "--title",
+    "--output-name",
     type=click.STRING,
-    help="A short few words to describe the run. Will be a plot title in resulting visualizations.",
-    default="Sample Title",
+    default=create_default_output_name(),
     show_default=True,
+    help="The resulting system evaluation is written to the parent directory with this name.",
 )
-@click.option(
-    "--description",
-    type=click.STRING,
-    help="Longer text field to qualitatively describe the run in a more verbose way.",
-    default="Sample Description. This run was completed on a computer made of corn!",
-    show_default=True,
-)
+@run_options()
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     test: Tuple[BenchmarkName, ...],
     gpu: Tuple[GPUIdentity, ...],
-    output_path: Path,
+    output_name: str,
+    output_parent: Path,
     title: str,
     description: str,
 ) -> None:
     """
     Run one or more benchmarks and records the results.
 
-    :param test: See click help for docs!
-    :param gpu: See click help for docs!
-    :param output_path: See click help for docs!
-    :param title: See click help for docs!
-    :param description: See click help for docs!
-    :return: None
-
     \f
 
-    TODO: We may want to check how loaded down the system is before starting benchmarks.
-
+    :param test: See click help for docs!
+    :param gpu: See click help for docs!
+    :param output_name: See click help for docs!
+    :param output_parent: See click help for docs!
+    :param title: See click help for docs!
+    :param description: See click help for docs!
     :return: None
     """
 
     if not test:
         test = tuple(test for test in BenchmarkName)
 
+    gpu_discovery_output = discover_gpus()
+
     if not gpu:
-        gpu = discover_gpus()
+        gpu = gpu_discovery_output
 
     # Read the system info first. If there are problems we want errors before running any tests.
+    cpu = discover_cpu()
 
-    cpu_info = cpuinfo.get_cpu_info()
+    if gpu != gpu_discovery_output and output_name != create_default_output_name():
+        # Specific set of GPUs are being used, but the output name has not been re-set by user.
+        # need to re-do name creation.
+        output_path = output_parent / create_default_output_name(gpus=gpu, cpu=cpu)
+    else:
+        # Base case, output name will match the actual hardware setup or it has been overwritten.
+        output_path = output_parent / output_name
+
     mem_info = psutil.virtual_memory()
-
-    cpu = CPUIdentity(
-        name=cpu_info.get("brand_raw", "Unknown"),
-        physical_cpus=psutil.cpu_count(logical=False),
-        logical_cpus=psutil.cpu_count(logical=True),
-    )
 
     total_memory_bytes = mem_info.total
 
@@ -211,6 +270,52 @@ def explain_benchmarks() -> (
 
     :return: None
     """
+
+
+@cli.command(short_help="Creates a systemd unit that will execute a benchmarking run at boot.")
+@click.option(
+    "--output-path",
+    default=Path("./gpu_box_benchmark.service").resolve(),
+    show_default=True,
+    help="The resulting systemd service will be written to this path.",
+    type=click.Path(
+        file_okay=True, dir_okay=False, writable=True, resolve_path=True, path_type=Path
+    ),
+)
+@run_options()
+def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    output_path: Path,
+    title: str,
+    description: str,
+    output_parent: Path,
+) -> None:
+    """
+    Creates a systemd unit that will start a benchmark at boot. The systemd unit only has the
+    output parent, title and description filled via the environment. All other parameters are left
+    as their default meaning the command will run all tests on all attached GPUs. Output parent
+    in this case can be a NAS device.
+
+    \f
+
+    :param output_path: See click help for docs!
+    :param title: See click help for docs!
+    :param description: See click help for docs!
+    :param output_parent: See click help for docs!
+    :return: None
+    """
+
+    file_contents = render_systemd_file(
+        output_parent=output_parent,
+        title=title,
+        description=description,
+        path_to_python_file=os.path.abspath(__file__),
+    )
+
+    with open(output_path, "w", encoding="utf-8") as output_file:
+        output_file.write(file_contents)
+
+    click.echo(f"Wrote systemd unit to {output_path}")
+    click.echo(file_contents)
 
 
 if __name__ == "__main__":

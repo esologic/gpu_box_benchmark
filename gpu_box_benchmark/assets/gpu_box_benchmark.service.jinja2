@@ -1,0 +1,18 @@
+[Unit]
+Description=Starts a GPU Box benchmarking run at boot.
+After=remote-fs.target
+Wants=remote-fs.target
+Requires=remote-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User={{ user }}
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 6); do nvidia-smi && exit 0; sleep 10; done; exit 1'
+ExecStart={{ exec_start }}
+{% for k, v in env_vars.items() -%}
+Environment="{{ k }}={{ v }}"
+{% endfor %}
+
+[Install]
+WantedBy=multi-user.target

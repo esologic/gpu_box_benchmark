@@ -6,7 +6,9 @@ existing vendor-specific libraries.
 from typing import Tuple
 
 import click
+import cpuinfo
 import nvsmi
+import psutil
 from click import Context, Parameter
 from pydantic import BaseModel
 
@@ -70,6 +72,20 @@ def discover_gpus() -> Tuple[GPUIdentity, ...]:
     )
 
     return output
+
+
+def discover_cpu() -> CPUIdentity:
+    """
+    Helper function to recast CPU info in a known shape.
+    :return: CPU info as a namedtuple.
+    """
+
+    cpu_info = cpuinfo.get_cpu_info()
+    return CPUIdentity(
+        name=cpu_info.get("brand_raw", "Unknown"),
+        physical_cpus=psutil.cpu_count(logical=False),
+        logical_cpus=psutil.cpu_count(logical=True),
+    )
 
 
 def _gpu_option_callback(

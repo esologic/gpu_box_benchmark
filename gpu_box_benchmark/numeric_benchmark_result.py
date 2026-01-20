@@ -2,7 +2,7 @@
 Set of types to describe benchmarking runs.
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
@@ -11,15 +11,25 @@ from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
 
 class ReportFileNumerical(BaseModel):
     """
-    Contain the numerical results for the run
+    Contain the numerical results for the run. Units etc are kept in the outer result.
     """
 
     min_by_gpu_type: float
     max_by_gpu_type: float
     mean_by_gpu_type: float
 
-    theoretical: float
-    experimental: float
+    theoretical_multi_gpu_mean: float
+    theoretical_multi_gpu_sum: float
+
+    forced_multi_gpu_numerical_mean: float
+    forced_multi_gpu_sum: float
+
+    native_multi_gpu_result: Optional[float]
+    """
+    This could either map onto the theoretical sum _or_ mean depending on the benchmark. If it 
+    becomes hard to distinguish here, add a a flag to the outer type. None here means there's no
+    native multi-gpu scoring supported.
+    """
 
 
 class BenchmarkResult(BaseModel):

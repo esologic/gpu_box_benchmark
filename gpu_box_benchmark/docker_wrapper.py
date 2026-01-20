@@ -53,6 +53,19 @@ class CreateRuntimeEnvironmentVariables(Protocol):
         """
 
 
+class OutputsToResult(Protocol):
+    """
+    Defines functions that read container outputs and produce a numerical result.
+    """
+
+    def __call__(self, container_outputs: ContainerOutputs) -> float:
+        """
+        :param container_outputs: Container outputs, includes container logs and contents of the
+        intermediate file which MAY OR MAY NOT have been used.
+        :return: Numerical result as a float.
+        """
+
+
 def _create_gpu_container(
     client: DockerClient,
     image: Image,
@@ -205,12 +218,62 @@ def _build_image(
         raise
 
 
+def force_parallel_run(  # pylint: disable=too-many-positional-arguments
+    client: DockerClient,
+    image: Image,
+    new_output_file: Callable[[], Path],
+    gpus: Tuple[GPUIdentity, ...],
+    create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
+    outputs_to_result: OutputsToResult,
+) -> List[float]:
+    """
+    Creates one docker container per GPU then starts each GPU at the same time. This is a simulation
+    of the workload being multi-gpu capable but obviously there's no memory sharing on the GPUs
+    happening.
+
+    :param client: For interacting with docker.
+    :param image: To run.
+    :param new_output_file: Creates output files for the containers.
+    :param gpus: GPUs to run on.
+    :param create_runtime_env_vars: Creates environment variables if required.
+    :param outputs_to_result: Converts outputs to a numerical result.
+    :return: Results per GPU.
+    """
+
+    gpu_file: List[Tuple[GPUIdentity, Path]] = [(gpu, new_output_file()) for gpu in gpus]
+
+    container_file: List[Tuple[Container, Path]] = [
+        (
+            _create_gpu_container(
+                client=client,
+                image=image,
+                gpus=(gpu,),
+                env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
+                output_file_path=file,
+            ),
+            file,
+        )
+        for (gpu, file) in gpu_file
+    ]
+
+    # Start all containers at around the same time
+    for container, _ in container_file:
+        container.start()
+
+    parallel_results: List[float] = [
+        outputs_to_result(ContainerOutputs(logs=_wait_get_logs(container=container), file=file))
+        for (container, file) in container_file
+    ]
+
+    return parallel_results
+
+
 def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
     dockerfile_path: Path,
     tag: str,
     gpus: Tuple[GPUIdentity, ...],
     create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
-    outputs_to_result: Callable[[ContainerOutputs], float],
+    outputs_to_result: OutputsToResult,
     multi_gpu_native: bool,
 ) -> ReportFileNumerical:
     """
@@ -274,39 +337,20 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
             for gpu in serial_gpus
         }
 
-        if not multi_gpu_native:
+        # Creates a docker container per GPU for every input GPU, then
+        # starts them at the same time. Results are returned.
+        parallel_results = force_parallel_run(
+            client=client,
+            image=image,
+            new_output_file=new_output_file,
+            gpus=gpus,
+            create_runtime_env_vars=create_runtime_env_vars,
+            outputs_to_result=outputs_to_result,
+        )
 
-            gpu_file: List[Tuple[GPUIdentity, Path]] = [(gpu, new_output_file()) for gpu in gpus]
+        native_multi_gpu_result: Optional[float] = None
 
-            container_file: List[Tuple[Container, Path]] = [
-                (
-                    _create_gpu_container(
-                        client=client,
-                        image=image,
-                        gpus=(gpu,),
-                        env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
-                        output_file_path=file,
-                    ),
-                    file,
-                )
-                for (gpu, file) in gpu_file
-            ]
-
-            # Start all containers at around the same time
-            for container, _ in container_file:
-                container.start()
-
-            parallel_results: List[float] = [
-                outputs_to_result(
-                    ContainerOutputs(logs=_wait_get_logs(container=container), file=file)
-                )
-                for (container, file) in container_file
-            ]
-
-            experimental: float = sum(parallel_results)
-            theoretical_result = sum((name_to_serial_result[gpu.name] for gpu in gpus))
-
-        else:
+        if multi_gpu_native:
 
             multi_gpu_file = new_output_file()
 
@@ -321,15 +365,20 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
 
             complete_logs = _wait_get_logs(container=multi_gpu_container)
 
-            experimental = outputs_to_result(
+            native_multi_gpu_result = outputs_to_result(
                 ContainerOutputs(logs=complete_logs, file=multi_gpu_file)
             )
-            theoretical_result = mean([name_to_serial_result[gpu.name] for gpu in gpus])
+
+        theoretical_multi_gpu_sum = sum((name_to_serial_result[gpu.name] for gpu in gpus))
+        forced_multi_gpu_sum = sum(parallel_results)
 
         return ReportFileNumerical(
             min_by_gpu_type=min(name_to_serial_result.values()),
             max_by_gpu_type=max(name_to_serial_result.values()),
             mean_by_gpu_type=mean(name_to_serial_result.values()),
-            theoretical=theoretical_result,
-            experimental=experimental,
+            theoretical_multi_gpu_mean=theoretical_multi_gpu_sum / len(gpus),
+            theoretical_multi_gpu_sum=theoretical_multi_gpu_sum,
+            forced_multi_gpu_numerical_mean=forced_multi_gpu_sum / len(gpus),
+            forced_multi_gpu_sum=forced_multi_gpu_sum,
+            native_multi_gpu_result=native_multi_gpu_result,
         )
