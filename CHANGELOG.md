@@ -4,8 +4,10 @@
 
 Tracks changes of the codebase. 
 
-### 0.2.0 - (2026-01-18)
+### 0.2.0 - (2026-01-19)
 
+* Adds content aware timelapse benchmark to measure frames per second.
+* Adds whisper throughput benchmark.
 * Implements a mechanism to run single GPU benchmarks (FAHBench, Blender, Ai-B) on multiple GPUs
 simultaneously using docker.
 * Adds support for the `ai-benchmark` suite run in a container.

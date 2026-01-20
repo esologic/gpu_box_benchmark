@@ -39,6 +39,9 @@ class BenchmarkName(str, Enum):
 
     whisper_medium_fp16 = "whisper_medium_fp16"
 
+    content_aware_timelapse_vit_scores = "content_aware_timelapse_vit_scores"
+    content_aware_timelapse_vit_attention = "content_aware_timelapse_vit_attention"
+
 
 class BenchmarkExecutor(Protocol):
     """

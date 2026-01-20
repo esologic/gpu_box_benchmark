@@ -3,8 +3,6 @@ Code for running the ai-benchmark and parsing the output.
 Doesn't yet support multiple GPUs.
 """
 
-# pylint: disable=duplicate-code
-
 import logging
 from typing import Optional, Tuple
 
@@ -23,7 +21,8 @@ _AI_BENCHMARK_VERSION = "0.1.0"
 def _parse_ai_score(container_outputs: ContainerOutputs) -> float:
     """
     Finds and returns the ai score from some ai-benchmark logs.
-    :param docker_logs: Full output from the docker container post run. Should be a single line.
+    :param container_outputs: Contains the f ull output from the docker container post run.
+    Should be a single line.
     :return: AI Score.
     """
 

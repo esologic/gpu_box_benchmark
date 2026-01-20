@@ -12,6 +12,7 @@ from bonus_click import options
 from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     ai_benchmark,
     blender_benchmark,
+    content_aware_timelapse,
     folding_at_home,
     llama_bench,
     nvidia_deep_learning_examples,
@@ -146,6 +147,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         folding_at_home.create_fah_bench_executor,
         ai_benchmark.create_ai_benchmark_executor,
         whisper.create_whisper_executor,
+        content_aware_timelapse.create_content_aware_timelapse_executor,
     ]
 
     try:

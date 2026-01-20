@@ -10,3 +10,4 @@ BLENDER_BENCHMARK_DOCKERFILE = _ASSETS_DIRECTORY / "blender_benchmark" / "Docker
 FAHBENCH_BENCHMARK_DOCKERFILE = _ASSETS_DIRECTORY / "fah_bench" / "Dockerfile"
 AI_BENCHMARK_DOCKERFILE = _ASSETS_DIRECTORY / "ai_benchmark" / "Dockerfile"
 WHISPER_DOCKERFILE = _ASSETS_DIRECTORY / "whisper" / "Dockerfile"
+CONTENT_AWARE_TIMELAPSE_DOCKERFILE = _ASSETS_DIRECTORY / "content_aware_timelapse" / "Dockerfile"
