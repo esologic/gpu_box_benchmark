@@ -41,7 +41,7 @@ authors = ["Devon Bray"]
 description = "A set of benchmarks selected to compare different GPU server builds. Uses docker to force parallelization of normally single GPU tests."
 name = "gpu_box_benchmark"
 readme = "README.md"
-version = "0.2.0"
+version = "0.3.0"
 
 [tool.poetry.dependencies]
 python = "^3.10"
