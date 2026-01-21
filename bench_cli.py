@@ -2,6 +2,8 @@
 
 import logging
 import os
+import textwrap
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, List, NamedTuple, Optional, Tuple
 
@@ -20,7 +22,9 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     whisper,
 )
 from gpu_box_benchmark.benchmark_jobs import (
+    EXTENDED_BENCHMARK_DOCUMENTS,
     BenchmarkExecutor,
+    BenchmarkFamily,
     BenchmarkName,
     CreateBenchmarkExecutor,
 )
@@ -174,6 +178,8 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     :return: None
     """
 
+    start_time = datetime.now()
+
     if not test:
         test = tuple(test for test in BenchmarkName)
 
@@ -247,6 +253,8 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         total_memory_gb=total_memory_bytes / (1024**3),
         gpus=gpu,
         results=results,
+        start_time=start_time,
+        runtime_seconds=(datetime.now() - start_time).total_seconds(),
     )
 
     evaluation_string = system_evaluation.model_dump_json(indent=2)
@@ -259,17 +267,32 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
 
 
 @cli.command(short_help="Prints a description about what each of the supported benchmarks do.")
-def explain_benchmarks() -> (
-    None
-):  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+@click.option(
+    "--width",
+    default=100,
+    show_default=True,
+    help="Printout Width",
+    type=click.IntRange(min=10),
+)
+def explain_benchmarks(
+    width: int,
+) -> None:  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     """
     To try to keep the main benchmark command clean, this command describes each of the included
     benchmarks and their variants.
 
     \f
 
+    :param width: See click help for docs!
     :return: None
     """
+
+    for family in BenchmarkFamily:
+        tests = " ".join([test.value for test in BenchmarkName if family.name in test.value])
+        click.echo(
+            textwrap.fill(f"Benchmark Family: {family.name}, Tests: {tests}", width=width) + "\n"
+        )
+        click.echo(f"{textwrap.fill(EXTENDED_BENCHMARK_DOCUMENTS[family], width=width)} \n\n")
 
 
 @cli.command(short_help="Creates a systemd unit that will execute a benchmarking run at boot.")

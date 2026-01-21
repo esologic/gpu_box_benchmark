@@ -2,6 +2,7 @@
 Set of types to describe benchmarking runs.
 """
 
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
@@ -84,5 +85,8 @@ class SystemEvaluation(BaseModel):
     total_memory_gb: float
 
     gpus: Tuple[GPUIdentity, ...]
+
+    start_time: datetime
+    runtime_seconds: float
 
     results: List[BenchmarkResult]

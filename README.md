@@ -1,8 +1,9 @@
-# GPU Box Benchmark - gpu_box_benchmark 
+# GPU Box Benchmark
 
 ![](./art.png)
 
-A set of benchmarks selected to compare different GPU server builds. Uses docker to force parallelization of normally single GPU tests.
+A set of benchmarks selected to compare different GPU server builds. Uses docker to force 
+parallelization of normally single GPU tests.
 
 Benchmarks are defined as dockerfiles and run as docker containers for portability. The outer
 python code is responsible for configuring, running and collecting the results from the internal
@@ -37,8 +38,84 @@ including a NAS.
 
 ## Benchmarks
 
+You can use the `explain-benchmarks` command to get the latest repo docs.
+
+```
+$ python bench_cli.py explain-benchmarks
+Benchmark Family: resnet50, Tests: resnet50_train_batch_1_amp resnet50_train_batch_64_amp
+resnet50_infer_batch_1_amp resnet50_infer_batch_256_amp
+
+From the NVidia Deep Learning Examples Repo, the ResNet50 benchmark uses the pytorch backend to run
+a workload on the GPU. The benchmark uses a synthetic data backend, so it isolates raw compute and
+framework performance without being limited by disk or data-loading I/O. t can be configured via
+environment variables to measure either training or inference performance, with optional automatic
+mixed precision (AMP) enabled to reflect modern GPU usage. 
+
+
+Benchmark Family: llama_bench, Tests: llama_bench_tiny_model_prompt
+llama_bench_tiny_model_generation llama_bench_standard_model_prompt
+llama_bench_standard_model_generation
+
+This benchmark uses the CUDA-enabled llama.cpp container to measure large language model inference
+performance on the GPU using the purpose-built llama-bench tool. The container downloads quantized
+GGUF models, ranging from a small 1.5B-parameter Qwen model to a standard 8B-parameter Llama 3
+model, allowing performance testing across different VRAM and compute requirements. 
+
+
+Benchmark Family: blender_benchmark, Tests: blender_benchmark_monster_cpu
+blender_benchmark_monster_gpu
+
+This benchmark uses Blender’s official Open Data benchmark suite to measure GPU rendering
+performance in a standardized, real-world workload. The workload exercises GPU compute, memory, and
+driver performance Overall, this benchmark evaluates how well a GPU performs on production-style 3D
+rendering tasks that closely reflect professional content-creation use cases. This is not an AI-
+related benchmark. 
+
+
+Benchmark Family: fah_bench, Tests: fah_bench_single fah_bench_double
+
+This benchmark builds and runs FAHBench, the Folding@home microbenchmark suite, to evaluate GPU
+compute performance using OpenCL. The container compiles FAHBench from source with the GUI disabled,
+ensuring a headless, reproducible setup suitable for automated benchmarking.The workload stresses
+floating-point throughput, memory access patterns, and driver stability in a scientific computing
+context rather than graphics or deep learning. Overall, this benchmark measures how well a GPU
+performs on sustained, real-world molecular dynamics–style calculations similar to Folding@home
+workloads. 
+
+
+Benchmark Family: ai_benchmark, Tests: ai_benchmark
+
+This benchmark runs the AI Benchmark suite to evaluate end-to-end deep learning performance on the
+GPU using TensorFlow. Overall, it produces a single composite AI score that provides a high-level
+comparison of how well a GPU performs across common deep learning tasks. 
+
+
+Benchmark Family: whisper, Tests: whisper_medium_fp16
+
+This benchmark measures GPU-accelerated speech-to-text performance using OpenAI’s Whisper “medium”
+model running on PyTorch with CUDA. At runtime, a fixed audio sample is transcribed on the GPU,
+ensuring consistent input across benchmark runs. The script measures only the transcription phase
+and reports throughput as mel-spectrogram frames processed per second. Overall, this test evaluates
+real-world GPU inference performance for transformer-based audio models rather than synthetic or
+microbenchmark workloads. 
+
+
+Benchmark Family: content_aware_timelapse, Tests: content_aware_timelapse_vit_scores
+content_aware_timelapse_vit_attention
+
+Uses benchmark mode in content aware timelapse to measure throughput of a GPU or multipleGPUs
+through a ViT model. Has both a fused (score) and slower unused (attention) modes. This series of
+benchmarks is very relevant to the author if this repo as it is why the development is happening in
+the first place. 
+```
 
 ## Getting Started
+
+The [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+is used to run GPU accelerated docker containers. You'll need to install this.
+
+That installation process also requires `nvidia-smi` which is used in this application to get
+nvidia GPU info. Everything else here is managed as a python package. 
 
 ### Python Dependencies
 

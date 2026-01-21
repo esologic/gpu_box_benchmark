@@ -71,7 +71,10 @@ def create_blender_benchmark_executor(  # pylin
     :return: The callable to run the benchmark.
     """
 
-    if benchmark_name not in (BenchmarkName.blender_monster_cpu, BenchmarkName.blender_monster_gpu):
+    if benchmark_name not in (
+        BenchmarkName.blender_benchmark_monster_cpu,
+        BenchmarkName.blender_benchmark_monster_gpu,
+    ):
         return None
 
     def create_runtime_env_vars(
@@ -83,9 +86,9 @@ def create_blender_benchmark_executor(  # pylin
         :return: Rendered environment variables.
         """
 
-        if benchmark_name == BenchmarkName.blender_monster_cpu:
+        if benchmark_name == BenchmarkName.blender_benchmark_monster_cpu:
             hardware_description: str = "--device-type CPU"
-        elif benchmark_name == BenchmarkName.blender_monster_gpu:
+        elif benchmark_name == BenchmarkName.blender_benchmark_monster_gpu:
 
             if len(runtime_gpus) > 1:
                 raise ValueError(
