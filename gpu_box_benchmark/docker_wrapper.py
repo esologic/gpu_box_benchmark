@@ -194,8 +194,10 @@ def _build_image(
         image, _build_logs = client.images.build(
             path=str(build_directory),
             dockerfile=str(dockerfile_path),
-            nocache=False,
             tag=tag,
+            nocache=True,
+            rm=True,
+            forcerm=True,
         )
 
         return image
@@ -286,6 +288,10 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
 
     This strategy helps us understand the cost of parallelizing.
 
+    Because all of these images and containers and images can become massive on disk, steps have
+    been taken to prune and remove artifacts between tests. This makes the overall runtime slower.
+    This shouldn't impact GPU scores and will likely be improved in the future.
+
     :param dockerfile_path: Path to the dockerfile to run.
     :param tag: Tage for the image.
     :param gpus: GPUs to run on.
@@ -300,7 +306,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
 
     client = docker.from_env()
 
-    image = _build_image(client=client, dockerfile_path=dockerfile_path, tag=tag)
+    image: Image = _build_image(client=client, dockerfile_path=dockerfile_path, tag=tag)
 
     # Select the lowest ID's GPU in each of the input GPUs grouped by GPU name.
     serial_gpus: List[GPUIdentity] = [
@@ -371,6 +377,8 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
 
         theoretical_multi_gpu_sum = sum((name_to_serial_result[gpu.name] for gpu in gpus))
         forced_multi_gpu_sum = sum(parallel_results)
+
+        image.remove()
 
         return ReportFileNumerical(
             min_by_gpu_type=min(name_to_serial_result.values()),
