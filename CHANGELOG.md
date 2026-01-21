@@ -4,6 +4,11 @@
 
 Tracks changes of the codebase. 
 
+### 0.3.0 - (2026-01-20)
+
+* Fills in implementation for `explain-benchmarks`. 
+* Published repo to GitHub!
+
 ### 0.2.0 - (2026-01-20)
 
 * Multi GPU native tests will also be run in parallelized mode to compare with native performance.
