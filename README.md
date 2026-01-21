@@ -9,6 +9,8 @@ Benchmarks are defined as dockerfiles and run as docker containers for portabili
 python code is responsible for configuring, running and collecting the results from the internal
 containers.
 
+**Note:** This benchmarking suite is under active development! Use at yer own risk.
+
 ## Usage
 
 After creating a virtual environment, it should be easy to start running the benchmarks as they're

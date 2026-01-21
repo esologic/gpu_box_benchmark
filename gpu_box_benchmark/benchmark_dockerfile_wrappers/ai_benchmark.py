@@ -11,7 +11,7 @@ from gpu_box_benchmark import docker_wrapper
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
 from gpu_box_benchmark.docker_wrapper import ContainerOutputs
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult
+from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, NumericalResultKey
 
 LOGGER = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def create_ai_benchmark_executor(  # pylin
         :return: Parsed results.
         """
 
-        multi_gpu_native = True
+        multi_gpu_native = False
 
         return BenchmarkResult(
             name=benchmark_name.value,
@@ -60,9 +60,10 @@ def create_ai_benchmark_executor(  # pylin
             verbose_unit="AI Score",
             unit="pts",
             multi_gpu_native=multi_gpu_native,
+            critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=AI_BENCHMARK_DOCKERFILE,
-                tag=benchmark_name.value,
+                tag_prefix=benchmark_name.value,
                 gpus=gpus,
                 create_runtime_env_vars=lambda runtime_gpus: [],
                 multi_gpu_native=multi_gpu_native,

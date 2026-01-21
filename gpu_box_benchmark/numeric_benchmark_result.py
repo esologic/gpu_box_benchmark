@@ -3,11 +3,30 @@ Set of types to describe benchmarking runs.
 """
 
 from datetime import datetime
+from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
 from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
+
+
+class NumericalResultKey(str, Enum):
+    """
+    For programmatically looking up values in ReportFileNumerical.
+    """
+
+    min_by_gpu_type = "min_by_gpu_type"
+    max_by_gpu_type = "max_by_gpu_type"
+    mean_by_gpu_type = "mean_by_gpu_type"
+
+    theoretical_multi_gpu_mean = "theoretical_multi_gpu_mean"
+    theoretical_multi_gpu_sum = "theoretical_multi_gpu_sum"
+
+    forced_multi_gpu_numerical_mean = "forced_multi_gpu_numerical_mean"
+    forced_multi_gpu_sum = "forced_multi_gpu_sum"
+
+    native_multi_gpu_result = "native_multi_gpu_result"
 
 
 class ReportFileNumerical(BaseModel):
@@ -61,6 +80,12 @@ class BenchmarkResult(BaseModel):
     verbose_unit: str
     unit: str
 
+    critical_result_key: NumericalResultKey
+    """
+    Points to the value in `numerical_results` that is the highlight value for this test.
+    Makes comparison a bit easier while keeping all parts of the results. 
+    """
+
     numerical_results: ReportFileNumerical
 
 
@@ -80,13 +105,13 @@ class SystemEvaluation(BaseModel):
     Version of the entire suite of benchmarks. 
     """
 
+    start_time: datetime
+    runtime_seconds: float
+
     cpu: CPUIdentity
 
     total_memory_gb: float
 
     gpus: Tuple[GPUIdentity, ...]
-
-    start_time: datetime
-    runtime_seconds: float
 
     results: List[BenchmarkResult]

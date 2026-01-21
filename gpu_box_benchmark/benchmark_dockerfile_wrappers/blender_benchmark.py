@@ -13,7 +13,7 @@ from gpu_box_benchmark import docker_wrapper
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
 from gpu_box_benchmark.docker_wrapper import ContainerOutputs
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult
+from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, NumericalResultKey
 
 LOGGER = logging.getLogger(__name__)
 
@@ -126,6 +126,15 @@ def create_blender_benchmark_executor(  # pylin
 
         multi_gpu_native = False
 
+        # This is a bit of a hack. The CPU test doesn't exercise the GPU at all, so it doesn't
+        # make sense to do the forced parallelization.
+        if benchmark_name == BenchmarkName.blender_benchmark_monster_cpu:
+            gpus_for_test: Tuple[GPUIdentity, ...] = (next(iter(gpus)),)
+        elif benchmark_name == BenchmarkName.blender_benchmark_monster_gpu:
+            gpus_for_test = gpus
+        else:
+            raise ValueError(f"Bad benchmark type for blender benchmark: {benchmark_name}")
+
         return BenchmarkResult(
             name=benchmark_name.value,
             benchmark_version=_BLENDER_BENCHMARK_VERSION,
@@ -134,10 +143,11 @@ def create_blender_benchmark_executor(  # pylin
             verbose_unit="Samples / Minute",
             unit="s/min",
             multi_gpu_native=multi_gpu_native,
+            critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
-                tag=benchmark_name.value,
-                gpus=gpus,
+                tag_prefix=benchmark_name.value,
+                gpus=gpus_for_test,
                 create_runtime_env_vars=create_runtime_env_vars,
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=_parse_samples_per_minute,

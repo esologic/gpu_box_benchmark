@@ -272,7 +272,7 @@ def force_parallel_run(  # pylint: disable=too-many-positional-arguments
 
 def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
     dockerfile_path: Path,
-    tag: str,
+    tag_prefix: str,
     gpus: Tuple[GPUIdentity, ...],
     create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
     outputs_to_result: OutputsToResult,
@@ -293,7 +293,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
     This shouldn't impact GPU scores and will likely be improved in the future.
 
     :param dockerfile_path: Path to the dockerfile to run.
-    :param tag: Tage for the image.
+    :param tag_prefix: Tag prefix for the image. The actual image will be uniquely tagged.
     :param gpus: GPUs to run on.
     :param create_runtime_env_vars: Callable to create runtime environment variables.
     :param outputs_to_result: Converts the outputs from the container (logs and optional output
@@ -304,9 +304,17 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
     :return: Numerical results.
     """
 
+    if not gpus:
+        raise ValueError("Non GPU test aren't supported yet.")
+
     client = docker.from_env()
 
-    image: Image = _build_image(client=client, dockerfile_path=dockerfile_path, tag=tag)
+    image: Image = _build_image(
+        client=client, dockerfile_path=dockerfile_path, tag=tag_prefix + str(uuid.uuid4().hex)
+    )
+
+    # If there's only a single GPU attached we can skip a lot of work.
+    multiple_gpus_to_test = len(gpus) > 1
 
     # Select the lowest ID's GPU in each of the input GPUs grouped by GPU name.
     serial_gpus: List[GPUIdentity] = [
@@ -343,42 +351,51 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
             for gpu in serial_gpus
         }
 
+        first_result: float = next(iter(name_to_serial_result.values()))
+
         # Creates a docker container per GPU for every input GPU, then
         # starts them at the same time. Results are returned.
-        parallel_results = force_parallel_run(
-            client=client,
-            image=image,
-            new_output_file=new_output_file,
-            gpus=gpus,
-            create_runtime_env_vars=create_runtime_env_vars,
-            outputs_to_result=outputs_to_result,
+        parallel_results = (
+            force_parallel_run(
+                client=client,
+                image=image,
+                new_output_file=new_output_file,
+                gpus=gpus,
+                create_runtime_env_vars=create_runtime_env_vars,
+                outputs_to_result=outputs_to_result,
+            )
+            if multiple_gpus_to_test
+            else [first_result]
         )
 
         native_multi_gpu_result: Optional[float] = None
 
         if multi_gpu_native:
 
-            multi_gpu_file = new_output_file()
+            if multiple_gpus_to_test:
 
-            multi_gpu_container = _create_gpu_container(
-                client=client,
-                image=image,
-                gpus=gpus,
-                env_vars=create_runtime_env_vars(runtime_gpus=gpus),
-                output_file_path=multi_gpu_file,
-            )
-            multi_gpu_container.start()
+                multi_gpu_file = new_output_file()
+                multi_gpu_container = _create_gpu_container(
+                    client=client,
+                    image=image,
+                    gpus=gpus,
+                    env_vars=create_runtime_env_vars(runtime_gpus=gpus),
+                    output_file_path=multi_gpu_file,
+                )
+                multi_gpu_container.start()
 
-            complete_logs = _wait_get_logs(container=multi_gpu_container)
+                complete_logs = _wait_get_logs(container=multi_gpu_container)
 
-            native_multi_gpu_result = outputs_to_result(
-                ContainerOutputs(logs=complete_logs, file=multi_gpu_file)
-            )
+                native_multi_gpu_result = outputs_to_result(
+                    ContainerOutputs(logs=complete_logs, file=multi_gpu_file)
+                )
+            else:
+                native_multi_gpu_result = first_result
 
         theoretical_multi_gpu_sum = sum((name_to_serial_result[gpu.name] for gpu in gpus))
         forced_multi_gpu_sum = sum(parallel_results)
 
-        image.remove()
+        client.images.remove(image.id, force=True)
 
         return ReportFileNumerical(
             min_by_gpu_type=min(name_to_serial_result.values()),
