@@ -12,6 +12,7 @@ import psutil
 from bonus_click import options
 from click.decorators import FC
 
+from gpu_box_benchmark import visualization
 from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     ai_benchmark,
     blender_benchmark,
@@ -39,7 +40,11 @@ from gpu_box_benchmark.locate_describe_hardware import (
     discover_cpu,
     discover_gpus,
 )
-from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, SystemEvaluation
+from gpu_box_benchmark.numeric_benchmark_result import (
+    BenchmarkResult,
+    SystemEvaluation,
+    load_system_evaluation_from_disk,
+)
 from gpu_box_benchmark.render_systemd import render_systemd_file
 
 LOGGER_FORMAT = "[%(asctime)s - %(process)s - %(name)20s - %(levelname)s] %(message)s"
@@ -339,6 +344,48 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
 
     click.echo(f"Wrote systemd unit to {output_path}")
     click.echo(file_contents)
+
+
+@cli.command(short_help="Draws graphs comparing runs.")
+@click.option(
+    "--input",
+    "input_path",
+    help="The set of benchmark JSON files to compare. Can be given multiple times",
+    type=click.Path(
+        file_okay=True, dir_okay=False, readable=True, resolve_path=True, path_type=Path
+    ),
+    multiple=True,
+)
+@click.option(
+    "--output-path",
+    default=Path("./comparison.png").resolve(),
+    show_default=True,
+    help="The resulting visualization will be written to this path.",
+    type=click.Path(
+        file_okay=True, dir_okay=False, writable=True, resolve_path=True, path_type=Path
+    ),
+)
+def compare(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    input_path: Tuple[Path, ...],
+    output_path: Path,
+    title: str,
+) -> None:
+    """
+    Draws a matplotlib visualization comparing the results of the different input benchmarks.
+
+    \f
+
+    :param input_path: See click help for docs!
+    :param output_path: See click help for docs!
+    :param title: See click help for docs!
+    :return: None
+    """
+
+    visualization.create_comparison_visualization(
+        evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
+        output_path=output_path,
+        title=title,
+    )
 
 
 if __name__ == "__main__":

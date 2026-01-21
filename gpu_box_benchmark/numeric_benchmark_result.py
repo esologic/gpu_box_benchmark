@@ -4,6 +4,7 @@ Set of types to describe benchmarking runs.
 
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
@@ -115,3 +116,14 @@ class SystemEvaluation(BaseModel):
     gpus: Tuple[GPUIdentity, ...]
 
     results: List[BenchmarkResult]
+
+
+def load_system_evaluation_from_disk(path: Path) -> SystemEvaluation:
+    """
+    Loads a system evaluation json file from disk into it's in-memory representation.
+    :param path: Path to the file.
+    :return: Loaded model.
+    """
+
+    with path.open() as file:
+        return SystemEvaluation.model_validate_json(file.read())
