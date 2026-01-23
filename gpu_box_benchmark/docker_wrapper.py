@@ -21,6 +21,17 @@ from gpu_box_benchmark.numeric_benchmark_result import ReportFileNumerical
 LOGGER = logging.getLogger(__name__)
 
 _INTERNAL_CONTAINER_OUTPUT_FILE_PATH = "/results/result.txt"
+"""
+All containers receive a volume mounted temporary file so the benchmarks can optionally write
+output directly to a file. This is the path the containers write to internally, the other side of
+that volume mount. 
+"""
+
+_SESSION_ID_LABEL_KEY = "gpu_box_benchmark_session"
+_SESSION_ID_BUILD_ARG = "SESSION_ID"
+"""
+Images are labeled so smart cleanup can occur. 
+"""
 
 
 class ContainerOutputs(NamedTuple):
@@ -168,14 +179,16 @@ def _run_image_on_gpus(
 
     container.start()
 
-    return ContainerOutputs(logs=_wait_get_logs(container=container), file=output_file_path)
+    # This removes the container.
+    outputs = _wait_get_logs(container=container)
+
+    return ContainerOutputs(
+        logs=outputs,
+        file=output_file_path,
+    )
 
 
-def _build_image(
-    client: DockerClient,
-    dockerfile_path: Path,
-    tag: str,
-) -> Image:
+def _build_image(client: DockerClient, dockerfile_path: Path, tag: str, session_id: str) -> Image:
     """
     Canonical wrapper to build images.
 
@@ -195,6 +208,10 @@ def _build_image(
             path=str(build_directory),
             dockerfile=str(dockerfile_path),
             tag=tag,
+            # All dockerfiles accept this build arg.
+            buildargs={_SESSION_ID_BUILD_ARG: session_id},
+            # These labels are used for cleanup.
+            labels={_SESSION_ID_LABEL_KEY: session_id},
             nocache=True,
             rm=True,
             forcerm=True,
@@ -221,7 +238,7 @@ def _build_image(
         raise
 
 
-def force_parallel_run(  # pylint: disable=too-many-positional-arguments
+def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     client: DockerClient,
     image: Image,
     new_output_file: Callable[[], Path],
@@ -271,6 +288,74 @@ def force_parallel_run(  # pylint: disable=too-many-positional-arguments
     return parallel_results
 
 
+def _list_prunable_images(client: docker.DockerClient) -> List[Image]:
+    """
+
+    :param client:
+    :return:
+    """
+
+    # Image IDs referenced by any container (running or stopped)
+    used_image_ids = {container.image.id for container in client.containers.list(all=True)}
+
+    # Any image not referenced by a container is prunable
+    return [image for image in client.images.list() if image.id not in used_image_ids]
+
+
+def _docker_image_cleanup(
+    client: DockerClient, run_image: Image, session_id: str, keep_images: List[Image]
+) -> None:
+    """
+
+    :param client:
+    :param run_image:
+    :param session_id:
+    :param keep_images:
+    :return:
+    """
+
+    client.images.remove(run_image.id, force=True)
+
+    session_filter = {"label": f"{_SESSION_ID_LABEL_KEY}={session_id}"}
+
+    for container in client.containers.list(all=True, filters=session_filter):
+        LOGGER.warning(f"Removing container {container.id}")
+        container.remove(force=True)
+
+    prune_report = client.images.prune(filters=session_filter)
+    reclaimed = prune_report.get("SpaceReclaimed", 0)
+    LOGGER.log(
+        msg=f"Pruned session images. Reclaimed: {reclaimed} bytes",
+        level=logging.WARNING if reclaimed > 0 else logging.DEBUG,
+    )
+
+    parent_id = run_image.attrs.get("Parent") if run_image else None
+
+    if parent_id:
+        try:
+            # Check if it survived the prune before trying to remove
+            client.images.get(parent_id)
+            client.images.remove(parent_id)
+            LOGGER.warning(f"Removed parent image: {parent_id}")
+        except (docker.errors.ImageNotFound, docker.errors.APIError):
+            pass
+
+    keep_ids = {img.id for img in keep_images}
+    used_image_ids = {container.image.id for container in client.containers.list(all=True)}
+
+    cruft_images = list(
+        filter(
+            lambda image: (image.id not in keep_ids and image.id not in used_image_ids),
+            client.images.list(),
+        )
+    )
+
+    for cruft_image in cruft_images:
+        # Safe to remove
+        client.images.remove(cruft_image.id, force=True)
+        LOGGER.warning(f"Removed cruft image: {cruft_image.id}")
+
+
 def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
     dockerfile_path: Path,
     tag_prefix: str,
@@ -310,8 +395,18 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
 
     client = docker.from_env()
 
+    # Images that would be pruned but existed on the system before the run. We don't want to
+    # touch these because they might be used for something outside the scope of our app.
+    existed_before_run = _list_prunable_images(client=client)
+
+    # Passed to the build process and used in the cleanup process.
+    session_id = str(uuid.uuid4().hex)
+
     image: Image = _build_image(
-        client=client, dockerfile_path=dockerfile_path, tag=tag_prefix + str(uuid.uuid4().hex)
+        client=client,
+        dockerfile_path=dockerfile_path,
+        tag="_".join([tag_prefix, session_id]),
+        session_id=session_id,
     )
 
     # If there's only a single GPU attached we can skip a lot of work.
@@ -357,7 +452,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
         # Creates a docker container per GPU for every input GPU, then
         # starts them at the same time. Results are returned.
         parallel_results = (
-            force_parallel_run(
+            _force_parallel_run(
                 client=client,
                 image=image,
                 new_output_file=new_output_file,
@@ -396,7 +491,9 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
         theoretical_multi_gpu_sum = sum((name_to_serial_result[gpu.name] for gpu in gpus))
         forced_multi_gpu_sum = sum(parallel_results)
 
-        client.images.remove(image.id, force=True)
+        _docker_image_cleanup(
+            client=client, run_image=image, session_id=session_id, keep_images=existed_before_run
+        )
 
         return ReportFileNumerical(
             min_by_gpu_type=min(name_to_serial_result.values()),

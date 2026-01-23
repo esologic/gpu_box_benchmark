@@ -1,5 +1,9 @@
 FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04
 
+ARG SESSION_ID=fallback
+
+LABEL gpu_box_benchmark_session=$SESSION_ID
+
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 

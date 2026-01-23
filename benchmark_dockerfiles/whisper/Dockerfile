@@ -1,5 +1,9 @@
 FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
+ARG SESSION_ID=fallback
+
+LABEL gpu_box_benchmark_session=$SESSION_ID
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

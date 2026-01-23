@@ -2,6 +2,10 @@
 
 FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
 
+ARG SESSION_ID=fallback
+
+LABEL gpu_box_benchmark_session=$SESSION_ID
+
 RUN apt-get update && apt-get install -y \
     wget xz-utils libgl1-mesa-glx libglib2.0-0 \
     libsm6 libxext6 libxi6 libxrender1 libxxf86vm1 libxkbcommon0 \

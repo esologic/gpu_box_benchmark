@@ -4,6 +4,10 @@
 
 FROM ghcr.io/ggml-org/llama.cpp:full-cuda
 
+ARG SESSION_ID=fallback
+
+LABEL gpu_box_benchmark_session=$SESSION_ID
+
 # Install curl
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
