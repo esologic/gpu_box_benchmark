@@ -1,0 +1,353 @@
+{
+  "title": "GPU Box Test",
+  "description": "Sample Description. This run was completed on a computer made of corn!",
+  "gpu_box_benchmark_version": "0.1.0",
+  "start_time": "2026-01-21T12:28:22.493753",
+  "runtime_seconds": 22105.465092,
+  "cpu": {
+    "name": "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz",
+    "physical_cpus": 56,
+    "logical_cpus": 56
+  },
+  "total_memory_gb": 31.570831298828125,
+  "gpus": [
+    {
+      "id": 0,
+      "name": "Tesla M10",
+      "uuid": "GPU-697a95e5-7f56-8fd9-732a-df5d1b05ea3c",
+      "total_memory_mib": 8192.0,
+      "driver": "550.120",
+      "serial": "1422021014613"
+    },
+    {
+      "id": 1,
+      "name": "Tesla M10",
+      "uuid": "GPU-974634c4-e589-f3ad-93e1-ee68effc7708",
+      "total_memory_mib": 8192.0,
+      "driver": "550.120",
+      "serial": "1422021014613"
+    }
+  ],
+  "results": [
+    {
+      "name": "resnet50_train_batch_1_amp",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Images Processed / Second",
+      "unit": "i/s",
+      "critical_result_key": "native_multi_gpu_result",
+      "numerical_results": {
+        "min_by_gpu_type": 9.549913375980672,
+        "max_by_gpu_type": 9.549913375980672,
+        "mean_by_gpu_type": 9.549913375980672,
+        "theoretical_multi_gpu_mean": 9.549913375980672,
+        "theoretical_multi_gpu_sum": 19.099826751961345,
+        "forced_multi_gpu_numerical_mean": 9.55986218917571,
+        "forced_multi_gpu_sum": 19.11972437835142,
+        "native_multi_gpu_result": 9.540559707464261
+      }
+    },
+    {
+      "name": "resnet50_train_batch_64_amp",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Images Processed / Second",
+      "unit": "i/s",
+      "critical_result_key": "native_multi_gpu_result",
+      "numerical_results": {
+        "min_by_gpu_type": 28.273039028060612,
+        "max_by_gpu_type": 28.273039028060612,
+        "mean_by_gpu_type": 28.273039028060612,
+        "theoretical_multi_gpu_mean": 28.273039028060612,
+        "theoretical_multi_gpu_sum": 56.546078056121225,
+        "forced_multi_gpu_numerical_mean": 28.357060474581274,
+        "forced_multi_gpu_sum": 56.71412094916255,
+        "native_multi_gpu_result": 54.49943138901882
+      }
+    },
+    {
+      "name": "resnet50_infer_batch_1_amp",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Images Processed / Second",
+      "unit": "i/s",
+      "critical_result_key": "native_multi_gpu_result",
+      "numerical_results": {
+        "min_by_gpu_type": 50.35131293893058,
+        "max_by_gpu_type": 50.35131293893058,
+        "mean_by_gpu_type": 50.35131293893058,
+        "theoretical_multi_gpu_mean": 50.35131293893058,
+        "theoretical_multi_gpu_sum": 100.70262587786117,
+        "forced_multi_gpu_numerical_mean": 50.35427091148257,
+        "forced_multi_gpu_sum": 100.70854182296515,
+        "native_multi_gpu_result": 98.09831001769042
+      }
+    },
+    {
+      "name": "resnet50_infer_batch_256_amp",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Images Processed / Second",
+      "unit": "i/s",
+      "critical_result_key": "native_multi_gpu_result",
+      "numerical_results": {
+        "min_by_gpu_type": 99.6723350488192,
+        "max_by_gpu_type": 99.6723350488192,
+        "mean_by_gpu_type": 99.6723350488192,
+        "theoretical_multi_gpu_mean": 99.6723350488192,
+        "theoretical_multi_gpu_sum": 199.3446700976384,
+        "forced_multi_gpu_numerical_mean": 99.34484667423979,
+        "forced_multi_gpu_sum": 198.68969334847958,
+        "native_multi_gpu_result": 199.70127367928316
+      }
+    },
+    {
+      "name": "llama_bench_tiny_model_prompt",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Tokens / Second",
+      "unit": "toks/s",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 332.3897,
+        "max_by_gpu_type": 332.3897,
+        "mean_by_gpu_type": 332.3897,
+        "theoretical_multi_gpu_mean": 332.3897,
+        "theoretical_multi_gpu_sum": 664.7794,
+        "forced_multi_gpu_numerical_mean": 331.1945,
+        "forced_multi_gpu_sum": 662.389,
+        "native_multi_gpu_result": 326.081
+      }
+    },
+    {
+      "name": "llama_bench_tiny_model_generation",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Tokens / Second",
+      "unit": "toks/s",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 5.411868999999999,
+        "max_by_gpu_type": 5.411868999999999,
+        "mean_by_gpu_type": 5.411868999999999,
+        "theoretical_multi_gpu_mean": 5.411868999999999,
+        "theoretical_multi_gpu_sum": 10.823737999999999,
+        "forced_multi_gpu_numerical_mean": 5.3920094999999995,
+        "forced_multi_gpu_sum": 10.784018999999999,
+        "native_multi_gpu_result": 5.174433
+      }
+    },
+    {
+      "name": "llama_bench_standard_model_prompt",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Tokens / Second",
+      "unit": "toks/s",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 66.89368,
+        "max_by_gpu_type": 66.89368,
+        "mean_by_gpu_type": 66.89368,
+        "theoretical_multi_gpu_mean": 66.89368,
+        "theoretical_multi_gpu_sum": 133.78736,
+        "forced_multi_gpu_numerical_mean": 66.81400500000001,
+        "forced_multi_gpu_sum": 133.62801000000002,
+        "native_multi_gpu_result": 66.15557999999999
+      }
+    },
+    {
+      "name": "llama_bench_standard_model_generation",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Tokens / Second",
+      "unit": "toks/s",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 5.408534,
+        "max_by_gpu_type": 5.408534,
+        "mean_by_gpu_type": 5.408534,
+        "theoretical_multi_gpu_mean": 5.408534,
+        "theoretical_multi_gpu_sum": 10.817068,
+        "forced_multi_gpu_numerical_mean": 5.3869255,
+        "forced_multi_gpu_sum": 10.773851,
+        "native_multi_gpu_result": 5.244003
+      }
+    },
+    {
+      "name": "blender_benchmark_monster_cpu",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": false,
+      "verbose_unit": "Samples / Minute",
+      "unit": "s/min",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 174.65603924362424,
+        "max_by_gpu_type": 174.65603924362424,
+        "mean_by_gpu_type": 174.65603924362424,
+        "theoretical_multi_gpu_mean": 174.65603924362424,
+        "theoretical_multi_gpu_sum": 174.65603924362424,
+        "forced_multi_gpu_numerical_mean": 174.65603924362424,
+        "forced_multi_gpu_sum": 174.65603924362424,
+        "native_multi_gpu_result": null
+      }
+    },
+    {
+      "name": "blender_benchmark_monster_gpu",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": false,
+      "verbose_unit": "Samples / Minute",
+      "unit": "s/min",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 100.23155126111763,
+        "max_by_gpu_type": 100.23155126111763,
+        "mean_by_gpu_type": 100.23155126111763,
+        "theoretical_multi_gpu_mean": 100.23155126111763,
+        "theoretical_multi_gpu_sum": 200.46310252223526,
+        "forced_multi_gpu_numerical_mean": 100.44422059294152,
+        "forced_multi_gpu_sum": 200.88844118588304,
+        "native_multi_gpu_result": null
+      }
+    },
+    {
+      "name": "fah_bench_single",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": false,
+      "verbose_unit": "Nanoseconds / Day",
+      "unit": "ns/day",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 32.2875,
+        "max_by_gpu_type": 32.2875,
+        "mean_by_gpu_type": 32.2875,
+        "theoretical_multi_gpu_mean": 32.2875,
+        "theoretical_multi_gpu_sum": 64.575,
+        "forced_multi_gpu_numerical_mean": 32.21995,
+        "forced_multi_gpu_sum": 64.4399,
+        "native_multi_gpu_result": null
+      }
+    },
+    {
+      "name": "fah_bench_double",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": false,
+      "verbose_unit": "Nanoseconds / Day",
+      "unit": "ns/day",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 1.7575,
+        "max_by_gpu_type": 1.7575,
+        "mean_by_gpu_type": 1.7575,
+        "theoretical_multi_gpu_mean": 1.7575,
+        "theoretical_multi_gpu_sum": 3.515,
+        "forced_multi_gpu_numerical_mean": 1.7598500000000001,
+        "forced_multi_gpu_sum": 3.5197000000000003,
+        "native_multi_gpu_result": null
+      }
+    },
+    {
+      "name": "ai_benchmark",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": false,
+      "verbose_unit": "AI Score",
+      "unit": "pts",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 3262.0,
+        "max_by_gpu_type": 3262.0,
+        "mean_by_gpu_type": 3262.0,
+        "theoretical_multi_gpu_mean": 3262.0,
+        "theoretical_multi_gpu_sum": 6524.0,
+        "forced_multi_gpu_numerical_mean": 3263.5,
+        "forced_multi_gpu_sum": 6527.0,
+        "native_multi_gpu_result": null
+      }
+    },
+    {
+      "name": "whisper_medium_fp16",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": false,
+      "verbose_unit": "Audio Frames / Second",
+      "unit": "f/s",
+      "critical_result_key": "forced_multi_gpu_sum",
+      "numerical_results": {
+        "min_by_gpu_type": 120.2925012849605,
+        "max_by_gpu_type": 120.2925012849605,
+        "mean_by_gpu_type": 120.2925012849605,
+        "theoretical_multi_gpu_mean": 120.2925012849605,
+        "theoretical_multi_gpu_sum": 240.585002569921,
+        "forced_multi_gpu_numerical_mean": 120.40023281258962,
+        "forced_multi_gpu_sum": 240.80046562517924,
+        "native_multi_gpu_result": null
+      }
+    },
+    {
+      "name": "content_aware_timelapse_vit_scores",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Frames / Second",
+      "unit": "f/s",
+      "critical_result_key": "native_multi_gpu_result",
+      "numerical_results": {
+        "min_by_gpu_type": 11.197281957903899,
+        "max_by_gpu_type": 11.197281957903899,
+        "mean_by_gpu_type": 11.197281957903899,
+        "theoretical_multi_gpu_mean": 11.197281957903899,
+        "theoretical_multi_gpu_sum": 22.394563915807797,
+        "forced_multi_gpu_numerical_mean": 11.192743537685502,
+        "forced_multi_gpu_sum": 22.385487075371003,
+        "native_multi_gpu_result": 20.7121342764765
+      }
+    },
+    {
+      "name": "content_aware_timelapse_vit_attention",
+      "benchmark_version": "0.1.0",
+      "override_parameters": {},
+      "larger_better": true,
+      "multi_gpu_native": true,
+      "verbose_unit": "Frames / Second",
+      "unit": "f/s",
+      "critical_result_key": "native_multi_gpu_result",
+      "numerical_results": {
+        "min_by_gpu_type": 18.87650652161468,
+        "max_by_gpu_type": 18.87650652161468,
+        "mean_by_gpu_type": 18.87650652161468,
+        "theoretical_multi_gpu_mean": 18.87650652161468,
+        "theoretical_multi_gpu_sum": 37.75301304322936,
+        "forced_multi_gpu_numerical_mean": 18.781715296936426,
+        "forced_multi_gpu_sum": 37.56343059387285,
+        "native_multi_gpu_result": 36.36316623874207
+      }
+    }
+  ]
+}

@@ -4,6 +4,11 @@
 
 Tracks changes of the codebase. 
 
+### 0.4.0 - (2026-01-21)
+
+* Adds `compare` mode for visualizing difference between runs.
+* Steps taken to reclaim disk space used by docker between runs.
+
 ### 0.3.0 - (2026-01-20)
 
 * Fills in implementation for `explain-benchmarks`. 

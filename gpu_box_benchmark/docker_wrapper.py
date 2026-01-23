@@ -110,7 +110,7 @@ def _create_gpu_container(
     return container
 
 
-def _wait_get_logs(container: Container) -> str:
+def _wait_get_logs(container: Container) -> Optional[str]:
     """
     Runs a `.wait()` on the input container and then pulls the stdout/stderr logs.
     :param container: To interact with.
@@ -198,6 +198,7 @@ def _build_image(
             nocache=True,
             rm=True,
             forcerm=True,
+            pull=False,
         )
 
         return image

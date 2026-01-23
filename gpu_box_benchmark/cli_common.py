@@ -5,6 +5,7 @@ CLI specific validation and common code.
 import re
 import unicodedata
 from collections import Counter
+from datetime import datetime
 from typing import Optional, Tuple
 
 from gpu_box_benchmark.locate_describe_hardware import (
@@ -34,8 +35,11 @@ def _path_safe(s: str, replacement: str = "_") -> str:
     # Normalize unicode (é → e, etc.)
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
 
-    # Replace path separators and illegal characters
-    s = re.sub(r'[<>:"/\\|?*\x00-\x1F]', replacement, s)
+    # Remove literal "(r)" (case-insensitive, optional)
+    s = re.sub(r"\(r\)", "", s, flags=re.IGNORECASE)
+
+    # Replace path separators and illegal characters (now including parentheses)
+    s = re.sub(r'[<>:"/\\|?*()\x00-\x1F]', replacement, s)
 
     # Collapse whitespace and replacements
     s = re.sub(rf"{re.escape(replacement)}+", replacement, s)
@@ -64,4 +68,8 @@ def create_default_output_name(
 
     gpus_part = "_".join([f"{count}_{_path_safe(name)}" for name, count in name_to_counts.items()])
 
-    return f"{cpu_part}_{gpus_part}{suffix}".lower()
+    date_part = _path_safe(datetime.now().replace(microsecond=0).isoformat())
+
+    output = f"{cpu_part}_{gpus_part}_{date_part}{suffix}"
+
+    return output

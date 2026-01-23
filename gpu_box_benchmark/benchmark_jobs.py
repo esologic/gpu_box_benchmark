@@ -52,6 +52,28 @@ class BenchmarkName(str, Enum):
     content_aware_timelapse_vit_attention = "content_aware_timelapse_vit_attention"
 
 
+BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
+    BenchmarkName.resnet50_train_batch_1_amp: "ResNet50 Train B=1",
+    BenchmarkName.resnet50_train_batch_64_amp: "ResNet50 Train B=64",
+    BenchmarkName.resnet50_infer_batch_1_amp: "ResNet50 Infer B=1",
+    BenchmarkName.resnet50_infer_batch_256_amp: "ResNet50 Infer B=256",
+    BenchmarkName.llama_bench_tiny_model_prompt: "Llama-Bench Tiny Prmpt",
+    BenchmarkName.llama_bench_tiny_model_generation: "Llama-Bench Tiny Gen",
+    BenchmarkName.llama_bench_standard_model_prompt: "Llama-Bench Standard Prmpt",
+    BenchmarkName.llama_bench_standard_model_generation: "Llama-Bench Standard Gen",
+    BenchmarkName.blender_benchmark_monster_cpu: "Blender CPU",
+    BenchmarkName.blender_benchmark_monster_gpu: "Blender GPU",
+    BenchmarkName.fah_bench_single: "F@H Single",
+    BenchmarkName.fah_bench_double: "F@H Double",
+    BenchmarkName.ai_benchmark: "AI Benchmark",
+    BenchmarkName.whisper_medium_fp16: "Whisper",
+    BenchmarkName.content_aware_timelapse_vit_scores: "CAT ViT Scores",
+    BenchmarkName.content_aware_timelapse_vit_attention: "CAT ViT Attention",
+}
+"""
+Used in visualization.
+"""
+
 EXTENDED_BENCHMARK_DOCUMENTS: Dict[BenchmarkFamily, str] = {
     BenchmarkFamily.resnet50: (
         "From the NVidia Deep Learning Examples Repo, the ResNet50 benchmark uses the pytorch "
@@ -105,6 +127,9 @@ EXTENDED_BENCHMARK_DOCUMENTS: Dict[BenchmarkFamily, str] = {
         "development is happening in the first place."
     ),
 }
+"""
+Used in docs.
+"""
 
 
 class BenchmarkExecutor(Protocol):

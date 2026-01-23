@@ -346,7 +346,7 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     click.echo(file_contents)
 
 
-@cli.command(short_help="Draws graphs comparing runs.")
+@cli.command(short_help="Draws graphs comparing benchmark outputs.")
 @click.option(
     "--input",
     "input_path",
@@ -364,6 +364,13 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     type=click.Path(
         file_okay=True, dir_okay=False, writable=True, resolve_path=True, path_type=Path
     ),
+)
+@click.option(
+    "--title",
+    default="Comparison",
+    show_default=True,
+    help="Written on the top of the figure.",
+    type=click.STRING,
 )
 def compare(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
@@ -385,6 +392,8 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
         evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
         output_path=output_path,
         title=title,
+        n_cols=4,
+        max_bar_label_length=15,
     )
 
 

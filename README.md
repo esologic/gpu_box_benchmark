@@ -28,9 +28,11 @@ Options:
 
 Commands:
   benchmark           Run one or more benchmarks and records the results.
+  compare             Draws graphs comparing benchmark outputs.
   explain-benchmarks  Prints a description about what each of the supported
                       benchmarks do.
-  render-systemd      Creates a systemd unit that will start the run at boot.
+  render-systemd      Creates a systemd unit that will execute a benchmarking
+                      run at boot.
 ```
 
 The `render-systemd` command exists to create a systemd unit that runs the full benchmarking suite

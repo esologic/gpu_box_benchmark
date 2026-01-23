@@ -5,7 +5,8 @@ Smoke tests for now.
 import tempfile
 from pathlib import Path
 
-from gpu_box_benchmark import numeric_benchmark_result, visualization
+from gpu_box_benchmark import numeric_benchmark_result
+from test.assets import ALL_SAMPLE_OUTPUTS
 
 SAMPLE_SYSTEM_EVALUATION = """
 {
@@ -111,10 +112,14 @@ def test_load_system_evaluation_from_disk() -> None:
         file.seek(0)
         loaded = numeric_benchmark_result.load_system_evaluation_from_disk(path=Path(file.name))
 
-        visualization.create_comparison_visualization(
-            evaluations=(loaded,),
-            output_path=Path("./fuck.png"),
-            title="yes",
-        )
-
     assert loaded.results[0].numerical_results.native_multi_gpu_result == 61
+
+
+def test_known_valid_loads() -> None:
+    """
+    Try loading all the known good test assets.
+    :return: None
+    """
+
+    for path in ALL_SAMPLE_OUTPUTS:
+        numeric_benchmark_result.load_system_evaluation_from_disk(path=path)
