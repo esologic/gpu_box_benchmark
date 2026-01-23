@@ -161,6 +161,14 @@ def cli() -> None:
     help="The resulting system evaluation is written to the parent directory with this name.",
 )
 @run_options()
+@click.option(
+    "--no-docker-cleanup",
+    type=click.BOOL,
+    default=False,
+    is_flag=True,
+    show_default=True,
+    help="If given, the post-benchmark docker cleanup step will be skipped. ",
+)
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     test: Tuple[BenchmarkName, ...],
     gpu: Tuple[GPUIdentity, ...],
@@ -168,6 +176,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     output_parent: Path,
     title: str,
     description: str,
+    no_docker_cleanup: bool,
 ) -> None:
     """
     Run one or more benchmarks and records the results.
@@ -180,6 +189,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     :param output_parent: See click help for docs!
     :param title: See click help for docs!
     :param description: See click help for docs!
+    :param no_docker_cleanup: See click help for docs!
     :return: None
     """
 
@@ -201,7 +211,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         # need to re-do name creation.
         output_path = output_parent / create_default_output_name(gpus=gpu, cpu=cpu)
     else:
-        # Base case, output name will match the actual hardware setup or it has been overwritten.
+        # Base case, output name will match the actual hardware setup, or it has been overwritten.
         output_path = output_parent / output_name
 
     mem_info = psutil.virtual_memory()
@@ -228,7 +238,11 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
                     filter(
                         None,
                         (
-                            creation_function(benchmark_name=requested_test, gpus=gpu)
+                            creation_function(
+                                benchmark_name=requested_test,
+                                gpus=gpu,
+                                docker_cleanup=not no_docker_cleanup,
+                            )
                             for creation_function in creation_functions
                         ),
                     ),

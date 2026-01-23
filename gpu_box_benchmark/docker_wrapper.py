@@ -363,6 +363,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
     create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
     outputs_to_result: OutputsToResult,
     multi_gpu_native: bool,
+    docker_cleanup: bool,
 ) -> ReportFileNumerical:
     """
     Benchmarks a given dockerfile. The run sequence is as follows:
@@ -387,6 +388,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
     :param multi_gpu_native: If True, the input dockerfile can take advantage of having multiple
     GPUs passed in and utilize the multiple inputs simultaneously. If False, docker is used to
     run the benchmark on multiple GPUs at once.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
     :return: Numerical results.
     """
 
@@ -491,9 +493,13 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
         theoretical_multi_gpu_sum = sum((name_to_serial_result[gpu.name] for gpu in gpus))
         forced_multi_gpu_sum = sum(parallel_results)
 
-        _docker_image_cleanup(
-            client=client, run_image=image, session_id=session_id, keep_images=existed_before_run
-        )
+        if docker_cleanup:
+            _docker_image_cleanup(
+                client=client,
+                run_image=image,
+                session_id=session_id,
+                keep_images=existed_before_run,
+            )
 
         return ReportFileNumerical(
             min_by_gpu_type=min(name_to_serial_result.values()),

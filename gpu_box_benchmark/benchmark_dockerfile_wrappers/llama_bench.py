@@ -59,13 +59,14 @@ def _parse_docker_logs(container_outputs: ContainerOutputs) -> float:
 
 
 def create_llama_bench_executor(
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
+    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some llama bench benchmarks.
     The args here fit the outer API.
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
     :return: The callable to run the benchmark.
     """
 
@@ -127,6 +128,7 @@ def create_llama_bench_executor(
                 ],
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=_parse_docker_logs,
+                docker_cleanup=docker_cleanup,
             ),
         )
 

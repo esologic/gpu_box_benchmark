@@ -63,13 +63,14 @@ def _parse_report_file(mode_training: bool, container_output: ContainerOutputs) 
 
 
 def create_resnet50_executor(
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
+    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some resnet50 benchmarks.
     The args here fit the outer API.
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
     :return: The callable to run the benchmark, None if the input name is not a resnet benchmark.
     """
 
@@ -121,6 +122,7 @@ def create_resnet50_executor(
                 ],
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=partial(_parse_report_file, resnet_parameters.mode_training),
+                docker_cleanup=docker_cleanup,
             ),
         )
 

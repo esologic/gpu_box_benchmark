@@ -33,7 +33,7 @@ def _parse_final_score(container_outputs: ContainerOutputs) -> float:
 
 
 def create_fah_bench_executor(  # pylin
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
+    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some Folding@Home (FAHBench) benchmarks.
@@ -41,6 +41,7 @@ def create_fah_bench_executor(  # pylin
 
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
     :return: The callable to run the benchmark.
     """
 
@@ -82,6 +83,7 @@ def create_fah_bench_executor(  # pylin
                 create_runtime_env_vars=lambda runtime_gpus: envs,
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=_parse_final_score,
+                docker_cleanup=docker_cleanup,
             ),
         )
 

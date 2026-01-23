@@ -34,7 +34,7 @@ def _parse_fps(container_outputs: ContainerOutputs) -> float:
 
 
 def create_content_aware_timelapse_executor(  # pylin
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
+    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run the benchmark in content aware timelapse.
@@ -42,6 +42,7 @@ def create_content_aware_timelapse_executor(  # pylin
 
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
     :return: The callable to run the benchmark.
     """
 
@@ -76,6 +77,7 @@ def create_content_aware_timelapse_executor(  # pylin
                 create_runtime_env_vars=lambda runtime_gpus: envs,
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=_parse_fps,
+                docker_cleanup=docker_cleanup,
             ),
         )
 

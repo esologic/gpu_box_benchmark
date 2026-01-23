@@ -25,6 +25,7 @@ def test_benchmark_dockerfile_small() -> None:
             container_outputs.logs == "hello world\n"
         ),
         multi_gpu_native=False,
+        docker_cleanup=True,  # This is the default from the CLI.
     )
 
     assert (

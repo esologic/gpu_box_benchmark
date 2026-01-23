@@ -60,7 +60,9 @@ def _parse_samples_per_minute(container_outputs: ContainerOutputs) -> float:
 
 
 def create_blender_benchmark_executor(  # pylin
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
+    benchmark_name: BenchmarkName,
+    gpus: Tuple[GPUIdentity, ...],
+    docker_cleanup: bool,
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some blender-based benchmarks.
@@ -68,6 +70,7 @@ def create_blender_benchmark_executor(  # pylin
 
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
     :return: The callable to run the benchmark.
     """
 
@@ -151,6 +154,7 @@ def create_blender_benchmark_executor(  # pylin
                 create_runtime_env_vars=create_runtime_env_vars,
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=_parse_samples_per_minute,
+                docker_cleanup=docker_cleanup,
             ),
         )
 

@@ -151,11 +151,12 @@ class CreateBenchmarkExecutor(Protocol):
     """
 
     def __call__(
-        self, benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...]
+        self, benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
     ) -> Optional[BenchmarkExecutor]:
         """
         :param benchmark_name: To look up.
         :param gpus: List of GPUs to run the benchmark on. Jobs can utilize the GPU or decide not
         to use them.
+        :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
         :return: Returns None if the wrapper module does not contain the desired benchmark.
         """
