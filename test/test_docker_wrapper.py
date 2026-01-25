@@ -16,10 +16,12 @@ def test_benchmark_dockerfile_small() -> None:
     :return: None
     """
 
+    gpus = locate_describe_hardware.discover_gpus()
+
     result = docker_wrapper.benchmark_dockerfile(
         dockerfile_path=HELLO_WORLD_DOCKERFILE_PATH,
         tag_prefix="hello_world_test",
-        gpus=locate_describe_hardware.discover_gpus(),
+        gpus=gpus,
         create_runtime_env_vars=lambda runtime_gpus: [],
         outputs_to_result=lambda container_outputs: float(
             container_outputs.logs == "hello world\n"
@@ -34,9 +36,9 @@ def test_benchmark_dockerfile_small() -> None:
             max_by_gpu_type=1.0,
             mean_by_gpu_type=1.0,
             theoretical_multi_gpu_mean=1.0,
-            theoretical_multi_gpu_sum=2.0,
+            theoretical_multi_gpu_sum=1.0 * len(gpus),
             forced_multi_gpu_numerical_mean=1.0,
-            forced_multi_gpu_sum=2.0,
+            forced_multi_gpu_sum=1.0 * len(gpus),
             native_multi_gpu_result=None,
         )
         == result
