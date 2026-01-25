@@ -11,6 +11,9 @@ containers.
 
 **Note:** This benchmarking suite is under active development! Use at yer own risk.
 
+This project was introduced and contextualized
+on my blog, see: [esologic.com/gpu-server-benchmark](https://esologic.com/gpu-server-benchmark).
+
 ## Usage
 
 After creating a virtual environment, it should be easy to start running the benchmarks as they're

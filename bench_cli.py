@@ -47,7 +47,7 @@ from gpu_box_benchmark.numeric_benchmark_result import (
 )
 from gpu_box_benchmark.render_systemd import render_systemd_file
 
-LOGGER_FORMAT = "[%(asctime)s - %(process)s - %(name)20s - %(levelname)s] %(message)s"
+LOGGER_FORMAT = "[%(asctime)s - %(levelname)s] %(message)s"
 LOGGER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 logging.basicConfig(
@@ -167,7 +167,10 @@ def cli() -> None:
     default=False,
     is_flag=True,
     show_default=True,
-    help="If given, the post-benchmark docker cleanup step will be skipped. ",
+    help=(
+        "If given, the post-benchmark docker cleanup step will be skipped. "
+        "Things will go faster run to run but disk space will leak."
+    ),
 )
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     test: Tuple[BenchmarkName, ...],

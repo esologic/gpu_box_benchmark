@@ -4,10 +4,15 @@
 
 Tracks changes of the codebase. 
 
-### 0.4.0 - (2026-01-21)
+### 0.4.0 - (2026-01-25)
 
 * Adds `compare` mode for visualizing difference between runs.
 * Steps taken to reclaim disk space used by docker between runs.
+* Cleanup features after running a few test benchmarks.
+* Adds labels to all Dockerfiles for image cleanup. Corresponding CLI flag as well.
+* Introduces per plot visualization metric.
+* Improved viz clarity.
+* Basic unit testing suite.
 
 ### 0.3.0 - (2026-01-20)
 

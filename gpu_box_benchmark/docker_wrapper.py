@@ -290,9 +290,9 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
 
 def _list_prunable_images(client: docker.DockerClient) -> List[Image]:
     """
-
-    :param client:
-    :return:
+    Lists images that would be removed kind of like `docker prune.
+    :param client: For interacting with docker.
+    :return: Image references.
     """
 
     # Image IDs referenced by any container (running or stopped)
@@ -306,12 +306,12 @@ def _docker_image_cleanup(
     client: DockerClient, run_image: Image, session_id: str, keep_images: List[Image]
 ) -> None:
     """
-
-    :param client:
-    :param run_image:
-    :param session_id:
-    :param keep_images:
-    :return:
+    Removes dangling images and containers created throughout the benchmarking process.
+    :param client: For interacting with Docker.
+    :param run_image: Image that was run.
+    :param session_id: Label
+    :param keep_images: List of images to not touch.
+    :return: None
     """
 
     client.images.remove(run_image.id, force=True)
@@ -353,7 +353,7 @@ def _docker_image_cleanup(
     for cruft_image in cruft_images:
         # Safe to remove
         client.images.remove(cruft_image.id, force=True)
-        LOGGER.warning(f"Removed cruft image: {cruft_image.id}")
+        LOGGER.debug(f"Removed cruft image: {cruft_image.id}")
 
 
 def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
