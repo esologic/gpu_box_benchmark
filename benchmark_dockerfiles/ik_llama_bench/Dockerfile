@@ -33,6 +33,7 @@ RUN cmake -B build \
     -DGGML_CUDA=ON \
     -DGGML_NCCL=ON \
     -DCMAKE_BUILD_TYPE=Release \
+    -DGGML_CUDA_NO_WMMA=ON \
     -DBUILD_SHARED_LIBS=ON \
     -DCMAKE_CUDA_ARCHITECTURES="60;70" \
     -DCMAKE_CXX_FLAGS="-mcmodel=large" \

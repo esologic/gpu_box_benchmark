@@ -18,6 +18,7 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     blender_benchmark,
     content_aware_timelapse,
     folding_at_home,
+    hashcat,
     llama_bench,
     nvidia_deep_learning_examples,
     nvidia_gds,
@@ -233,6 +234,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         whisper.create_whisper_executor,
         content_aware_timelapse.create_content_aware_timelapse_executor,
         nvidia_gds.create_gdsio_executor,
+        hashcat.create_hashcat_executor,
     ]
 
     try:

@@ -22,6 +22,7 @@ class BenchmarkFamily(str, Enum):
     whisper = "whisper"
     content_aware_timelapse = "content_aware_timelapse"
     gdsio = "gdsio"
+    hashcat = "hashcat"
 
 
 class BenchmarkName(str, Enum):
@@ -74,6 +75,8 @@ class BenchmarkName(str, Enum):
     gdsio_type_0 = "gdsio_type_0"
     gdsio_type_2 = "gdsio_type_2"
 
+    hashcat_sha256 = "hashcat_sha256"
+
 
 BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     # ResNet Benchmarks
@@ -113,6 +116,7 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     BenchmarkName.content_aware_timelapse_vit_attention: "CAT ViT Attention",
     BenchmarkName.gdsio_type_0: "Storage->GPU (gdiso)",
     BenchmarkName.gdsio_type_2: "Storage->CPU->GPU (gdiso)",
+    BenchmarkName.hashcat_sha256: "SHA-256",
 }
 
 EXTENDED_BENCHMARK_DOCUMENTS: Dict[BenchmarkFamily, str] = {
@@ -174,6 +178,13 @@ EXTENDED_BENCHMARK_DOCUMENTS: Dict[BenchmarkFamily, str] = {
         "from disk into VRAM or offloading KV-caches. Overall, this test isolates the "
         "storage-to-GPU pipeline, providing a critical metric for understanding model-load "
         "latencies and multi-GPU data orchestration performance."
+    ),
+    BenchmarkFamily.hashcat: (
+        "This benchmark uses Hashcat’s built-in benchmark mode to measure raw cryptographic "
+        "hashing throughput on the GPU. It runs a selected fast, unsalted hash "
+        "algorithm (such as SHA-256) in a tight compute loop, providing a synthetic but highly "
+        "GPU-bound workload that closely reflects the arithmetic intensity of proof-of-work style "
+        "hashing."
     ),
 }
 """

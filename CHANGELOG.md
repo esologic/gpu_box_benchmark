@@ -10,6 +10,7 @@ Tracks changes of the codebase.
 * Adds `ik_llama` benchmarks, a more performant fork of `llama.cpp` that reportedly does well
 on Pascal GPUs.
 * Adds gdsio benchmarking to measure how quickly data can be loaded from disk into VRAM.
+* Adds a hashcat SHA-256 benchmark as another non-AI point of comparison.
 
 ### 0.4.0 - (2026-01-25)
 
