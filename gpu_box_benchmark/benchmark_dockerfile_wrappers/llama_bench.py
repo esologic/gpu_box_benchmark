@@ -108,6 +108,7 @@ def create_llama_bench_executor(
         BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation,
         BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt,
         BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation,
+        BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt,
         BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation,
         BenchmarkName.llama_bench_open_mistral_moe_prompt,
         BenchmarkName.llama_bench_open_mistral_moe_generation,

@@ -203,6 +203,8 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     if not test:
         test = tuple(test for test in BenchmarkName)
 
+    print(f"Input Test: {test}")
+
     gpu_discovery_output = discover_gpus()
 
     if not gpu:
@@ -237,23 +239,36 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         hashcat.create_hashcat_executor,
     ]
 
+    def executor_for_test(requested_test: BenchmarkName) -> BenchmarkExecutor:
+        """
+        Look up the executor for the input test. Adds logging.
+        :param requested_test: From CLI.
+        :return: Executor for the test.
+        """
+        try:
+            return next(
+                filter(
+                    None,
+                    (
+                        creation_function(
+                            benchmark_name=requested_test,
+                            gpus=gpu,
+                            docker_cleanup=not no_docker_cleanup,
+                        )
+                        for creation_function in creation_functions
+                    ),
+                ),
+            )
+        except StopIteration as lookup_error:
+            raise StopIteration(
+                f"Couldn't find executor for test: {requested_test.value}"
+            ) from lookup_error
+
     try:
         named_executors: List[Optional[NamedExecutor]] = [
             NamedExecutor(
                 benchmark_name=requested_test,
-                executor=next(
-                    filter(
-                        None,
-                        (
-                            creation_function(
-                                benchmark_name=requested_test,
-                                gpus=gpu,
-                                docker_cleanup=not no_docker_cleanup,
-                            )
-                            for creation_function in creation_functions
-                        ),
-                    ),
-                ),
+                executor=executor_for_test(requested_test=requested_test),
             )
             for requested_test in test
         ]
