@@ -49,13 +49,6 @@ class BenchmarkName(str, Enum):
     llama_bench_open_mistral_moe_prompt = "llama_bench_open_mistral_moe_prompt"
     llama_bench_open_mistral_moe_generation = "llama_bench_open_mistral_moe_generation"
 
-    ik_llama_bench_meta_llama_3_8b_instruct_prompt = (
-        "ik_llama_bench_meta_llama_3_8b_instruct_prompt"
-    )
-    ik_llama_bench_meta_llama_3_8b_instruct_generation = (
-        "ik_llama_bench_meta_llama_3_8b_instruct_generation"
-    )
-
     ik_llama_bench_qwen_1_5_moe_chat_prompt = "ik_llama_bench_qwen_1_5_moe_chat_prompt"
     ik_llama_bench_qwen_1_5_moe_chat_generation = "ik_llama_bench_qwen_1_5_moe_chat_generation"
 
@@ -97,12 +90,6 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     BenchmarkName.llama_bench_open_mistral_moe_prompt: "llama.cpp Mistral MoE Prompt",
     BenchmarkName.llama_bench_open_mistral_moe_generation: "llama.cpp Mistral MoE Gen",
     # IK fork tests
-    BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_prompt: (
-        "llama.cpp Llama 3 8B Prompt (ik fork)"
-    ),
-    BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_generation: (
-        "llama.cpp Llama 3 8B Gen (ik fork)"
-    ),
     BenchmarkName.ik_llama_bench_qwen_1_5_moe_chat_prompt: "llama.cpp Qwen1.5 MoE Prompt (ik fork)",
     BenchmarkName.ik_llama_bench_qwen_1_5_moe_chat_generation: (
         "llama.cpp Qwen1.5 MoE Gen (ik fork)"

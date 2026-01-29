@@ -203,8 +203,6 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     if not test:
         test = tuple(test for test in BenchmarkName)
 
-    print(f"Input Test: {test}")
-
     gpu_discovery_output = discover_gpus()
 
     if not gpu:

@@ -116,8 +116,6 @@ def create_llama_bench_executor(
         version = _LLAMA_BENCH_VERSION
         dockerfile_path = LLAMA_BENCH_DOCKERFILE
     elif benchmark_name in (
-        BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_prompt,
-        BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_generation,
         BenchmarkName.ik_llama_bench_qwen_1_5_moe_chat_prompt,
         BenchmarkName.ik_llama_bench_qwen_1_5_moe_chat_generation,
     ):
@@ -175,12 +173,6 @@ def create_llama_bench_executor(
 
     # These have the exact same parameters but will use a different dockerfile.
     # The mistral models don't work with ik_llama.
-    name_to_parameters[BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_prompt] = (
-        name_to_parameters[BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt]
-    )
-    name_to_parameters[BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_generation] = (
-        name_to_parameters[BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation]
-    )
     name_to_parameters[BenchmarkName.ik_llama_bench_qwen_1_5_moe_chat_prompt] = name_to_parameters[
         BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt
     ]

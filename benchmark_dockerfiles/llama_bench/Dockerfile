@@ -21,16 +21,24 @@ ENV HF_HUB_ENABLE_HF_TRANSFER=1
 WORKDIR /models
 
 # Qwen 2.5 1.5B
-RUN hf download Qwen/Qwen2.5-1.5B-Instruct-GGUF qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir .
+RUN bash -c 'set -e; for i in 1 2 3 4 5; do \
+  hf download Qwen/Qwen2.5-1.5B-Instruct-GGUF qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir . && break || sleep 10; \
+done'
 
 # Llama 3 8B Instruct
-RUN hf download bartowski/Meta-Llama-3-8B-Instruct-GGUF Meta-Llama-3-8B-Instruct-Q4_K_M.gguf --local-dir .
+RUN bash -c 'set -e; for i in 1 2 3 4 5; do \
+  hf download bartowski/Meta-Llama-3-8B-Instruct-GGUF Meta-Llama-3-8B-Instruct-Q4_K_M.gguf --local-dir . && break || sleep 10; \
+done'
 
 # Qwen 1.5 MoE A2.7B
-RUN hf download tensorblock/Qwen1.5-MoE-A2.7B-Chat-GGUF Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf --local-dir .
+RUN bash -c 'set -e; for i in 1 2 3 4 5; do \
+  hf download tensorblock/Qwen1.5-MoE-A2.7B-Chat-GGUF Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf --local-dir . && break || sleep 10; \
+done'
 
 # OpenMistral MoE
-RUN hf download tensorblock/OpenMistral-MoE-GGUF OpenMistral-MoE-Q2_K.gguf --local-dir .
+RUN bash -c 'set -e; for i in 1 2 3 4 5; do \
+  hf download tensorblock/OpenMistral-MoE-GGUF OpenMistral-MoE-Q2_K.gguf --local-dir . && break || sleep 10; \
+done'
 
 # 4. Verification
 RUN du -sh /models/*.gguf
