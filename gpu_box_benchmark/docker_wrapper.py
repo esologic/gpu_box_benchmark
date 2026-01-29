@@ -121,10 +121,11 @@ def _create_gpu_container(
     return container
 
 
-def _wait_get_logs(container: Container) -> Optional[str]:
+def _wait_get_logs(container: Container, docker_cleanup: bool) -> Optional[str]:
     """
     Runs a `.wait()` on the input container and then pulls the stdout/stderr logs.
     :param container: To interact with.
+    :param docker_cleanup: If given the container will be removed after output has been read.
     :return: The logs as a single string.
     """
 
@@ -146,7 +147,8 @@ def _wait_get_logs(container: Container) -> Optional[str]:
         LOGGER.debug("Container logs:\n%s", logs)
 
     finally:
-        container.remove(force=True)
+        if docker_cleanup:
+            container.remove(force=True)
 
     if logs is None:
         raise ValueError("Couldn't read logs from container")
@@ -154,12 +156,13 @@ def _wait_get_logs(container: Container) -> Optional[str]:
     return logs
 
 
-def _run_image_on_gpus(
+def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     client: DockerClient,
     image: Image,
     gpus: Tuple[GPUIdentity, ...],
     env_vars: List[Tuple[str, str]],
     output_file_path: Path,
+    docker_cleanup: bool,
 ) -> Optional[ContainerOutputs]:
     """
     Creates a container, starts it, and waits for its completion on a set of GPUs. This blocks
@@ -170,6 +173,7 @@ def _run_image_on_gpus(
     :param gpus: GPUs to run the container on.
     :param env_vars: Passed as environment.
     :param output_file_path: Passed into container for optional usage.
+    :param docker_cleanup: If given, image is remoted upon completion.
     :return: The set of outputs from the container.
     """
 
@@ -180,7 +184,7 @@ def _run_image_on_gpus(
     container.start()
 
     # This removes the container.
-    outputs = _wait_get_logs(container=container)
+    outputs = _wait_get_logs(container=container, docker_cleanup=docker_cleanup)
 
     return ContainerOutputs(
         logs=outputs,
@@ -188,7 +192,9 @@ def _run_image_on_gpus(
     )
 
 
-def _build_image(client: DockerClient, dockerfile_path: Path, tag: str, session_id: str) -> Image:
+def _build_image(
+    client: DockerClient, dockerfile_path: Path, tag: str, session_id: str, docker_cleanup: bool
+) -> Image:
     """
     Canonical wrapper to build images.
 
@@ -196,6 +202,8 @@ def _build_image(client: DockerClient, dockerfile_path: Path, tag: str, session_
     :param dockerfile_path: Path to the dockerfile to build. The build context will be the parent
     of this file.
     :param tag: Tag for the image.
+    :param session_id: For labeling the image.
+    :param docker_cleanup: If True, efforts are made to leave little behind related to docker.
     :return: The built image.
     """
 
@@ -212,10 +220,10 @@ def _build_image(client: DockerClient, dockerfile_path: Path, tag: str, session_
             buildargs={_SESSION_ID_BUILD_ARG: session_id},
             # These labels are used for cleanup.
             labels={_SESSION_ID_LABEL_KEY: session_id},
-            nocache=True,
+            nocache=docker_cleanup,
             rm=True,
             forcerm=True,
-            pull=False,
+            pull=not docker_cleanup,
         )
 
         return image
@@ -245,6 +253,7 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     gpus: Tuple[GPUIdentity, ...],
     create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
     outputs_to_result: OutputsToResult,
+    docker_cleanup: bool,
 ) -> List[float]:
     """
     Creates one docker container per GPU then starts each GPU at the same time. This is a simulation
@@ -257,6 +266,7 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     :param gpus: GPUs to run on.
     :param create_runtime_env_vars: Creates environment variables if required.
     :param outputs_to_result: Converts outputs to a numerical result.
+    :param docker_cleanup: If given, efforts will be made to leave little behind related to docker.
     :return: Results per GPU.
     """
 
@@ -281,7 +291,11 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
         container.start()
 
     parallel_results: List[float] = [
-        outputs_to_result(ContainerOutputs(logs=_wait_get_logs(container=container), file=file))
+        outputs_to_result(
+            ContainerOutputs(
+                logs=_wait_get_logs(container=container, docker_cleanup=docker_cleanup), file=file
+            )
+        )
         for (container, file) in container_file
     ]
 
@@ -409,6 +423,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
         dockerfile_path=dockerfile_path,
         tag="_".join([tag_prefix, session_id]),
         session_id=session_id,
+        docker_cleanup=docker_cleanup,
     )
 
     # If there's only a single GPU attached we can skip a lot of work.
@@ -444,6 +459,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
                     gpus=(gpu,),
                     env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
                     output_file_path=new_output_file(),
+                    docker_cleanup=docker_cleanup,
                 )
             )
             for gpu in serial_gpus
@@ -461,6 +477,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
                 gpus=gpus,
                 create_runtime_env_vars=create_runtime_env_vars,
                 outputs_to_result=outputs_to_result,
+                docker_cleanup=docker_cleanup,
             )
             if multiple_gpus_to_test
             else [first_result]
@@ -482,7 +499,9 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
                 )
                 multi_gpu_container.start()
 
-                complete_logs = _wait_get_logs(container=multi_gpu_container)
+                complete_logs = _wait_get_logs(
+                    container=multi_gpu_container, docker_cleanup=docker_cleanup
+                )
 
                 native_multi_gpu_result = outputs_to_result(
                     ContainerOutputs(logs=complete_logs, file=multi_gpu_file)

@@ -37,11 +37,11 @@ class _LlamaBenchParams(NamedTuple):
 def _parse_docker_logs(container_outputs: ContainerOutputs) -> float:
     """
     Parse a report file to the standard set of numerical results.
+    Handles standard docker logs mixed into the JSON output stream.
     :param container_outputs: Contains the logs from the docker container as a string! These logs
-    contain our results and we need to extract.
+    contain our results, and we need to extract.
     :return: Numerical results
     """
-
     docker_logs = container_outputs.logs
 
     start = docker_logs.find("[")
@@ -50,8 +50,36 @@ def _parse_docker_logs(container_outputs: ContainerOutputs) -> float:
     if start == -1 or end == -1 or end < start:
         raise ValueError(f"No JSON array found in log. Complete Logs: {docker_logs}")
 
-    json_blob = docker_logs[start : end + 1]
-    loaded = next(iter(json.loads(json_blob)))
+    results = []
+    decoder = json.JSONDecoder()
+    current_pos = start
+
+    while current_pos <= end:
+        # Find the start of the next JSON object
+        next_brace = docker_logs.find("{", current_pos, end + 1)
+
+        # If no more braces are found, stop
+        if next_brace == -1:
+            break
+
+        try:
+            # raw_decode extracts one valid object and returns the index where it stopped
+            # It ignores trailing garbage (like "~ggml_backend...").
+            obj, index_end = decoder.raw_decode(docker_logs, idx=next_brace)
+            results.append(obj)
+
+            # Move our search position to the end of the object we just found
+            current_pos = index_end
+        except json.JSONDecodeError:
+            # If the brace we found wasn't valid JSON, skip it and continue searching
+            current_pos = next_brace + 1
+
+    if not results:
+        raise ValueError(
+            f"Found bounds [...] but no valid JSON objects inside. Logs: {docker_logs}"
+        )
+
+    loaded = results[0]
 
     summary_dict = (
         pd.Series(loaded["samples_ts"]).dropna().describe().to_dict()  # Tokens/Sample results.
