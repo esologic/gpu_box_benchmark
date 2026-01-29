@@ -21,6 +21,7 @@ class BenchmarkFamily(str, Enum):
     ai_benchmark = "ai_benchmark"
     whisper = "whisper"
     content_aware_timelapse = "content_aware_timelapse"
+    gdsio = "gdsio"
 
 
 class BenchmarkName(str, Enum):
@@ -33,10 +34,29 @@ class BenchmarkName(str, Enum):
     resnet50_infer_batch_1_amp = "resnet50_infer_batch_1_amp"
     resnet50_infer_batch_256_amp = "resnet50_infer_batch_256_amp"
 
-    llama_bench_tiny_model_prompt = "llama_bench_tiny_model_prompt"
-    llama_bench_tiny_model_generation = "llama_bench_tiny_model_generation"
-    llama_bench_standard_model_prompt = "llama_bench_standard_model_prompt"
-    llama_bench_standard_model_generation = "llama_bench_standard_model_generation"
+    llama_bench_qwen_2_5_1_5b_instruct_prompt = "llama_bench_qwen_2_5_1_5b_instruct_prompt"
+    llama_bench_qwen_2_5_1_5b_instruct_generation = "llama_bench_qwen_2_5_1_5b_instruct_generation"
+
+    llama_bench_meta_llama_3_8b_instruct_prompt = "llama_bench_meta_llama_3_8b_instruct_prompt"
+    llama_bench_meta_llama_3_8b_instruct_generation = (
+        "llama_bench_meta_llama_3_8b_instruct_generation"
+    )
+
+    llama_bench_qwen_1_5_moe_chat_prompt = "llama_bench_qwen_1_5_moe_chat_prompt"
+    llama_bench_qwen_1_5_moe_chat_generation = "llama_bench_qwen_1_5_moe_chat_generation"
+
+    llama_bench_open_mistral_moe_prompt = "llama_bench_open_mistral_moe_prompt"
+    llama_bench_open_mistral_moe_generation = "llama_bench_open_mistral_moe_generation"
+
+    ik_llama_bench_meta_llama_3_8b_instruct_prompt = (
+        "ik_llama_bench_meta_llama_3_8b_instruct_prompt"
+    )
+    ik_llama_bench_meta_llama_3_8b_instruct_generation = (
+        "ik_llama_bench_meta_llama_3_8b_instruct_generation"
+    )
+
+    ik_llama_bench_open_mistral_moe_prompt = "ik_llama_bench_open_mistral_moe_prompt"
+    ik_llama_bench_open_mistral_moe_generation = "ik_llama_bench_open_mistral_moe_generation"
 
     blender_benchmark_monster_cpu = "blender_benchmark_monster_cpu"
     blender_benchmark_monster_gpu = "blender_benchmark_monster_gpu"
@@ -51,28 +71,49 @@ class BenchmarkName(str, Enum):
     content_aware_timelapse_vit_scores = "content_aware_timelapse_vit_scores"
     content_aware_timelapse_vit_attention = "content_aware_timelapse_vit_attention"
 
+    gdsio_type_0 = "gdsio_type_0"
+    gdsio_type_2 = "gdsio_type_2"
+
 
 BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
+    # ResNet Benchmarks
     BenchmarkName.resnet50_train_batch_1_amp: "ResNet50 Train B=1",
     BenchmarkName.resnet50_train_batch_64_amp: "ResNet50 Train B=64",
     BenchmarkName.resnet50_infer_batch_1_amp: "ResNet50 Infer B=1",
     BenchmarkName.resnet50_infer_batch_256_amp: "ResNet50 Infer B=256",
-    BenchmarkName.llama_bench_tiny_model_prompt: "Llama-Bench Tiny Prmpt",
-    BenchmarkName.llama_bench_tiny_model_generation: "Llama-Bench Tiny Gen",
-    BenchmarkName.llama_bench_standard_model_prompt: "Llama-Bench Standard Prmpt",
-    BenchmarkName.llama_bench_standard_model_generation: "Llama-Bench Standard Gen",
+    # Qwen 2.5 1.5B (Dense)
+    BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: "llama.cpp Qwen2.5 1.5B Prompt",
+    BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: "llama.cpp Qwen2.5 1.5B Gen",
+    # Llama 3 8B (Dense)
+    BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: "llama.cpp Llama 3 8B Prompt",
+    BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: "llama.cpp Llama 3 8B Gen",
+    # Qwen 1.5 MoE (Sparse)
+    BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: "llama.cpp Qwen1.5 MoE Prompt",
+    BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: "llama.cpp Qwen1.5 MoE Gen",
+    # OpenMistral MoE (Sparse)
+    BenchmarkName.llama_bench_open_mistral_moe_prompt: "llama.cpp Mistral MoE Prompt",
+    BenchmarkName.llama_bench_open_mistral_moe_generation: "llama.cpp Mistral MoE Gen",
+    # IK fork tests
+    BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_prompt: (
+        "llama.cpp Llama 3 8B Prompt (ik fork)"
+    ),
+    BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_generation: (
+        "llama.cpp Llama 3 8B Gen (ik fork)"
+    ),
+    BenchmarkName.ik_llama_bench_open_mistral_moe_prompt: "llama.cpp Mistral MoE Prompt (ik fork)",
+    BenchmarkName.ik_llama_bench_open_mistral_moe_generation: "llama.cpp Mistral MoE Gen (ik fork)",
+    # Hardware & Other Benchmarks
     BenchmarkName.blender_benchmark_monster_cpu: "Blender CPU",
     BenchmarkName.blender_benchmark_monster_gpu: "Blender GPU",
     BenchmarkName.fah_bench_single: "F@H Single",
     BenchmarkName.fah_bench_double: "F@H Double",
     BenchmarkName.ai_benchmark: "AI Benchmark",
-    BenchmarkName.whisper_medium_fp16: "Whisper",
+    BenchmarkName.whisper_medium_fp16: "Whisper Med FP16",
     BenchmarkName.content_aware_timelapse_vit_scores: "CAT ViT Scores",
     BenchmarkName.content_aware_timelapse_vit_attention: "CAT ViT Attention",
+    BenchmarkName.gdsio_type_0: "Storage->GPU (gdiso)",
+    BenchmarkName.gdsio_type_2: "Storage->CPU->GPU (gdiso)",
 }
-"""
-Used in visualization.
-"""
 
 EXTENDED_BENCHMARK_DOCUMENTS: Dict[BenchmarkFamily, str] = {
     BenchmarkFamily.resnet50: (
@@ -88,7 +129,7 @@ EXTENDED_BENCHMARK_DOCUMENTS: Dict[BenchmarkFamily, str] = {
         "inference performance on the GPU using the purpose-built llama-bench tool. The container "
         "downloads quantized GGUF models, ranging from a small 1.5B-parameter Qwen model to a "
         "standard 8B-parameter Llama 3 model, allowing performance testing across different VRAM "
-        "and compute requirements."
+        "and compute requirements. There are also a few tests with the ik_llama fork."
     ),
     BenchmarkFamily.blender_benchmark: (
         "This benchmark uses Blender’s official Open Data benchmark suite to measure GPU rendering "
@@ -125,6 +166,14 @@ EXTENDED_BENCHMARK_DOCUMENTS: Dict[BenchmarkFamily, str] = {
         "GPUs through a ViT model. Has both a fused (score) and slower unused (attention) modes. "
         "This series of benchmarks is very relevant to the author if this repo as it is why the "
         "development is happening in the first place."
+    ),
+    BenchmarkFamily.gdsio: (
+        "This benchmark uses NVIDIA’s gdsio utility to measure the raw data transfer throughput "
+        "between storage and GPU memory. By utilizing NVIDIA GPUDirect Storage (GDS) tools in "
+        "compatibility mode, it simulates the heavy I/O workload of loading large model weights "
+        "from disk into VRAM or offloading KV-caches. Overall, this test isolates the "
+        "storage-to-GPU pipeline, providing a critical metric for understanding model-load "
+        "latencies and multi-GPU data orchestration performance."
     ),
 }
 """

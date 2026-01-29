@@ -15,4 +15,4 @@ NUM_GENERATION_TOKENS="${NUM_GENERATION_TOKENS:-128}"
 --n-gen "${NUM_GENERATION_TOKENS}" \
 --n-gpu-layers 99 \
 --flash-attn 1 \
---n-cpu-moe 0
+-sm graph

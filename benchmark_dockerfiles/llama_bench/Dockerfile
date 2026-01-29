@@ -8,19 +8,32 @@ ARG SESSION_ID=fallback
 
 LABEL gpu_box_benchmark_session=$SESSION_ID
 
-# Install curl
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt-get update && apt-get install -y python3-pip && rm -rf /var/lib/apt/lists/*
+
+# Install modern huggingface_hub to pull models
+RUN pip install --no-cache-dir -U huggingface_hub hf_transfer
+
+# 3. Ensure the 'hf' binary is in the PATH and enable fast transfers
+ENV PATH="/root/.local/bin:/usr/local/bin:$PATH"
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
 
 WORKDIR /models
 
-# Qwen 2.5 1.5B (Requires ~1GB VRAM)
-RUN curl -L -o tiny_model.gguf \
-    "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf?download=true"
+# Qwen 2.5 1.5B
+RUN hf download Qwen/Qwen2.5-1.5B-Instruct-GGUF qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir .
 
-# Llama 3 8B Instruct (Requires ~5GB VRAM)
-# This is the standard benchmark size.
-RUN curl -L -o standard_model.gguf \
-    "https://huggingface.co/bartowski/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf?download=true"
+# Llama 3 8B Instruct
+RUN hf download bartowski/Meta-Llama-3-8B-Instruct-GGUF Meta-Llama-3-8B-Instruct-Q4_K_M.gguf --local-dir .
+
+# Qwen 1.5 MoE A2.7B
+RUN hf download tensorblock/Qwen1.5-MoE-A2.7B-Chat-GGUF Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf --local-dir .
+
+# OpenMistral MoE
+RUN hf download tensorblock/OpenMistral-MoE-GGUF OpenMistral-MoE-Q2_K.gguf --local-dir .
+
+# 4. Verification
+RUN du -sh /models/*.gguf
 
 WORKDIR /app
 

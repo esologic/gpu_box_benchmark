@@ -4,11 +4,12 @@ Code for running the llama-bench benchmarks in llama.cpp and parsing the output.
 
 import json
 import logging
+from pathlib import Path
 from typing import NamedTuple, Optional, Tuple
 
 import pandas as pd
 
-from benchmark_dockerfiles import LLAMA_BENCH_DOCKERFILE
+from benchmark_dockerfiles import IK_LLAMA_BENCH_DOCKERFILE, LLAMA_BENCH_DOCKERFILE
 from gpu_box_benchmark import docker_wrapper
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
 from gpu_box_benchmark.docker_wrapper import ContainerOutputs
@@ -18,6 +19,7 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, Numerica
 LOGGER = logging.getLogger(__name__)
 
 _LLAMA_BENCH_VERSION = "0.1.0"
+_IK_LLAMA_BENCH_VERSION = "0.1.0"
 
 _NUM_TEST_TOKENS = 512
 
@@ -70,28 +72,91 @@ def create_llama_bench_executor(
     :return: The callable to run the benchmark.
     """
 
+    version: Optional[str] = None
+    dockerfile_path: Optional[Path] = None
+
+    if benchmark_name in (
+        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt,
+        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation,
+        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt,
+        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation,
+        BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation,
+        BenchmarkName.llama_bench_open_mistral_moe_prompt,
+        BenchmarkName.llama_bench_open_mistral_moe_generation,
+    ):
+        version = _LLAMA_BENCH_VERSION
+        dockerfile_path = LLAMA_BENCH_DOCKERFILE
+    elif benchmark_name in (
+        BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_prompt,
+        BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_generation,
+        BenchmarkName.ik_llama_bench_open_mistral_moe_prompt,
+        BenchmarkName.ik_llama_bench_open_mistral_moe_generation,
+    ):
+        version = _IK_LLAMA_BENCH_VERSION
+        dockerfile_path = IK_LLAMA_BENCH_DOCKERFILE
+    else:
+        return None
+
     name_to_parameters = {
-        BenchmarkName.llama_bench_tiny_model_prompt: _LlamaBenchParams(
-            internal_model_path="/models/tiny_model.gguf",
+        # --- Qwen 2.5 1.5B (Dense) ---
+        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: _LlamaBenchParams(
+            internal_model_path="/models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
             prompt_tokens=_NUM_TEST_TOKENS,
             generation_tokens=0,
         ),
-        BenchmarkName.llama_bench_tiny_model_generation: _LlamaBenchParams(
-            internal_model_path="/models/standard_model.gguf",
+        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: _LlamaBenchParams(
+            internal_model_path="/models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
         ),
-        BenchmarkName.llama_bench_standard_model_prompt: _LlamaBenchParams(
-            internal_model_path="/models/standard_model.gguf",
+        # --- Meta Llama 3 8B (Dense) ---
+        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: _LlamaBenchParams(
+            internal_model_path="/models/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf",
             prompt_tokens=_NUM_TEST_TOKENS,
             generation_tokens=0,
         ),
-        BenchmarkName.llama_bench_standard_model_generation: _LlamaBenchParams(
-            internal_model_path="/models/standard_model.gguf",
+        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: _LlamaBenchParams(
+            internal_model_path="/models/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf",
+            prompt_tokens=0,
+            generation_tokens=_NUM_TEST_TOKENS,
+        ),
+        # --- Qwen 1.5 MoE A2.7B (Sparse MoE) ---
+        BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: _LlamaBenchParams(
+            internal_model_path="/models/Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf",
+            prompt_tokens=_NUM_TEST_TOKENS,
+            generation_tokens=0,
+        ),
+        BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: _LlamaBenchParams(
+            internal_model_path="/models/Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf",
+            prompt_tokens=0,
+            generation_tokens=_NUM_TEST_TOKENS,
+        ),
+        # --- OpenMistral MoE (Sparse MoE) ---
+        BenchmarkName.llama_bench_open_mistral_moe_prompt: _LlamaBenchParams(
+            internal_model_path="/models/OpenMistral-MoE-Q2_K.gguf",
+            prompt_tokens=_NUM_TEST_TOKENS,
+            generation_tokens=0,
+        ),
+        BenchmarkName.llama_bench_open_mistral_moe_generation: _LlamaBenchParams(
+            internal_model_path="/models/OpenMistral-MoE-Q2_K.gguf",
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
         ),
     }
+
+    # These have the exact same parameters but will use a different dockerfile.
+    name_to_parameters[BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_prompt] = (
+        name_to_parameters[BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt]
+    )
+    name_to_parameters[BenchmarkName.ik_llama_bench_meta_llama_3_8b_instruct_generation] = (
+        name_to_parameters[BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation]
+    )
+    name_to_parameters[BenchmarkName.ik_llama_bench_open_mistral_moe_prompt] = name_to_parameters[
+        BenchmarkName.llama_bench_open_mistral_moe_prompt
+    ]
+    name_to_parameters[BenchmarkName.ik_llama_bench_open_mistral_moe_generation] = (
+        name_to_parameters[BenchmarkName.llama_bench_open_mistral_moe_generation]
+    )
 
     llama_bench_parameters: Optional[_LlamaBenchParams] = name_to_parameters.get(
         benchmark_name, None
@@ -110,15 +175,15 @@ def create_llama_bench_executor(
 
         return BenchmarkResult(
             name=benchmark_name.value,
-            benchmark_version=_LLAMA_BENCH_VERSION,
+            benchmark_version=version,
             override_parameters={},
             larger_better=True,
             verbose_unit="Tokens / Second",
             unit="toks/s",
             multi_gpu_native=multi_gpu_native,
-            critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
+            critical_result_key=NumericalResultKey.native_multi_gpu_result,
             numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=LLAMA_BENCH_DOCKERFILE,
+                dockerfile_path=dockerfile_path,
                 tag_prefix=benchmark_name.value,
                 gpus=gpus,
                 create_runtime_env_vars=lambda runtime_gpus: [

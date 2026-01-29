@@ -20,6 +20,7 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     folding_at_home,
     llama_bench,
     nvidia_deep_learning_examples,
+    nvidia_gds,
     whisper,
 )
 from gpu_box_benchmark.benchmark_jobs import (
@@ -231,6 +232,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         ai_benchmark.create_ai_benchmark_executor,
         whisper.create_whisper_executor,
         content_aware_timelapse.create_content_aware_timelapse_executor,
+        nvidia_gds.create_gdsio_executor,
     ]
 
     try:
@@ -261,7 +263,10 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     for named_executor in named_executors:
         if named_executor is not None:
             LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
-            results.append(named_executor.executor())
+            try:
+                results.append(named_executor.executor())
+            except Exception as _e:  # pylint: disable=broad-except
+                LOGGER.exception(f"Benchmark: {named_executor.benchmark_name} failed!")
 
     # Tests are complete, write the output.
 
