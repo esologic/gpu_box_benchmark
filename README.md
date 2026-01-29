@@ -59,14 +59,19 @@ environment variables to measure either training or inference performance, with 
 mixed precision (AMP) enabled to reflect modern GPU usage. 
 
 
-Benchmark Family: llama_bench, Tests: llama_bench_tiny_model_prompt
-llama_bench_tiny_model_generation llama_bench_standard_model_prompt
-llama_bench_standard_model_generation
+Benchmark Family: llama_bench, Tests: llama_bench_qwen_2_5_1_5b_instruct_prompt
+llama_bench_qwen_2_5_1_5b_instruct_generation llama_bench_meta_llama_3_8b_instruct_prompt
+llama_bench_meta_llama_3_8b_instruct_generation llama_bench_qwen_1_5_moe_chat_prompt
+llama_bench_qwen_1_5_moe_chat_generation llama_bench_open_mistral_moe_prompt
+llama_bench_open_mistral_moe_generation ik_llama_bench_meta_llama_3_8b_instruct_prompt
+ik_llama_bench_meta_llama_3_8b_instruct_generation ik_llama_bench_open_mistral_moe_prompt
+ik_llama_bench_open_mistral_moe_generation
 
 This benchmark uses the CUDA-enabled llama.cpp container to measure large language model inference
 performance on the GPU using the purpose-built llama-bench tool. The container downloads quantized
 GGUF models, ranging from a small 1.5B-parameter Qwen model to a standard 8B-parameter Llama 3
-model, allowing performance testing across different VRAM and compute requirements. 
+model, allowing performance testing across different VRAM and compute requirements. There are also a
+few tests with the ik_llama fork. 
 
 
 Benchmark Family: blender_benchmark, Tests: blender_benchmark_monster_cpu
@@ -114,6 +119,23 @@ Uses benchmark mode in content aware timelapse to measure throughput of a GPU or
 through a ViT model. Has both a fused (score) and slower unused (attention) modes. This series of
 benchmarks is very relevant to the author if this repo as it is why the development is happening in
 the first place. 
+
+
+Benchmark Family: gdsio, Tests: gdsio_type_0 gdsio_type_2
+
+This benchmark uses NVIDIA’s gdsio utility to measure the raw data transfer throughput between
+storage and GPU memory. By utilizing NVIDIA GPUDirect Storage (GDS) tools in compatibility mode, it
+simulates the heavy I/O workload of loading large model weights from disk into VRAM or offloading
+KV-caches. Overall, this test isolates the storage-to-GPU pipeline, providing a critical metric for
+understanding model-load latencies and multi-GPU data orchestration performance. 
+
+
+Benchmark Family: hashcat, Tests: hashcat_sha256
+
+This benchmark uses Hashcat’s built-in benchmark mode to measure raw cryptographic hashing
+throughput on the GPU. It runs a selected fast, unsalted hash algorithm (such as SHA-256) in a tight
+compute loop, providing a synthetic but highly GPU-bound workload that closely reflects the
+arithmetic intensity of proof-of-work style hashing. 
 ```
 
 ## Getting Started
