@@ -89,7 +89,8 @@ def create_gdsio_executor(  # pylin
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=NVIDIA_GDS_DOCKERFILE,
-                tag_prefix=benchmark_name.value,
+                benchmark_name=benchmark_name.value,
+                benchmark_version=_GDSIO_BENCHMARK_VERSION,
                 gpus=gpus,
                 create_runtime_env_vars=lambda runtime_gpus: run_env_vars,
                 multi_gpu_native=multi_gpu_native,

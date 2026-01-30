@@ -149,7 +149,8 @@ def create_blender_benchmark_executor(  # pylin
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
-                tag_prefix=benchmark_name.value,
+                benchmark_name=benchmark_name.value,
+                benchmark_version=_BLENDER_BENCHMARK_VERSION,
                 gpus=gpus_for_test,
                 create_runtime_env_vars=create_runtime_env_vars,
                 multi_gpu_native=multi_gpu_native,

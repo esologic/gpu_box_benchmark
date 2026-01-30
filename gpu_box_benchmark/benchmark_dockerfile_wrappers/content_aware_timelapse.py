@@ -72,7 +72,8 @@ def create_content_aware_timelapse_executor(  # pylin
             critical_result_key=NumericalResultKey.native_multi_gpu_result,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=CONTENT_AWARE_TIMELAPSE_DOCKERFILE,
-                tag_prefix=benchmark_name.value,
+                benchmark_name=benchmark_name.value,
+                benchmark_version=_CONTENT_AWARE_TIMELAPSE_BENCHMARK_VERSION,
                 gpus=gpus,
                 create_runtime_env_vars=lambda runtime_gpus: envs,
                 multi_gpu_native=multi_gpu_native,

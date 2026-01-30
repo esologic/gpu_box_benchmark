@@ -1,10 +1,6 @@
 # Base image with CUDA + cuDNN
 FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
 
-ARG SESSION_ID=fallback
-
-LABEL gpu_box_benchmark_session=$SESSION_ID
-
 # Install Python, pip, git
 RUN apt-get update && apt-get install -y python3-pip git
 RUN pip install --upgrade pip

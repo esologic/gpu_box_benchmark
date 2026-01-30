@@ -1,7 +1,5 @@
 FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
-ARG SESSION_ID=fallback
-LABEL gpu_box_benchmark_session=$SESSION_ID
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install GDS user-space tools

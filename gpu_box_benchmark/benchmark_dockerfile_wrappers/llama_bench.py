@@ -206,7 +206,8 @@ def create_llama_bench_executor(
             critical_result_key=NumericalResultKey.native_multi_gpu_result,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=dockerfile_path,
-                tag_prefix=benchmark_name.value,
+                benchmark_name=benchmark_name.value,
+                benchmark_version=_LLAMA_BENCH_VERSION,
                 gpus=gpus,
                 create_runtime_env_vars=lambda runtime_gpus: [
                     ("MODEL_PATH", str(llama_bench_parameters.internal_model_path)),

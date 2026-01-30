@@ -4,10 +4,6 @@
 
 FROM ghcr.io/ggml-org/llama.cpp:full-cuda
 
-ARG SESSION_ID=fallback
-
-LABEL gpu_box_benchmark_session=$SESSION_ID
-
 # Install system dependencies
 RUN apt-get update && apt-get install -y python3-pip && rm -rf /var/lib/apt/lists/*
 

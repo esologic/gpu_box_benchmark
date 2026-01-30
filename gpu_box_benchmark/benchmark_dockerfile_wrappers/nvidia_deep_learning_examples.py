@@ -113,7 +113,8 @@ def create_resnet50_executor(
             critical_result_key=NumericalResultKey.native_multi_gpu_result,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=RESNET50_DOCKERFILE,
-                tag_prefix=benchmark_name.value,
+                benchmark_name=benchmark_name.value,
+                benchmark_version=_RESNET50_BENCHMARK_VERSION,
                 gpus=gpus,
                 create_runtime_env_vars=lambda runtime_gpus: [
                     ("BATCH_SIZE", str(resnet_parameters.batch_size)),

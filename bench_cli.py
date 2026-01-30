@@ -164,14 +164,13 @@ def cli() -> None:
 )
 @run_options()
 @click.option(
-    "--no-docker-cleanup",
+    "--docker-cleanup",
     type=click.BOOL,
-    default=False,
-    is_flag=True,
+    default=True,
     show_default=True,
     help=(
-        "If given, the post-benchmark docker cleanup step will be skipped. "
-        "Things will go faster run to run but disk space will leak."
+        "If given, images and containers will be removed after each use to avoid disk pressure. "
+        "Disabling this will make things slower but consume less disk."
     ),
 )
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
@@ -181,7 +180,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     output_parent: Path,
     title: str,
     description: str,
-    no_docker_cleanup: bool,
+    docker_cleanup: bool,
 ) -> None:
     """
     Run one or more benchmarks and records the results.
@@ -194,11 +193,13 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     :param output_parent: See click help for docs!
     :param title: See click help for docs!
     :param description: See click help for docs!
-    :param no_docker_cleanup: See click help for docs!
+    :param docker_cleanup: See click help for docs!
     :return: None
     """
 
     start_time = datetime.now()
+
+    click.echo(f"Docker Cleanup: {docker_cleanup}")
 
     if not test:
         test = tuple(test for test in BenchmarkName)
@@ -251,7 +252,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
                         creation_function(
                             benchmark_name=requested_test,
                             gpus=gpu,
-                            docker_cleanup=not no_docker_cleanup,
+                            docker_cleanup=docker_cleanup,
                         )
                         for creation_function in creation_functions
                     ),

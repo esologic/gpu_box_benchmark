@@ -65,7 +65,8 @@ def create_whisper_executor(  # pylin
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=WHISPER_DOCKERFILE,
-                tag_prefix=benchmark_name.value,
+                benchmark_name=benchmark_name.value,
+                benchmark_version=_WHISPER_BENCHMARK_VERSION,
                 gpus=gpus,
                 create_runtime_env_vars=lambda runtime_gpus: [],
                 multi_gpu_native=multi_gpu_native,
