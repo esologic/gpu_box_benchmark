@@ -166,11 +166,11 @@ def cli() -> None:
 @click.option(
     "--docker-cleanup",
     type=click.BOOL,
-    default=True,
+    default=False,
     show_default=True,
     help=(
         "If given, images and containers will be removed after each use to avoid disk pressure. "
-        "Disabling this will make things slower but consume less disk."
+        "Enabling this will make things slower but consume less disk."
     ),
 )
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
