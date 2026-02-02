@@ -1,15 +1,14 @@
-# See: https://opendata.blender.org/
+FROM nvidia/cuda:11.4.3-cudnn8-devel-ubuntu20.04
 
-FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+ENV DEBIAN_FRONTEND=noninteractive
+ENV BLENDER_VERSION=3.6.0
+ENV DEVICE_TYPE=CUDA
 
 RUN apt-get update && apt-get install -y \
     wget xz-utils libgl1-mesa-glx libglib2.0-0 \
     libsm6 libxext6 libxi6 libxrender1 libxxf86vm1 libxkbcommon0 \
     ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
-
-ENV BLENDER_VERSION=4.5.0
-ENV DEVICE_TYPE=CUDA
 
 WORKDIR /app
 
