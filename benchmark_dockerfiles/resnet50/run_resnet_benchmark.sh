@@ -4,12 +4,12 @@ set -euo pipefail
 # Environment variables
 BATCH_SIZE="${BATCH_SIZE:-32}"
 NUM_GPUS="${NUM_GPUS:-1}"
-AMP="${AMP:-1}"
 MODE_TRAINING="${MODE_TRAINING:-1}"  # 1 = training, 0 = inference
 
 # Set mode-specific flag
 if [ "$MODE_TRAINING" = "1" ]; then
     MODE_FLAG="--training-only"
+
 else
     MODE_FLAG="--evaluate"
 fi
@@ -26,6 +26,5 @@ torchrun \
     --data-backend synthetic \
     "$MODE_FLAG" \
     -b "$BATCH_SIZE" \
-    $( [ "$AMP" = "1" ] && echo "--amp" ) \
     --raport-file /results/result.txt \
     /workspace/dataset
