@@ -21,7 +21,7 @@ RUN git clone https://github.com/ggml-org/llama.cpp.git .
 # Compile llama.cpp with Kepler-specific flags
 RUN cmake -B build \
   -DGGML_CUDA=ON \
-  -DCMAKE_CUDA_ARCHITECTURES="37" \
+  -DCMAKE_CUDA_ARCHITECTURES="37;70" \
   -DGGML_CUDA_GRAPHS=OFF \
   && cmake --build build -j$(nproc)
 
