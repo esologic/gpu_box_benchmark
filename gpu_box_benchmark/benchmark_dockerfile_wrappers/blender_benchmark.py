@@ -109,7 +109,7 @@ def create_blender_benchmark_executor(  # pylin
                 "RUN_ENV",
                 " ".join(
                     [
-                        "--blender-version 4.5.0",
+                        "--blender-version 3.6.0",
                         "--verbosity 0",
                         "--json",
                         hardware_description,

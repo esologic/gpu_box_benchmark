@@ -1,3 +1,6 @@
+# There is a hard limitation with `ik_llama`, you need CUDA20 for compilation. Because older Tesla
+# cards cannot support this modern version, this benchmark is shelved for now.
+
 FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -35,7 +38,7 @@ RUN cmake -B build \
     -DCMAKE_BUILD_TYPE=Release \
     -DGGML_CUDA_NO_WMMA=ON \
     -DBUILD_SHARED_LIBS=ON \
-    -DCMAKE_CUDA_ARCHITECTURES="50;60;70" \
+    -DCMAKE_CUDA_ARCHITECTURES="60;70" \
     -DCMAKE_CXX_FLAGS="-mcmodel=large" \
     -DCMAKE_C_FLAGS="-mcmodel=large" \
     && cmake --build build -j$(nproc)
@@ -49,8 +52,17 @@ ENV HF_HUB_ENABLE_HF_TRANSFER=1
 
 WORKDIR /models
 
+# Qwen 2.5 1.5B
+RUN hf download Qwen/Qwen2.5-1.5B-Instruct-GGUF qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir .
+
+# Llama 3 8B Instruct
+RUN hf download bartowski/Meta-Llama-3-8B-Instruct-GGUF Meta-Llama-3-8B-Instruct-Q4_K_M.gguf --local-dir .
+
 # Qwen 1.5 MoE A2.7B
 RUN hf download tensorblock/Qwen1.5-MoE-A2.7B-Chat-GGUF Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf --local-dir .
+
+# OpenMistral MoE
+RUN hf download tensorblock/OpenMistral-MoE-GGUF OpenMistral-MoE-Q2_K.gguf --local-dir .
 
 # 4. Verification
 RUN du -sh /models/*.gguf

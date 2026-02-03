@@ -1,5 +1,10 @@
 """
 Code for running the llama-bench benchmarks in llama.cpp and parsing the output.
+
+There is also a WIP dockerfile for ik_llama as well. This project was abandoned because it's
+CUDA20 requirement is incompatible with many of the old Tesla Cards. As more important test are
+fundamentally incompatible with older hardware, we'll have to be able to have different suite modes
+but until then ik_llama isn't supported.
 """
 
 import json
@@ -9,7 +14,7 @@ from typing import NamedTuple, Optional, Tuple
 
 import pandas as pd
 
-from benchmark_dockerfiles import IK_LLAMA_BENCH_DOCKERFILE, LLAMA_BENCH_DOCKERFILE
+from benchmark_dockerfiles import LLAMA_BENCH_DOCKERFILE
 from gpu_box_benchmark import docker_wrapper
 from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
 from gpu_box_benchmark.docker_wrapper import ContainerOutputs
@@ -19,7 +24,6 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, Numerica
 LOGGER = logging.getLogger(__name__)
 
 _LLAMA_BENCH_VERSION = "0.1.0"
-_IK_LLAMA_BENCH_VERSION = "0.1.0"
 
 _NUM_TEST_TOKENS = 512
 
@@ -115,12 +119,6 @@ def create_llama_bench_executor(
     ):
         version = _LLAMA_BENCH_VERSION
         dockerfile_path = LLAMA_BENCH_DOCKERFILE
-    elif benchmark_name in (
-        BenchmarkName.ik_llama_bench_qwen_1_5_moe_chat_prompt,
-        BenchmarkName.ik_llama_bench_qwen_1_5_moe_chat_generation,
-    ):
-        version = _IK_LLAMA_BENCH_VERSION
-        dockerfile_path = IK_LLAMA_BENCH_DOCKERFILE
     else:
         return None
 
@@ -170,15 +168,6 @@ def create_llama_bench_executor(
             generation_tokens=_NUM_TEST_TOKENS,
         ),
     }
-
-    # These have the exact same parameters but will use a different dockerfile.
-    # The mistral models don't work with ik_llama.
-    name_to_parameters[BenchmarkName.ik_llama_bench_qwen_1_5_moe_chat_prompt] = name_to_parameters[
-        BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt
-    ]
-    name_to_parameters[BenchmarkName.ik_llama_bench_qwen_1_5_moe_chat_generation] = (
-        name_to_parameters[BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation]
-    )
 
     llama_bench_parameters: Optional[_LlamaBenchParams] = name_to_parameters.get(
         benchmark_name, None

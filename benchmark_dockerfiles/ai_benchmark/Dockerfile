@@ -1,7 +1,7 @@
 # See: https://ai-benchmark.com/
 # Good info can be found on their forum: https://ai-benchmark.net/index.php
 
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:11.4.3-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 

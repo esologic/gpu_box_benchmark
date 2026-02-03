@@ -24,5 +24,5 @@ benchmark = AIBenchmark(use_CPU=False, verbose_level=0)
 # Run full benchmark (training + inference)
 results = benchmark.run()
 
-# Output JSON to stdout
+# Write output (a float) directly to stdout so it can be read in by the docker monitor.
 print(results.ai_score)

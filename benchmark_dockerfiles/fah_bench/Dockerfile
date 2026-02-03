@@ -1,4 +1,7 @@
-FROM nvidia/cuda:11.4.3-cudnn8-devel-ubuntu20.04
+# See https://fahbench.github.io/details.html
+# Tested to work on K80 - V100
+
+FROM nvidia/cuda:11.4.3-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
