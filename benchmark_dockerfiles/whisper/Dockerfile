@@ -1,27 +1,18 @@
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+# Use 11.8: The latest CUDA version that still supports Tesla K80 (Kepler)
+FROM nvidia/cuda:11.4.3-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# System deps
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m pip install --upgrade pip
-
-# PyTorch with CUDA
-RUN pip install --no-cache-dir \
-    torch torchvision torchaudio \
-    --index-url https://download.pytorch.org/whl/cu121
-
-# Whisper
-RUN pip install --no-cache-dir openai-whisper
-
-# Build-Time download of the model to use.
+# Install Whisper and pre-download model
+RUN pip install --no-cache-dir torch==1.13.1 torchvision==0.14.1 openai-whisper
 RUN python3 -c "import whisper; whisper.load_model('medium', device='cpu')"
 
 WORKDIR /app
