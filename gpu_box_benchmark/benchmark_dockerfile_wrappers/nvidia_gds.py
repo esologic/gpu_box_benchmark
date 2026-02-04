@@ -16,6 +16,12 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, Numerica
 LOGGER = logging.getLogger(__name__)
 
 _GDSIO_BENCHMARK_VERSION = "0.1.0"
+"""
+# Version History
+
+## 0.2.0 - (2026-02-03)
+* First version 
+"""
 
 
 def _parse_throughput(container_outputs: ContainerOutputs) -> float:

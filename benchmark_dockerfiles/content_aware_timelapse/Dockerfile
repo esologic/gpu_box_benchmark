@@ -42,7 +42,7 @@ ENV POETRY_VIRTUALENVS_IN_PROJECT=true
 # Clone repo
 RUN git clone https://github.com/esologic/content_aware_timelapse.git /app/content_aware_timelapse \
     && cd /app/content_aware_timelapse \
-    && git checkout relax-deps
+    && git checkout v0.17.5
 
 WORKDIR /app/content_aware_timelapse
 

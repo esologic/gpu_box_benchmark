@@ -23,7 +23,17 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, Numerica
 
 LOGGER = logging.getLogger(__name__)
 
-_LLAMA_BENCH_VERSION = "0.1.0"
+_LLAMA_BENCH_VERSION = "0.2.0"
+"""
+# Version History
+
+## 0.2.0 - (2026-02-03)
+* Switched to base image w/CUDA 11.4.3 to support Kepler era cards.
+* Set of models is now: Qwen2.5 1.5B, Llama3 8B, Qwen1.5 MoE 7B, OpenMistral MoE. 
+
+## 0.1.0 - (2026-01-20)
+* First version 
+"""
 
 _NUM_TEST_TOKENS = 512
 

@@ -30,10 +30,10 @@ class BenchmarkName(str, Enum):
     The different benchmarks the user can choose from.
     """
 
-    resnet50_train_batch_1_amp = "resnet50_train_batch_1_amp"
-    resnet50_train_batch_64_amp = "resnet50_train_batch_64_amp"
-    resnet50_infer_batch_1_amp = "resnet50_infer_batch_1_amp"
-    resnet50_infer_batch_256_amp = "resnet50_infer_batch_256_amp"
+    resnet50_train_batch_1 = "resnet50_train_batch_1"
+    resnet50_train_batch_64 = "resnet50_train_batch_64"
+    resnet50_infer_batch_1 = "resnet50_infer_batch_1"
+    resnet50_infer_batch_256 = "resnet50_infer_batch_256"
 
     llama_bench_qwen_2_5_1_5b_instruct_prompt = "llama_bench_qwen_2_5_1_5b_instruct_prompt"
     llama_bench_qwen_2_5_1_5b_instruct_generation = "llama_bench_qwen_2_5_1_5b_instruct_generation"
@@ -70,10 +70,10 @@ class BenchmarkName(str, Enum):
 
 BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     # ResNet Benchmarks
-    BenchmarkName.resnet50_train_batch_1_amp: "ResNet50 Train B=1",
-    BenchmarkName.resnet50_train_batch_64_amp: "ResNet50 Train B=64",
-    BenchmarkName.resnet50_infer_batch_1_amp: "ResNet50 Infer B=1",
-    BenchmarkName.resnet50_infer_batch_256_amp: "ResNet50 Infer B=256",
+    BenchmarkName.resnet50_train_batch_1: "ResNet50 Train B=1",
+    BenchmarkName.resnet50_train_batch_64: "ResNet50 Train B=64",
+    BenchmarkName.resnet50_infer_batch_1: "ResNet50 Infer B=1",
+    BenchmarkName.resnet50_infer_batch_256: "ResNet50 Infer B=256",
     # Qwen 2.5 1.5B (Dense)
     BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: "llama.cpp Qwen2.5 1.5B Prompt",
     BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: "llama.cpp Qwen2.5 1.5B Gen",
@@ -106,15 +106,14 @@ EXTENDED_BENCHMARK_DOCUMENTS: Dict[BenchmarkFamily, str] = {
         "backend to run a workload on the GPU. The benchmark uses a synthetic data backend, so it "
         "isolates raw compute and framework performance without being limited by disk or "
         "data-loading I/O. t can be configured via environment variables to measure either "
-        "training or inference performance, with optional automatic mixed precision (AMP) enabled "
-        "to reflect modern GPU usage."
+        "training or inference performance."
     ),
     BenchmarkFamily.llama_bench: (
         "This benchmark uses the CUDA-enabled llama.cpp container to measure large language model "
         "inference performance on the GPU using the purpose-built llama-bench tool. The container "
         "downloads quantized GGUF models, ranging from a small 1.5B-parameter Qwen model to a "
         "standard 8B-parameter Llama 3 model, allowing performance testing across different VRAM "
-        "and compute requirements. There are also a few tests with the ik_llama fork."
+        "and compute requirements."
     ),
     BenchmarkFamily.blender_benchmark: (
         "This benchmark uses Blender’s official Open Data benchmark suite to measure GPU rendering "

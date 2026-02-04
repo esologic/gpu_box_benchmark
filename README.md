@@ -49,29 +49,25 @@ You can use the `explain-benchmarks` command to get the latest repo docs.
 
 ```
 $ python bench_cli.py explain-benchmarks
-Benchmark Family: resnet50, Tests: resnet50_train_batch_1_amp resnet50_train_batch_64_amp
-resnet50_infer_batch_1_amp resnet50_infer_batch_256_amp
+Benchmark Family: resnet50, Tests: resnet50_train_batch_1 resnet50_train_batch_64
+resnet50_infer_batch_1 resnet50_infer_batch_256
 
 From the NVidia Deep Learning Examples Repo, the ResNet50 benchmark uses the pytorch backend to run
 a workload on the GPU. The benchmark uses a synthetic data backend, so it isolates raw compute and
 framework performance without being limited by disk or data-loading I/O. t can be configured via
-environment variables to measure either training or inference performance, with optional automatic
-mixed precision (AMP) enabled to reflect modern GPU usage. 
+environment variables to measure either training or inference performance. 
 
 
 Benchmark Family: llama_bench, Tests: llama_bench_qwen_2_5_1_5b_instruct_prompt
 llama_bench_qwen_2_5_1_5b_instruct_generation llama_bench_meta_llama_3_8b_instruct_prompt
 llama_bench_meta_llama_3_8b_instruct_generation llama_bench_qwen_1_5_moe_chat_prompt
 llama_bench_qwen_1_5_moe_chat_generation llama_bench_open_mistral_moe_prompt
-llama_bench_open_mistral_moe_generation ik_llama_bench_meta_llama_3_8b_instruct_prompt
-ik_llama_bench_meta_llama_3_8b_instruct_generation ik_llama_bench_open_mistral_moe_prompt
-ik_llama_bench_open_mistral_moe_generation
+llama_bench_open_mistral_moe_generation
 
 This benchmark uses the CUDA-enabled llama.cpp container to measure large language model inference
 performance on the GPU using the purpose-built llama-bench tool. The container downloads quantized
 GGUF models, ranging from a small 1.5B-parameter Qwen model to a standard 8B-parameter Llama 3
-model, allowing performance testing across different VRAM and compute requirements. There are also a
-few tests with the ik_llama fork. 
+model, allowing performance testing across different VRAM and compute requirements. 
 
 
 Benchmark Family: blender_benchmark, Tests: blender_benchmark_monster_cpu

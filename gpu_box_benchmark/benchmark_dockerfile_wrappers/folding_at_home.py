@@ -15,7 +15,16 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, Numerica
 
 LOGGER = logging.getLogger(__name__)
 
-_FAH_BENCHMARK_VERSION = "0.1.0"
+_FAH_BENCHMARK_VERSION = "0.2.0"
+"""
+# Version History
+
+## 0.2.0 - (2026-02-03)
+* Switched to base image w/CUDA 11.4.3 to support Kepler era cards.
+
+## 0.1.0 - (2026-01-20)
+* First version 
+"""
 
 
 def _parse_final_score(container_outputs: ContainerOutputs) -> float:

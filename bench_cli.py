@@ -61,6 +61,9 @@ logging.basicConfig(
 LOGGER = logging.getLogger(__name__)
 
 _GPU_BOX_BENCHMARK_VERSION = "0.1.0"
+"""
+See top level `CHANGELOG.md` for version history of this format.
+"""
 
 
 class NamedExecutor(NamedTuple):
@@ -199,8 +202,6 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
 
     start_time = datetime.now()
 
-    click.echo(f"Docker Cleanup: {docker_cleanup}")
-
     if not test:
         test = tuple(test for test in BenchmarkName)
 
@@ -278,9 +279,14 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
 
     for named_executor in named_executors:
         if named_executor is not None:
-            LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
+            LOGGER.info(f"Executing benchmark:\t{named_executor.benchmark_name} ...")
             try:
-                results.append(named_executor.executor())
+                result = named_executor.executor()
+                results.append(result)
+                result_number: float = round(
+                    getattr(result.numerical_results, result.critical_result_key), 2
+                )
+                LOGGER.info(f"Result:\t\t\t{result_number} {result.unit}")
             except Exception as _e:  # pylint: disable=broad-except
                 LOGGER.exception(f"Benchmark: {named_executor.benchmark_name} failed!")
 

@@ -106,4 +106,4 @@ ENV/
 /benchmarks/results/
 
 # Host file is user specific.
-./ansible/hosts.yml
+ansible/hosts.yml

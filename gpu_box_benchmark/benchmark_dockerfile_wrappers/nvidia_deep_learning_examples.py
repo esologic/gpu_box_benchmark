@@ -20,7 +20,16 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, Numerica
 
 LOGGER = logging.getLogger(__name__)
 
-_RESNET50_BENCHMARK_VERSION = "0.1.0"
+_RESNET50_BENCHMARK_VERSION = "0.2.0"
+"""
+# Version History
+
+## 0.2.0 - (2026-02-03)
+* Switched to base image w/CUDA 11.4.3 to support Kepler era cards.
+
+## 0.1.0 - (2026-01-20)
+* First version 
+"""
 
 
 class _ResNet50Params(NamedTuple):
@@ -29,7 +38,6 @@ class _ResNet50Params(NamedTuple):
     """
 
     batch_size: int
-    amp_enabled: bool
 
     mode_training: bool
     """
@@ -75,17 +83,11 @@ def create_resnet50_executor(
     """
 
     name_to_parameters = {
-        BenchmarkName.resnet50_train_batch_1_amp: _ResNet50Params(
-            mode_training=True, batch_size=1, amp_enabled=True
-        ),
-        BenchmarkName.resnet50_train_batch_64_amp: _ResNet50Params(
-            mode_training=True, batch_size=64, amp_enabled=True
-        ),
-        BenchmarkName.resnet50_infer_batch_1_amp: _ResNet50Params(
-            mode_training=False, batch_size=1, amp_enabled=True
-        ),
-        BenchmarkName.resnet50_infer_batch_256_amp: _ResNet50Params(
-            mode_training=False, batch_size=256, amp_enabled=True
+        BenchmarkName.resnet50_train_batch_1: _ResNet50Params(mode_training=True, batch_size=1),
+        BenchmarkName.resnet50_train_batch_64: _ResNet50Params(mode_training=True, batch_size=64),
+        BenchmarkName.resnet50_infer_batch_1: _ResNet50Params(mode_training=False, batch_size=1),
+        BenchmarkName.resnet50_infer_batch_256: _ResNet50Params(
+            mode_training=False, batch_size=256
         ),
     }
 

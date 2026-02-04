@@ -15,6 +15,12 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, Numerica
 LOGGER = logging.getLogger(__name__)
 
 _HASHCAT_BENCHMARK_VERSION = "0.1.0"
+"""
+# Version History
+
+## 0.2.0 - (2026-02-03)
+* Initial introduction.
+"""
 
 
 def _parse_megahashes_per_second(container_outputs: ContainerOutputs) -> float:
