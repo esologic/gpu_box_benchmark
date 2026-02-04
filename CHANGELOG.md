@@ -10,6 +10,7 @@ Tracks changes of the codebase.
 * Adds `gdsio` benchmarking to measure how quickly data can be loaded from disk into VRAM.
 * Adds a `hashcat` SHA-256 benchmark as another non-AI point of comparison.
 * Adds ansible playbook to install known good GPU driver version, docker and nvidia-docker.
+* All benchmarks now support Kepler -> Volta GPUs.
 
 ### 0.4.0 - (2026-01-25)
 
