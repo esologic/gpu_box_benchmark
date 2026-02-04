@@ -30,7 +30,7 @@
   ],
   "results": [
     {
-      "name": "resnet50_train_batch_1_amp",
+      "name": "resnet50_train_batch_1",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -50,7 +50,7 @@
       }
     },
     {
-      "name": "resnet50_train_batch_64_amp",
+      "name": "resnet50_train_batch_64",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -70,7 +70,7 @@
       }
     },
     {
-      "name": "resnet50_infer_batch_1_amp",
+      "name": "resnet50_infer_batch_1",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -90,7 +90,7 @@
       }
     },
     {
-      "name": "resnet50_infer_batch_256_amp",
+      "name": "resnet50_infer_batch_256",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -107,86 +107,6 @@
         "forced_multi_gpu_numerical_mean": 99.34484667423979,
         "forced_multi_gpu_sum": 198.68969334847958,
         "native_multi_gpu_result": 199.70127367928316
-      }
-    },
-    {
-      "name": "llama_bench_tiny_model_prompt",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 332.3897,
-        "max_by_gpu_type": 332.3897,
-        "mean_by_gpu_type": 332.3897,
-        "theoretical_multi_gpu_mean": 332.3897,
-        "theoretical_multi_gpu_sum": 664.7794,
-        "forced_multi_gpu_numerical_mean": 331.1945,
-        "forced_multi_gpu_sum": 662.389,
-        "native_multi_gpu_result": 326.081
-      }
-    },
-    {
-      "name": "llama_bench_tiny_model_generation",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 5.411868999999999,
-        "max_by_gpu_type": 5.411868999999999,
-        "mean_by_gpu_type": 5.411868999999999,
-        "theoretical_multi_gpu_mean": 5.411868999999999,
-        "theoretical_multi_gpu_sum": 10.823737999999999,
-        "forced_multi_gpu_numerical_mean": 5.3920094999999995,
-        "forced_multi_gpu_sum": 10.784018999999999,
-        "native_multi_gpu_result": 5.174433
-      }
-    },
-    {
-      "name": "llama_bench_standard_model_prompt",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 66.89368,
-        "max_by_gpu_type": 66.89368,
-        "mean_by_gpu_type": 66.89368,
-        "theoretical_multi_gpu_mean": 66.89368,
-        "theoretical_multi_gpu_sum": 133.78736,
-        "forced_multi_gpu_numerical_mean": 66.81400500000001,
-        "forced_multi_gpu_sum": 133.62801000000002,
-        "native_multi_gpu_result": 66.15557999999999
-      }
-    },
-    {
-      "name": "llama_bench_standard_model_generation",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 5.408534,
-        "max_by_gpu_type": 5.408534,
-        "mean_by_gpu_type": 5.408534,
-        "theoretical_multi_gpu_mean": 5.408534,
-        "theoretical_multi_gpu_sum": 10.817068,
-        "forced_multi_gpu_numerical_mean": 5.3869255,
-        "forced_multi_gpu_sum": 10.773851,
-        "native_multi_gpu_result": 5.244003
       }
     },
     {

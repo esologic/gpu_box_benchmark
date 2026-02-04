@@ -46,7 +46,7 @@
   ],
   "results": [
     {
-      "name": "resnet50_train_batch_1_amp",
+      "name": "resnet50_train_batch_1",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -66,7 +66,7 @@
       }
     },
     {
-      "name": "resnet50_train_batch_64_amp",
+      "name": "resnet50_train_batch_64",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -86,7 +86,7 @@
       }
     },
     {
-      "name": "resnet50_infer_batch_1_amp",
+      "name": "resnet50_infer_batch_1",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -106,7 +106,7 @@
       }
     },
     {
-      "name": "resnet50_infer_batch_256_amp",
+      "name": "resnet50_infer_batch_256",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -123,86 +123,6 @@
         "forced_multi_gpu_numerical_mean": 1222.7817117071975,
         "forced_multi_gpu_sum": 4891.12684682879,
         "native_multi_gpu_result": 400.10579966386774
-      }
-    },
-    {
-      "name": "llama_bench_tiny_model_prompt",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 2538.35,
-        "max_by_gpu_type": 9833.474,
-        "mean_by_gpu_type": 6185.912,
-        "theoretical_multi_gpu_mean": 4362.131,
-        "theoretical_multi_gpu_sum": 17448.524,
-        "forced_multi_gpu_numerical_mean": 4331.439249999999,
-        "forced_multi_gpu_sum": 17325.756999999998,
-        "native_multi_gpu_result": 3070.193
-      }
-    },
-    {
-      "name": "llama_bench_tiny_model_generation",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 35.99447,
-        "max_by_gpu_type": 106.3344,
-        "mean_by_gpu_type": 71.164435,
-        "theoretical_multi_gpu_mean": 53.5794525,
-        "theoretical_multi_gpu_sum": 214.31781,
-        "forced_multi_gpu_numerical_mean": 47.001898,
-        "forced_multi_gpu_sum": 188.007592,
-        "native_multi_gpu_result": 19.797629999999998
-      }
-    },
-    {
-      "name": "llama_bench_standard_model_prompt",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 654.0367,
-        "max_by_gpu_type": 2937.6,
-        "mean_by_gpu_type": 1795.81835,
-        "theoretical_multi_gpu_mean": 1224.9275249999998,
-        "theoretical_multi_gpu_sum": 4899.710099999999,
-        "forced_multi_gpu_numerical_mean": 1131.015975,
-        "forced_multi_gpu_sum": 4524.0639,
-        "native_multi_gpu_result": 418.7112
-      }
-    },
-    {
-      "name": "llama_bench_standard_model_generation",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 35.566230000000004,
-        "max_by_gpu_type": 106.25930000000001,
-        "mean_by_gpu_type": 70.91276500000001,
-        "theoretical_multi_gpu_mean": 53.23949750000001,
-        "theoretical_multi_gpu_sum": 212.95799000000005,
-        "forced_multi_gpu_numerical_mean": 46.50708074999999,
-        "forced_multi_gpu_sum": 186.02832299999997,
-        "native_multi_gpu_result": 12.746039999999999
       }
     },
     {

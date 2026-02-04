@@ -30,7 +30,7 @@
   ],
   "results": [
     {
-      "name": "resnet50_train_batch_1_amp",
+      "name": "resnet50_train_batch_1",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -50,7 +50,7 @@
       }
     },
     {
-      "name": "resnet50_train_batch_64_amp",
+      "name": "resnet50_train_batch_64",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -70,7 +70,7 @@
       }
     },
     {
-      "name": "resnet50_infer_batch_1_amp",
+      "name": "resnet50_infer_batch_1",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -90,7 +90,7 @@
       }
     },
     {
-      "name": "resnet50_infer_batch_256_amp",
+      "name": "resnet50_infer_batch_256",
       "benchmark_version": "0.1.0",
       "override_parameters": {},
       "larger_better": true,
@@ -107,86 +107,6 @@
         "forced_multi_gpu_numerical_mean": 99.45598377318967,
         "forced_multi_gpu_sum": 198.91196754637934,
         "native_multi_gpu_result": 200.2925825946134
-      }
-    },
-    {
-      "name": "llama_bench_tiny_model_prompt",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 332.3437,
-        "max_by_gpu_type": 332.3437,
-        "mean_by_gpu_type": 332.3437,
-        "theoretical_multi_gpu_mean": 332.3437,
-        "theoretical_multi_gpu_sum": 664.6874,
-        "forced_multi_gpu_numerical_mean": 331.65965000000006,
-        "forced_multi_gpu_sum": 663.3193000000001,
-        "native_multi_gpu_result": 325.2058
-      }
-    },
-    {
-      "name": "llama_bench_tiny_model_generation",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 5.413607000000001,
-        "max_by_gpu_type": 5.413607000000001,
-        "mean_by_gpu_type": 5.413607000000001,
-        "theoretical_multi_gpu_mean": 5.413607000000001,
-        "theoretical_multi_gpu_sum": 10.827214000000001,
-        "forced_multi_gpu_numerical_mean": 5.395058000000001,
-        "forced_multi_gpu_sum": 10.790116000000001,
-        "native_multi_gpu_result": 5.2224260000000005
-      }
-    },
-    {
-      "name": "llama_bench_standard_model_prompt",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 66.93812,
-        "max_by_gpu_type": 66.93812,
-        "mean_by_gpu_type": 66.93812,
-        "theoretical_multi_gpu_mean": 66.93812,
-        "theoretical_multi_gpu_sum": 133.87624,
-        "forced_multi_gpu_numerical_mean": 66.83093500000001,
-        "forced_multi_gpu_sum": 133.66187000000002,
-        "native_multi_gpu_result": 66.14144000000002
-      }
-    },
-    {
-      "name": "llama_bench_standard_model_generation",
-      "benchmark_version": "0.1.0",
-      "override_parameters": {},
-      "larger_better": true,
-      "multi_gpu_native": true,
-      "verbose_unit": "Tokens / Second",
-      "unit": "toks/s",
-      "critical_result_key": "forced_multi_gpu_sum",
-      "numerical_results": {
-        "min_by_gpu_type": 5.420492,
-        "max_by_gpu_type": 5.420492,
-        "mean_by_gpu_type": 5.420492,
-        "theoretical_multi_gpu_mean": 5.420492,
-        "theoretical_multi_gpu_sum": 10.840984,
-        "forced_multi_gpu_numerical_mean": 5.4034055,
-        "forced_multi_gpu_sum": 10.806811,
-        "native_multi_gpu_result": 5.213929
       }
     },
     {
