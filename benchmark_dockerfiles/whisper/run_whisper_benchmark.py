@@ -2,7 +2,6 @@ import time
 from pathlib import Path
 
 import whisper
-import whisper.audio as wa  # for model constants
 
 AUDIO_PATH = Path("/app/audio/input.ogg")
 
@@ -39,5 +38,5 @@ def main() -> None:
     print(frames_per_second)
 
 
-if __name__ == "__main__":
+if __mname__ == "__main__":
     main()

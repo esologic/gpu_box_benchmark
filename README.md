@@ -61,8 +61,7 @@ environment variables to measure either training or inference performance.
 Benchmark Family: llama_bench, Tests: llama_bench_qwen_2_5_1_5b_instruct_prompt
 llama_bench_qwen_2_5_1_5b_instruct_generation llama_bench_meta_llama_3_8b_instruct_prompt
 llama_bench_meta_llama_3_8b_instruct_generation llama_bench_qwen_1_5_moe_chat_prompt
-llama_bench_qwen_1_5_moe_chat_generation llama_bench_open_mistral_moe_prompt
-llama_bench_open_mistral_moe_generation
+llama_bench_qwen_1_5_moe_chat_generation
 
 This benchmark uses the CUDA-enabled llama.cpp container to measure large language model inference
 performance on the GPU using the purpose-built llama-bench tool. The container downloads quantized
