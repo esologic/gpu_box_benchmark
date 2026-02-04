@@ -46,9 +46,6 @@ class BenchmarkName(str, Enum):
     llama_bench_qwen_1_5_moe_chat_prompt = "llama_bench_qwen_1_5_moe_chat_prompt"
     llama_bench_qwen_1_5_moe_chat_generation = "llama_bench_qwen_1_5_moe_chat_generation"
 
-    llama_bench_open_mistral_moe_prompt = "llama_bench_open_mistral_moe_prompt"
-    llama_bench_open_mistral_moe_generation = "llama_bench_open_mistral_moe_generation"
-
     blender_benchmark_monster_cpu = "blender_benchmark_monster_cpu"
     blender_benchmark_monster_gpu = "blender_benchmark_monster_gpu"
 
@@ -83,9 +80,6 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     # Qwen 1.5 MoE (Sparse)
     BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: "llama.cpp Qwen1.5 MoE Prompt",
     BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: "llama.cpp Qwen1.5 MoE Gen",
-    # OpenMistral MoE (Sparse)
-    BenchmarkName.llama_bench_open_mistral_moe_prompt: "llama.cpp Mistral MoE Prompt",
-    BenchmarkName.llama_bench_open_mistral_moe_generation: "llama.cpp Mistral MoE Gen",
     # Hardware & Other Benchmarks
     BenchmarkName.blender_benchmark_monster_cpu: "Blender CPU",
     BenchmarkName.blender_benchmark_monster_gpu: "Blender GPU",

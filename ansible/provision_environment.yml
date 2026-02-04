@@ -3,7 +3,7 @@
   hosts: all
   become: true
   vars:
-    nvidia_driver_version: "470"
+    nvidia_driver_version: "470"  # Compatible with K80 -> V100
     nvidia_toolkit_version: "1.18.1-1"
 
   tasks:
@@ -11,13 +11,11 @@
       apt:
         update_cache: yes
 
-    ### 1. Install NVIDIA Driver
     - name: Install NVIDIA Driver
       apt:
         name: "nvidia-driver-{{ nvidia_driver_version }}"
         state: present
 
-    ### 2. Install Docker
     - name: Download Docker installation script
       get_url:
         url: https://get.docker.com
@@ -29,7 +27,6 @@
       args:
         creates: /usr/bin/docker
 
-    ### 3. Install NVIDIA Docker Toolkit
     - name: Install dependencies for Toolkit
       apt:
         name:

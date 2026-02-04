@@ -29,7 +29,7 @@ _LLAMA_BENCH_VERSION = "0.2.0"
 
 ## 0.2.0 - (2026-02-03)
 * Switched to base image w/CUDA 11.4.3 to support Kepler era cards.
-* Set of models is now: Qwen2.5 1.5B, Llama3 8B, Qwen1.5 MoE 7B, OpenMistral MoE. 
+* Set of models is now: Qwen2.5 1.5B, Llama3 8B, Qwen1.5 MoE 7B. 
 
 ## 0.1.0 - (2026-01-20)
 * First version 
@@ -124,8 +124,6 @@ def create_llama_bench_executor(
         BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation,
         BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt,
         BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation,
-        BenchmarkName.llama_bench_open_mistral_moe_prompt,
-        BenchmarkName.llama_bench_open_mistral_moe_generation,
     ):
         version = _LLAMA_BENCH_VERSION
         dockerfile_path = LLAMA_BENCH_DOCKERFILE
@@ -163,17 +161,6 @@ def create_llama_bench_executor(
         ),
         BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: _LlamaBenchParams(
             internal_model_path="/models/Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf",
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-        ),
-        # --- OpenMistral MoE (Sparse MoE) ---
-        BenchmarkName.llama_bench_open_mistral_moe_prompt: _LlamaBenchParams(
-            internal_model_path="/models/OpenMistral-MoE-Q2_K.gguf",
-            prompt_tokens=_NUM_TEST_TOKENS,
-            generation_tokens=0,
-        ),
-        BenchmarkName.llama_bench_open_mistral_moe_generation: _LlamaBenchParams(
-            internal_model_path="/models/OpenMistral-MoE-Q2_K.gguf",
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
         ),

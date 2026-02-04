@@ -4,13 +4,12 @@
 
 Tracks changes of the codebase. 
 
-### 0.5.0 - (2026-01-28)
+### 0.5.0 - (2026-02-03)
 
 * Expands `llama.cpp` benchmarks to include two MoE models.
-* Adds `ik_llama` benchmarks, a more performant fork of `llama.cpp` that reportedly does well
-on Pascal GPUs.
-* Adds gdsio benchmarking to measure how quickly data can be loaded from disk into VRAM.
-* Adds a hashcat SHA-256 benchmark as another non-AI point of comparison.
+* Adds `gdsio` benchmarking to measure how quickly data can be loaded from disk into VRAM.
+* Adds a `hashcat` SHA-256 benchmark as another non-AI point of comparison.
+* Adds ansible playbook to install known good GPU driver version, docker and nvidia-docker.
 
 ### 0.4.0 - (2026-01-25)
 

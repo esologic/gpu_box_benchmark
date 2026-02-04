@@ -21,6 +21,7 @@ _CONTENT_AWARE_TIMELAPSE_BENCHMARK_VERSION = "0.2.0"
 
 ## 0.2.0 - (2026-02-03)
 * Switched to base image w/CUDA 11.4.3 to support Kepler era cards.
+* Bumped underlying CAT version to v0.17.5
 
 ## 0.1.0 - (2026-01-20)
 * First version 

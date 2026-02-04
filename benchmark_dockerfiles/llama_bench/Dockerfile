@@ -51,11 +51,6 @@ RUN bash -c 'set -e; for i in 1 2 3 4 5; do \
   hf download tensorblock/Qwen1.5-MoE-A2.7B-Chat-GGUF Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf --local-dir . && break || sleep 10; \
 done'
 
-# OpenMistral MoE
-RUN bash -c 'set -e; for i in 1 2 3 4 5; do \
-  hf download tensorblock/OpenMistral-MoE-GGUF OpenMistral-MoE-Q2_K.gguf --local-dir . && break || sleep 10; \
-done'
-
 # Verification of downloads.
 RUN du -sh /models/*.gguf
 
