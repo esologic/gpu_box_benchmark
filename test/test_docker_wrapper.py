@@ -20,7 +20,8 @@ def test_benchmark_dockerfile_small() -> None:
 
     result = docker_wrapper.benchmark_dockerfile(
         dockerfile_path=HELLO_WORLD_DOCKERFILE_PATH,
-        tag_prefix="hello_world_test",
+        benchmark_name="hello_world_test",
+        benchmark_version="1.0.0",
         gpus=gpus,
         create_runtime_env_vars=lambda runtime_gpus: [],
         outputs_to_result=lambda container_outputs: float(

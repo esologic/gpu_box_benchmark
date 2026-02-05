@@ -104,3 +104,6 @@ ENV/
 # pycharm
 .idea/
 /benchmarks/results/
+
+# Host file is user specific.
+ansible/hosts.yml

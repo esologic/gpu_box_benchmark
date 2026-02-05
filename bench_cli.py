@@ -18,8 +18,10 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     blender_benchmark,
     content_aware_timelapse,
     folding_at_home,
+    hashcat,
     llama_bench,
     nvidia_deep_learning_examples,
+    nvidia_gds,
     whisper,
 )
 from gpu_box_benchmark.benchmark_jobs import (
@@ -59,6 +61,9 @@ logging.basicConfig(
 LOGGER = logging.getLogger(__name__)
 
 _GPU_BOX_BENCHMARK_VERSION = "0.1.0"
+"""
+See top level `CHANGELOG.md` for version history of this format.
+"""
 
 
 class NamedExecutor(NamedTuple):
@@ -162,14 +167,13 @@ def cli() -> None:
 )
 @run_options()
 @click.option(
-    "--no-docker-cleanup",
+    "--docker-cleanup",
     type=click.BOOL,
     default=False,
-    is_flag=True,
     show_default=True,
     help=(
-        "If given, the post-benchmark docker cleanup step will be skipped. "
-        "Things will go faster run to run but disk space will leak."
+        "If given, images and containers will be removed after each use to avoid disk pressure. "
+        "Enabling this will make things slower but consume less disk."
     ),
 )
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
@@ -179,7 +183,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     output_parent: Path,
     title: str,
     description: str,
-    no_docker_cleanup: bool,
+    docker_cleanup: bool,
 ) -> None:
     """
     Run one or more benchmarks and records the results.
@@ -192,7 +196,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     :param output_parent: See click help for docs!
     :param title: See click help for docs!
     :param description: See click help for docs!
-    :param no_docker_cleanup: See click help for docs!
+    :param docker_cleanup: See click help for docs!
     :return: None
     """
 
@@ -231,25 +235,40 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         ai_benchmark.create_ai_benchmark_executor,
         whisper.create_whisper_executor,
         content_aware_timelapse.create_content_aware_timelapse_executor,
+        nvidia_gds.create_gdsio_executor,
+        hashcat.create_hashcat_executor,
     ]
+
+    def executor_for_test(requested_test: BenchmarkName) -> BenchmarkExecutor:
+        """
+        Look up the executor for the input test. Adds logging.
+        :param requested_test: From CLI.
+        :return: Executor for the test.
+        """
+        try:
+            return next(
+                filter(
+                    None,
+                    (
+                        creation_function(
+                            benchmark_name=requested_test,
+                            gpus=gpu,
+                            docker_cleanup=docker_cleanup,
+                        )
+                        for creation_function in creation_functions
+                    ),
+                ),
+            )
+        except StopIteration as lookup_error:
+            raise StopIteration(
+                f"Couldn't find executor for test: {requested_test.value}"
+            ) from lookup_error
 
     try:
         named_executors: List[Optional[NamedExecutor]] = [
             NamedExecutor(
                 benchmark_name=requested_test,
-                executor=next(
-                    filter(
-                        None,
-                        (
-                            creation_function(
-                                benchmark_name=requested_test,
-                                gpus=gpu,
-                                docker_cleanup=not no_docker_cleanup,
-                            )
-                            for creation_function in creation_functions
-                        ),
-                    ),
-                ),
+                executor=executor_for_test(requested_test=requested_test),
             )
             for requested_test in test
         ]
@@ -261,7 +280,15 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     for named_executor in named_executors:
         if named_executor is not None:
             LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
-            results.append(named_executor.executor())
+            try:
+                result = named_executor.executor()
+                results.append(result)
+                result_number: float = round(
+                    getattr(result.numerical_results, result.critical_result_key), 2
+                )
+                LOGGER.info(f"Result: {result_number} {result.unit}")
+            except Exception as _e:  # pylint: disable=broad-except
+                LOGGER.exception(f"Benchmark: {named_executor.benchmark_name} failed!")
 
     # Tests are complete, write the output.
 
@@ -272,7 +299,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         description=description,
         gpu_box_benchmark_version=_GPU_BOX_BENCHMARK_VERSION,
         cpu=cpu,
-        total_memory_gb=total_memory_bytes / (1024**3),
+        total_memory_gb=round(total_memory_bytes / (1024**3), 3),
         gpus=gpu,
         results=results,
         start_time=start_time,

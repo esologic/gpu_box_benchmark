@@ -7,7 +7,7 @@ NUM_PROMPT_TOKENS="${NUM_PROMPT_TOKENS:-512}"
 NUM_GENERATION_TOKENS="${NUM_GENERATION_TOKENS:-128}"
 
 # Run llama-bench
-llama-bench \
+/app/llama-bench \
 --output json \
 --repetitions 10 \
 --model "${MODEL_PATH}" \
@@ -15,4 +15,4 @@ llama-bench \
 --n-gen "${NUM_GENERATION_TOKENS}" \
 --n-gpu-layers 99 \
 --flash-attn 1 \
---n-cpu-moe 0
+-sm graph

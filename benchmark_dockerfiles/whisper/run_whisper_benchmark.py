@@ -2,7 +2,6 @@ import time
 from pathlib import Path
 
 import whisper
-import whisper.audio as wa  # for model constants
 
 AUDIO_PATH = Path("/app/audio/input.ogg")
 

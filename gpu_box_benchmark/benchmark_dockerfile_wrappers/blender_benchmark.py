@@ -17,7 +17,16 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, Numerica
 
 LOGGER = logging.getLogger(__name__)
 
-_BLENDER_BENCHMARK_VERSION = "0.1.0"
+_BLENDER_BENCHMARK_VERSION = "0.2.0"
+"""
+# Version History
+
+## 0.2.0 - (2026-02-03)
+* Switched to base image w/CUDA 11.4.3 to support Kepler era cards.
+
+## 0.1.0 - (2026-01-20)
+* First version 
+"""
 
 
 def _parse_samples_per_minute(container_outputs: ContainerOutputs) -> float:
@@ -109,7 +118,7 @@ def create_blender_benchmark_executor(  # pylin
                 "RUN_ENV",
                 " ".join(
                     [
-                        "--blender-version 4.5.0",
+                        "--blender-version 3.6.0",
                         "--verbosity 0",
                         "--json",
                         hardware_description,
@@ -149,7 +158,8 @@ def create_blender_benchmark_executor(  # pylin
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
-                tag_prefix=benchmark_name.value,
+                benchmark_name=benchmark_name.value,
+                benchmark_version=_BLENDER_BENCHMARK_VERSION,
                 gpus=gpus_for_test,
                 create_runtime_env_vars=create_runtime_env_vars,
                 multi_gpu_native=multi_gpu_native,

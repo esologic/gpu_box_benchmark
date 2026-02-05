@@ -1,0 +1,79 @@
+---
+- name: Setup NVIDIA GPU Node with Docker
+  hosts: all
+  become: true
+  vars:
+    nvidia_driver_version: "470"  # Compatible with K80 -> V100
+    nvidia_toolkit_version: "1.18.1-1"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install NVIDIA Driver
+      apt:
+        name: "nvidia-driver-{{ nvidia_driver_version }}"
+        state: present
+
+    - name: Download Docker installation script
+      get_url:
+        url: https://get.docker.com
+        dest: /tmp/get-docker.sh
+        mode: '0755'
+
+    - name: Run Docker installation script
+      shell: /tmp/get-docker.sh
+      args:
+        creates: /usr/bin/docker
+
+    - name: Install dependencies for Toolkit
+      apt:
+        name:
+          - curl
+          - gnupg2
+        state: present
+
+    - name: Add NVIDIA Container Toolkit GPG key
+      get_url:
+        url: https://nvidia.github.io/libnvidia-container/gpgkey
+        dest: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+        mode: '0644'
+
+    - name: Import NVIDIA GPG key directly to trusted.gpg.d
+      shell: |
+        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+        gpg --dearmor -o /etc/apt/trusted.gpg.d/nvidia-container-toolkit.gpg
+      args:
+        creates: /etc/apt/trusted.gpg.d/nvidia-container-toolkit.gpg
+
+    - name: Create NVIDIA Container Toolkit repo list file
+      shell: |
+        curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+        tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+      args:
+        creates: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+    - name: Force update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install NVIDIA Container Toolkit components
+      apt:
+        name:
+          - "nvidia-container-toolkit={{ nvidia_toolkit_version }}"
+          - "nvidia-container-toolkit-base={{ nvidia_toolkit_version }}"
+          - "libnvidia-container-tools={{ nvidia_toolkit_version }}"
+          - "libnvidia-container1={{ nvidia_toolkit_version }}"
+        update_cache: yes
+        state: present
+
+    - name: Configure NVIDIA Runtime for Docker
+      command: nvidia-ctk runtime configure --runtime=docker
+      register: config_result
+      changed_when: "'Configuring' in config_result.stdout"
+
+    - name: Restart Docker to apply changes
+      systemd:
+        name: docker
+        state: restarted

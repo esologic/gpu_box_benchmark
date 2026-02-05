@@ -1,29 +1,29 @@
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+# See https://fahbench.github.io/details.html
+# Tested to work on K80 - V100
 
-ARG SESSION_ID=fallback
-
-LABEL gpu_box_benchmark_session=$SESSION_ID
+FROM nvidia/cuda:11.4.3-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install dependencies and the ICD loader
 RUN apt-get update && apt-get install -y \
-    clinfo \
+    ocl-icd-libopencl1 \
     ocl-icd-opencl-dev \
     build-essential \
-    libnvidia-compute-550 \
-    clinfo \
     cmake \
     git \
     fftw3-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Manually configure the NVIDIA OpenCL vendor file
+# This is crucial for the GPU to be recognized in older environments
+RUN mkdir -p /etc/OpenCL/vendors && \
+    echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd
+
 WORKDIR /opt
 
-RUN git clone https://github.com/fahbench/fahbench.git
-
-WORKDIR /opt/fahbench
-
-RUN git submodule update --init --recursive
+# Clone FAHBench
+RUN git clone --recursive https://github.com/fahbench/fahbench.git /opt/fahbench
 
 RUN mkdir build
 WORKDIR /opt/fahbench/build
@@ -36,12 +36,8 @@ RUN cmake .. \
 RUN make -j$(nproc)
 RUN make install
 
-# Copy the wrapper script
-COPY run_fah_bench.sh /usr/local/bin/run_fah_bench.sh
-RUN chmod +x /usr/local/bin/run_fah_bench.sh
+WORKDIR /app
+COPY run_fah_bench.sh /app/run_fah_bench.sh
+RUN chmod +x /app/run_fah_bench.sh
 
-# Default working dir
-WORKDIR /opt/fahbench
-
-# Set the entrypoint to the script
-ENTRYPOINT ["/usr/local/bin/run_fah_bench.sh"]
+ENTRYPOINT ["/app/run_fah_bench.sh"]

@@ -1,16 +1,12 @@
 # Base image with CUDA + cuDNN
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
-
-ARG SESSION_ID=fallback
-
-LABEL gpu_box_benchmark_session=$SESSION_ID
+FROM nvidia/cuda:11.4.3-devel-ubuntu20.04
 
 # Install Python, pip, git
 RUN apt-get update && apt-get install -y python3-pip git
 RUN pip install --upgrade pip
 
 # Install PyTorch + torchvision (CUDA 11.8)
-RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+RUN pip install torch==1.13.1 torchvision==0.14.1
 
 # Clone NVIDIA DeepLearningExamples
 RUN git clone https://github.com/NVIDIA/DeepLearningExamples.git /workspace/DeepLearningExamples

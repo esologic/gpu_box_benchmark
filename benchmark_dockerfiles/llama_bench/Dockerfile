@@ -1,26 +1,58 @@
-# See:
-# * https://github.com/ggml-org/llama.cpp/blob/master/docs/docker.md
-# * https://github.com/ggml-org/llama.cpp/blob/master/tools/llama-bench/README.md
+FROM nvidia/cuda:11.4.3-devel-ubuntu20.04
 
-FROM ghcr.io/ggml-org/llama.cpp:full-cuda
+ENV DEBIAN_FRONTEND=noninteractive
 
-ARG SESSION_ID=fallback
+# 1. Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    python3-pip \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-LABEL gpu_box_benchmark_session=$SESSION_ID
+RUN curl -fsSL https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor -o /usr/share/keyrings/kitware.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/kitware.gpg] https://apt.kitware.com/ubuntu/ focal main" > /etc/apt/sources.list.d/kitware.list && \
+    apt-get update && apt-get install -y cmake && rm -rf /var/lib/apt/lists/*
 
-# Install curl
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+RUN git clone https://github.com/ggml-org/llama.cpp.git .
 
+# Compile llama.cpp with Kepler-specific flags
+RUN cmake -B build \
+  -DGGML_CUDA=ON \
+  -DCMAKE_CUDA_ARCHITECTURES="35;37;50;52;60;61;70" \
+  -DGGML_CUDA_GRAPHS=OFF \
+  && cmake --build build -j$(nproc)
+
+# Install binaries and library to system path
+RUN cp build/bin/* /usr/local/bin/ && \
+    cp build/bin/*.so* /usr/local/lib/ || true
+
+# Install Python tools
+RUN pip install --no-cache-dir -U huggingface_hub hf_transfer
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
+
+# Download Models
 WORKDIR /models
 
-# Qwen 2.5 1.5B (Requires ~1GB VRAM)
-RUN curl -L -o tiny_model.gguf \
-    "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf?download=true"
+# Qwen 2.5 1.5B
+RUN bash -c 'set -e; for i in 1 2 3 4 5; do \
+  hf download Qwen/Qwen2.5-1.5B-Instruct-GGUF qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir . && break || sleep 10; \
+done'
 
-# Llama 3 8B Instruct (Requires ~5GB VRAM)
-# This is the standard benchmark size.
-RUN curl -L -o standard_model.gguf \
-    "https://huggingface.co/bartowski/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf?download=true"
+# Llama 3 8B Instruct
+RUN bash -c 'set -e; for i in 1 2 3 4 5; do \
+  hf download bartowski/Meta-Llama-3-8B-Instruct-GGUF Meta-Llama-3-8B-Instruct-Q4_K_M.gguf --local-dir . && break || sleep 10; \
+done'
+
+# Qwen 1.5 MoE A2.7B
+RUN bash -c 'set -e; for i in 1 2 3 4 5; do \
+  hf download tensorblock/Qwen1.5-MoE-A2.7B-Chat-GGUF Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf --local-dir . && break || sleep 10; \
+done'
+
+# Verification of downloads.
+RUN du -sh /models/*.gguf
 
 WORKDIR /app
 

@@ -45,23 +45,25 @@ including a NAS.
 
 ## Benchmarks
 
+### Supported Tests
+
 You can use the `explain-benchmarks` command to get the latest repo docs.
 
 ```
 $ python bench_cli.py explain-benchmarks
-Benchmark Family: resnet50, Tests: resnet50_train_batch_1_amp resnet50_train_batch_64_amp
-resnet50_infer_batch_1_amp resnet50_infer_batch_256_amp
+Benchmark Family: resnet50, Tests: resnet50_train_batch_1 resnet50_train_batch_64
+resnet50_infer_batch_1 resnet50_infer_batch_256
 
 From the NVidia Deep Learning Examples Repo, the ResNet50 benchmark uses the pytorch backend to run
 a workload on the GPU. The benchmark uses a synthetic data backend, so it isolates raw compute and
 framework performance without being limited by disk or data-loading I/O. t can be configured via
-environment variables to measure either training or inference performance, with optional automatic
-mixed precision (AMP) enabled to reflect modern GPU usage. 
+environment variables to measure either training or inference performance. 
 
 
-Benchmark Family: llama_bench, Tests: llama_bench_tiny_model_prompt
-llama_bench_tiny_model_generation llama_bench_standard_model_prompt
-llama_bench_standard_model_generation
+Benchmark Family: llama_bench, Tests: llama_bench_qwen_2_5_1_5b_instruct_prompt
+llama_bench_qwen_2_5_1_5b_instruct_generation llama_bench_meta_llama_3_8b_instruct_prompt
+llama_bench_meta_llama_3_8b_instruct_generation llama_bench_qwen_1_5_moe_chat_prompt
+llama_bench_qwen_1_5_moe_chat_generation
 
 This benchmark uses the CUDA-enabled llama.cpp container to measure large language model inference
 performance on the GPU using the purpose-built llama-bench tool. The container downloads quantized
@@ -114,7 +116,37 @@ Uses benchmark mode in content aware timelapse to measure throughput of a GPU or
 through a ViT model. Has both a fused (score) and slower unused (attention) modes. This series of
 benchmarks is very relevant to the author if this repo as it is why the development is happening in
 the first place. 
+
+
+Benchmark Family: gdsio, Tests: gdsio_type_0 gdsio_type_2
+
+This benchmark uses NVIDIA’s gdsio utility to measure the raw data transfer throughput between
+storage and GPU memory. By utilizing NVIDIA GPUDirect Storage (GDS) tools in compatibility mode, it
+simulates the heavy I/O workload of loading large model weights from disk into VRAM or offloading
+KV-caches. Overall, this test isolates the storage-to-GPU pipeline, providing a critical metric for
+understanding model-load latencies and multi-GPU data orchestration performance. 
+
+
+Benchmark Family: hashcat, Tests: hashcat_sha256
+
+This benchmark uses Hashcat’s built-in benchmark mode to measure raw cryptographic hashing
+throughput on the GPU. It runs a selected fast, unsalted hash algorithm (such as SHA-256) in a tight
+compute loop, providing a synthetic but highly GPU-bound workload that closely reflects the
+arithmetic intensity of proof-of-work style hashing. 
 ```
+
+### Range of GPUs
+
+Currently, NVidia GPUs from [Kepler](https://en.wikipedia.org/wiki/Kepler_(microarchitecture)) to
+[Volta](https://en.wikipedia.org/wiki/Volta_(microarchitecture)) are known to work with this 
+benchmark suite. These cards are very available and inexpensive and part of this project's aim 
+is to find modern use cases for these older cards.
+
+Because of this goal, newer GPUs may be handicapped by using CUDA, driver versions compatible with
+older GPUS.
+
+In the future, new tests will be added to get the most out of newer cards as the become more
+available, but these tests will have different names to maintain compatibility. 
 
 ## Getting Started
 
