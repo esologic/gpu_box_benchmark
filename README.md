@@ -45,6 +45,8 @@ including a NAS.
 
 ## Benchmarks
 
+### Supported Tests
+
 You can use the `explain-benchmarks` command to get the latest repo docs.
 
 ```
@@ -132,6 +134,19 @@ throughput on the GPU. It runs a selected fast, unsalted hash algorithm (such as
 compute loop, providing a synthetic but highly GPU-bound workload that closely reflects the
 arithmetic intensity of proof-of-work style hashing. 
 ```
+
+### Range of GPUs
+
+Currently, NVidia GPUs from [Kepler](https://en.wikipedia.org/wiki/Kepler_(microarchitecture)) to
+[Volta](https://en.wikipedia.org/wiki/Volta_(microarchitecture)) are known to work with this 
+benchmark suite. These cards are very available and inexpensive and part of this project's aim 
+is to find modern use cases for these older cards.
+
+Because of this goal, newer GPUs may be handicapped by using CUDA, driver versions compatible with
+older GPUS.
+
+In the future, new tests will be added to get the most out of newer cards as the become more
+available, but these tests will have different names to maintain compatibility. 
 
 ## Getting Started
 

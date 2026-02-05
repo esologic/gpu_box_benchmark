@@ -279,14 +279,14 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
 
     for named_executor in named_executors:
         if named_executor is not None:
-            LOGGER.info(f"Executing benchmark:\t{named_executor.benchmark_name} ...")
+            LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
             try:
                 result = named_executor.executor()
                 results.append(result)
                 result_number: float = round(
                     getattr(result.numerical_results, result.critical_result_key), 2
                 )
-                LOGGER.info(f"Result:\t\t\t{result_number} {result.unit}")
+                LOGGER.info(f"Result: {result_number} {result.unit}")
             except Exception as _e:  # pylint: disable=broad-except
                 LOGGER.exception(f"Benchmark: {named_executor.benchmark_name} failed!")
 
@@ -299,7 +299,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         description=description,
         gpu_box_benchmark_version=_GPU_BOX_BENCHMARK_VERSION,
         cpu=cpu,
-        total_memory_gb=total_memory_bytes / (1024**3),
+        total_memory_gb=round(total_memory_bytes / (1024**3), 3),
         gpus=gpu,
         results=results,
         start_time=start_time,

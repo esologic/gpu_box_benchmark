@@ -38,5 +38,5 @@ def main() -> None:
     print(frames_per_second)
 
 
-if __mname__ == "__main__":
+if __name__ == "__main__":
     main()
