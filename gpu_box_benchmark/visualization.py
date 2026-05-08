@@ -14,13 +14,14 @@ from gpu_box_benchmark.benchmark_jobs import BENCHMARK_TO_PRETTY, BenchmarkName
 from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, SystemEvaluation
 
 
-def _benchmark_column_name(result: BenchmarkResult) -> str:
+def _benchmark_column_name(result: BenchmarkResult, flatten_version: bool) -> str:
     """
     Formats the `BenchmarkResult.name` column name form.
     :param result: To read.
+    :param flatten_version: Whether to include the version number.
     :return: Column name as a string.
     """
-    return f"{result.name}@{result.benchmark_version}"
+    return result.name if flatten_version else f"{result.name}@{result.benchmark_version}"
 
 
 def _extract_critical_value(result: BenchmarkResult) -> float | None:
@@ -74,12 +75,15 @@ class _DFSpecs(NamedTuple):
     specs: dict[str, BenchmarkResult]
 
 
-def _system_evaluations_to_dataframe(evaluations: Tuple[SystemEvaluation, ...]) -> _DFSpecs:
+def _system_evaluations_to_dataframe(
+    evaluations: Tuple[SystemEvaluation, ...], flatten_versions: bool
+) -> _DFSpecs:
     """
     Convert a list of SystemEvaluation objects into a wide dataframe.
 
     :param evaluations: To convert.
-    :return:
+    :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
+    :return: A tuple containing
         - DataFrame: index = system title, columns = benchmarks
         - Dict mapping column name -> representative BenchmarkResult (spec)
     """
@@ -90,7 +94,7 @@ def _system_evaluations_to_dataframe(evaluations: Tuple[SystemEvaluation, ...]) 
         system_row: dict[str, float] = {}
 
         for result in evaluation.results:
-            column = _benchmark_column_name(result)
+            column = _benchmark_column_name(result, flatten_version=flatten_versions)
 
             # Record spec once (first occurrence wins)
             specs.setdefault(column, result)
@@ -113,8 +117,9 @@ def _system_evaluations_to_dataframe(evaluations: Tuple[SystemEvaluation, ...]) 
     return _DFSpecs(df=df, specs={col: specs[col] for col in df.columns})
 
 
-def create_comparison_visualization(  # pylint: disable=too-many-locals
+def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many-positional-arguments
     evaluations: Tuple[SystemEvaluation, ...],
+    flatten_versions: bool,
     output_path: Path,
     title: str,
     n_cols: int = 4,
@@ -124,6 +129,7 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals
     Create a comparison visualization with one subplot per benchmark.
 
     :param evaluations: System evaluations to compare.
+    :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
     :param output_path: Where to write the resulting image.
     :param n_cols: Number of columns to show.
     :param max_bar_label_length: For the x-axis bars, this is the max number of characters to show
@@ -131,7 +137,7 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals
     :param title: Overall figure title.
     """
 
-    df_specs = _system_evaluations_to_dataframe(evaluations)
+    df_specs = _system_evaluations_to_dataframe(evaluations, flatten_versions=flatten_versions)
 
     if df_specs.df.empty:
         raise ValueError("No benchmark data available to plot")

@@ -4,6 +4,11 @@
 
 Tracks changes of the codebase. 
 
+### 0.6.0 - (2026-05-07)
+
+* Bumped a few underlying test versions to be able to support Tesla T40.
+* Added a CLI flag to be able to optionally flatten down visualization version.
+
 ### 0.5.0 - (2026-02-03)
 
 * Expands `llama.cpp` benchmarks to include two MoE models.
@@ -52,7 +57,11 @@ simultaneously using docker.
 
 ## Format Versions
 
-Tracks changes of the main output file.
+Tracks changes of the main output file. There are per-test version histories in the python wrappers.
+
+### 0.2.0 - (2026-05-07)
+
+* Bumped version of Blender, and updated Llama bench to be able to support Tesla T40
 
 ### 0.1.0 - (2026-01-18)
 

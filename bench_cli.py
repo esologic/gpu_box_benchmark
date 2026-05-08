@@ -60,7 +60,7 @@ logging.basicConfig(
 
 LOGGER = logging.getLogger(__name__)
 
-_GPU_BOX_BENCHMARK_VERSION = "0.1.0"
+_GPU_BOX_BENCHMARK_VERSION = "0.2.0"
 """
 See top level `CHANGELOG.md` for version history of this format.
 """
@@ -416,10 +416,18 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     help="Written on the top of the figure.",
     type=click.STRING,
 )
+@click.option(
+    "--flatten-versions",
+    default=True,
+    show_default=True,
+    help="If given tests of different versions will be combined in the result.",
+    type=click.BOOL,
+)
 def compare(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
     output_path: Path,
     title: str,
+    flatten_versions: bool,
 ) -> None:
     """
     Draws a matplotlib visualization comparing the results of the different input benchmarks.
@@ -429,11 +437,13 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
     :param input_path: See click help for docs!
     :param output_path: See click help for docs!
     :param title: See click help for docs!
+    :param flatten_versions: See click help for docs!
     :return: None
     """
 
     visualization.create_comparison_visualization(
         evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
+        flatten_versions=flatten_versions,
         output_path=output_path,
         title=title,
         n_cols=4,

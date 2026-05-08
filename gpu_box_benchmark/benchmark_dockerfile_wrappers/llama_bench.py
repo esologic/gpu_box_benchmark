@@ -23,9 +23,12 @@ from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, Numerica
 
 LOGGER = logging.getLogger(__name__)
 
-_LLAMA_BENCH_VERSION = "0.2.0"
+_LLAMA_BENCH_VERSION = "0.3.0"
 """
 # Version History
+
+## 0.3.0 - (2026-05-07)
+* Added CUDA architecture 75 to support Tesla T40.
 
 ## 0.2.0 - (2026-02-03)
 * Switched to base image w/CUDA 11.4.3 to support Kepler era cards.
