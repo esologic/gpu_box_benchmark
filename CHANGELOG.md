@@ -4,6 +4,11 @@
 
 Tracks changes of the codebase. 
 
+### 0.7.0 - (2026-XX-XX)
+
+* Added `--x-label` and `--labeled-input` to comparison mode to be able to have more control over
+how plot axes are labeled.
+
 ### 0.6.0 - (2026-05-07)
 
 * Bumped a few underlying test versions to be able to support Tesla T40.

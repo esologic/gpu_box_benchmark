@@ -8,10 +8,14 @@ from typing import Dict, List, Optional, Tuple
 
 from benchmark_dockerfiles import NVIDIA_GDS_DOCKERFILE
 from gpu_box_benchmark import docker_wrapper
-from gpu_box_benchmark.benchmark_jobs import BenchmarkExecutor, BenchmarkName
+from gpu_box_benchmark.benchmark_types import (
+    BenchmarkExecutor,
+    BenchmarkName,
+    BenchmarkResult,
+    NumericalResultKey,
+)
 from gpu_box_benchmark.docker_wrapper import ContainerOutputs
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, NumericalResultKey
 
 LOGGER = logging.getLogger(__name__)
 
@@ -85,7 +89,7 @@ def create_gdsio_executor(  # pylin
         multi_gpu_native = False
 
         return BenchmarkResult(
-            name=benchmark_name.value,
+            name=benchmark_name,
             benchmark_version=_GDSIO_BENCHMARK_VERSION,
             override_parameters={},
             larger_better=True,

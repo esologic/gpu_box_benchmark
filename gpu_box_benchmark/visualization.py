@@ -4,14 +4,28 @@ Core of the comparison between different benchmarks.
 
 import math
 from collections import Counter
+from enum import Enum
 from pathlib import Path
 from typing import NamedTuple, Tuple, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from gpu_box_benchmark.benchmark_jobs import BENCHMARK_TO_PRETTY, BenchmarkName
-from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, SystemEvaluation
+from gpu_box_benchmark.benchmark_types import (
+    BENCHMARK_TO_PRETTY,
+    BenchmarkName,
+    BenchmarkResult,
+    SystemEvaluation,
+)
+
+
+class XLabelBase(str, Enum):
+    """
+    Options for the basis of the labels on the x axis of the graphs in the resulting visualizations.
+    """
+
+    gpu = "gpu"
+    cpu = "cpu"
 
 
 def _benchmark_column_name(result: BenchmarkResult, flatten_version: bool) -> str:
@@ -34,22 +48,33 @@ def _extract_critical_value(result: BenchmarkResult) -> float | None:
     return cast(float | None, getattr(result.numerical_results, key))
 
 
-def _create_title(index: int, evaluation: SystemEvaluation) -> str:
+def _row_title_from_base(index: int, evaluation: SystemEvaluation, x_label_base: XLabelBase) -> str:
     """
     Create a row title for the given evaluation.
     :param index: The index evaluation in the larger batch.
     :param evaluation: To read.
-    :return: The count of each GPU and type of GPU sorted by quantity as a stwing.
+    :param x_label_base: Selects which field in the evaluation is the basis for the resulting value.
+    :return: Depends on `x_label_base`. For gpu: the count of each GPU and type of GPU sorted by
+    quantity as a stwing.
     """
 
-    return f"#{index}: " + ",".join(
-        [
-            f"{v}X {k}"
-            for k, v in sorted(
-                Counter([gpu.name for gpu in evaluation.gpus]).items(), key=lambda item: item[1]
-            )
-        ]
-    )
+    if x_label_base == XLabelBase.gpu:
+        return f"#{index}: " + ",".join(
+            [
+                f"{v}X {k}"
+                for k, v in sorted(
+                    Counter([gpu.name for gpu in evaluation.gpus]).items(), key=lambda item: item[1]
+                )
+            ]
+        )
+    elif x_label_base == XLabelBase.cpu:
+        return (
+            f"#{index}: " + f"Phys. {evaluation.cpu.physical_cpus}, "
+            f"Logi. {evaluation.cpu.logical_cpus} "
+            f"- {evaluation.cpu.name}"
+        )
+    else:
+        raise ValueError(f"Unsupported x_label_base: {x_label_base}")
 
 
 def _truncate_label(text: str, max_len: int) -> str:
@@ -75,13 +100,27 @@ class _DFSpecs(NamedTuple):
     specs: dict[str, BenchmarkResult]
 
 
+class EvaluationsBase(NamedTuple):
+    """
+    Intermediate type. Links a set of evaluations with the distinguishing element of the run that
+    should be used as the basis for the resulting x-axis label.
+    """
+
+    evaluations: Tuple[SystemEvaluation, ...]
+    x_label_base: XLabelBase
+
+
 def _system_evaluations_to_dataframe(
-    evaluations: Tuple[SystemEvaluation, ...], flatten_versions: bool
+    evaluations_and_base: EvaluationsBase,
+    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
+    flatten_versions: bool,
 ) -> _DFSpecs:
     """
     Convert a list of SystemEvaluation objects into a wide dataframe.
 
-    :param evaluations: To convert.
+    :param evaluations_and_base: NT containing a list of Evaluations and an enum that describes
+    what the x-axis label should be.
+    :param labeled_evaluations: Iterator of the loaded evaluations and their specific x-axis label.
     :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
     :return: A tuple containing
         - DataFrame: index = system title, columns = benchmarks
@@ -90,8 +129,14 @@ def _system_evaluations_to_dataframe(
     rows: dict[str, dict[str, float]] = {}
     specs: dict[str, BenchmarkResult] = {}
 
-    for index, evaluation in enumerate(evaluations, start=1):
-        system_row: dict[str, float] = {}
+    def column_values_dict(evaluation: SystemEvaluation) -> dict[str, float]:
+        """
+        Helper function to create the dictionary that will become the values for the column values.
+        :param evaluation: To turn into a row.
+        :return: Row for the given evaluation.
+        """
+
+        output: dict[str, float] = {}
 
         for result in evaluation.results:
             column = _benchmark_column_name(result, flatten_version=flatten_versions)
@@ -104,21 +149,31 @@ def _system_evaluations_to_dataframe(
 
             # Allow missing / unsupported results to stay NaN
             if value is not None:
-                system_row[column] = value
+                output[column] = value
 
-        rows[_create_title(index=index, evaluation=evaluation)] = system_row
+        return output
+
+    for index, unlabeled_evaluation in enumerate(evaluations_and_base.evaluations, start=1):
+        row_title = _row_title_from_base(
+            index=index,
+            evaluation=unlabeled_evaluation,
+            x_label_base=evaluations_and_base.x_label_base,
+        )
+
+        rows[row_title] = column_values_dict(evaluation=unlabeled_evaluation)
+
+    for labeled_evaluation, row_title in labeled_evaluations:
+        rows[row_title] = column_values_dict(evaluation=labeled_evaluation)
 
     df = pd.DataFrame.from_dict(rows, orient="index")
-
-    # Stable, deterministic ordering
-    df = df.sort_index(axis=0).sort_index(axis=1)
 
     # Keep specs aligned with dataframe columns
     return _DFSpecs(df=df, specs={col: specs[col] for col in df.columns})
 
 
 def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many-positional-arguments
-    evaluations: Tuple[SystemEvaluation, ...],
+    evaluations_and_base: EvaluationsBase,
+    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
     flatten_versions: bool,
     output_path: Path,
     title: str,
@@ -128,16 +183,22 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     """
     Create a comparison visualization with one subplot per benchmark.
 
-    :param evaluations: System evaluations to compare.
+    :param evaluations_and_base: To convert.
+    :param labeled_evaluations: To convert.
     :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
     :param output_path: Where to write the resulting image.
+    :param title: Overall figure title.
     :param n_cols: Number of columns to show.
     :param max_bar_label_length: For the x-axis bars, this is the max number of characters to show
     before truncation.
-    :param title: Overall figure title.
+    :return: None
     """
 
-    df_specs = _system_evaluations_to_dataframe(evaluations, flatten_versions=flatten_versions)
+    df_specs: _DFSpecs = _system_evaluations_to_dataframe(
+        evaluations_and_base=evaluations_and_base,
+        labeled_evaluations=labeled_evaluations,
+        flatten_versions=flatten_versions,
+    )
 
     if df_specs.df.empty:
         raise ValueError("No benchmark data available to plot")

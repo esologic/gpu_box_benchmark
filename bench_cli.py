@@ -24,12 +24,15 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     nvidia_gds,
     whisper,
 )
-from gpu_box_benchmark.benchmark_jobs import (
+from gpu_box_benchmark.benchmark_types import (
     EXTENDED_BENCHMARK_DOCUMENTS,
     BenchmarkExecutor,
     BenchmarkFamily,
     BenchmarkName,
+    BenchmarkResult,
     CreateBenchmarkExecutor,
+    SystemEvaluation,
+    load_system_evaluation_from_disk,
 )
 from gpu_box_benchmark.cli_common import (
     BENCHMARK_COMMAND_NAME,
@@ -42,12 +45,8 @@ from gpu_box_benchmark.locate_describe_hardware import (
     discover_cpu,
     discover_gpus,
 )
-from gpu_box_benchmark.numeric_benchmark_result import (
-    BenchmarkResult,
-    SystemEvaluation,
-    load_system_evaluation_from_disk,
-)
 from gpu_box_benchmark.render_systemd import render_systemd_file
+from gpu_box_benchmark.visualization import EvaluationsBase, XLabelBase
 
 LOGGER_FORMAT = "[%(asctime)s - %(levelname)s] %(message)s"
 LOGGER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -400,6 +399,30 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     ),
     multiple=True,
 )
+@options.create_enum_option(
+    "--x-label",
+    help_message=(
+        "Default basis for the X label. This will be overriden if a label is "
+        "specifically provided for the run."
+    ),
+    input_enum=XLabelBase,
+    default=XLabelBase.gpu,
+)
+@click.option(
+    "--labeled-input",
+    help="A benchmark JSON file and its label. Can be given multiple times.",
+    type=(
+        click.Path(
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+            path_type=Path,
+        ),
+        str,
+    ),
+    multiple=True,
+)
 @click.option(
     "--output-path",
     default=Path("./comparison.png").resolve(),
@@ -425,6 +448,8 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
 )
 def compare(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
+    labeled_input: Tuple[Tuple[Path, str], ...],
+    x_label: XLabelBase,
     output_path: Path,
     title: str,
     flatten_versions: bool,
@@ -435,6 +460,8 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
     \f
 
     :param input_path: See click help for docs!
+    :param labeled_input: See click help for docs!
+    :param x_label: See click help for docs!
     :param output_path: See click help for docs!
     :param title: See click help for docs!
     :param flatten_versions: See click help for docs!
@@ -442,7 +469,16 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
     """
 
     visualization.create_comparison_visualization(
-        evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
+        evaluations_and_base=EvaluationsBase(
+            evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
+            x_label_base=x_label,
+        ),
+        labeled_evaluations=tuple(
+            (
+                (load_system_evaluation_from_disk(path=evaluation_path), label)
+                for evaluation_path, label in labeled_input
+            )
+        ),
         flatten_versions=flatten_versions,
         output_path=output_path,
         title=title,
