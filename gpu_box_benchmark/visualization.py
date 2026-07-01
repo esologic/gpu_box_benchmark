@@ -222,7 +222,7 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     fig, axes = plt.subplots(
         nrows=n_rows,
         ncols=n_cols,
-        figsize=(12 * n_cols / 3, 5 * n_rows),
+        figsize=(8 * n_cols, 5 * n_rows),
         sharex=False,
     )
 
@@ -259,8 +259,14 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
         ax.set_title(subtitle, fontsize="medium")
         ax.set_ylabel(spec.verbose_unit)
 
-        if series.min() >= 0:
-            ax.set_ylim(bottom=0)
+        value_range = series.max() - series.min()
+
+        padding: float = value_range * 0.2 if value_range > 0 else max(abs(series.max()) * 0.2, 1.0)
+
+        ax.set_ylim(
+            bottom=max(0.0, series.min() - padding),
+            top=series.max() + padding,
+        )
 
         ax.grid(axis="y", linestyle=":", alpha=0.8)
 
