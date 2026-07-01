@@ -446,6 +446,26 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     help="If given tests of different versions will be combined in the result.",
     type=click.BOOL,
 )
+@options.create_enum_option(
+    "--only-test",
+    help_message="Only include this test / these tests in the output visualization.",
+    input_enum=BenchmarkName,
+    multiple=True,
+)
+@click.option(
+    "--n-cols",
+    default=4,
+    show_default=True,
+    help="If given tests of different versions will be combined in the result.",
+    type=click.IntRange(min=1),
+)
+@click.option(
+    "--x-label-max-chars",
+    default=None,
+    show_default=True,
+    help="If given, x labels are truncated to this length.",
+    type=click.IntRange(min=1),
+)
 def compare(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
     labeled_input: Tuple[Tuple[Path, str], ...],
@@ -453,6 +473,9 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
     output_path: Path,
     title: str,
     flatten_versions: bool,
+    only_test: Tuple[BenchmarkName, ...],
+    n_cols: int,
+    x_label_max_chars: Optional[int],
 ) -> None:
     """
     Draws a matplotlib visualization comparing the results of the different input benchmarks.
@@ -465,6 +488,9 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
     :param output_path: See click help for docs!
     :param title: See click help for docs!
     :param flatten_versions: See click help for docs!
+    :param only_test: See click help for docs!
+    :param n_cols: See click help for docs!
+    :param x_label_max_chars: See click help for docs!
     :return: None
     """
 
@@ -482,8 +508,9 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
         flatten_versions=flatten_versions,
         output_path=output_path,
         title=title,
-        n_cols=4,
-        max_bar_label_length=15,
+        only_render_tests=only_test,
+        n_cols=n_cols,
+        max_bar_label_length_chars=x_label_max_chars,
     )
 
 

@@ -8,6 +8,7 @@ Tracks changes of the codebase.
 
 * Added `--x-label` and `--labeled-input` to comparison mode to be able to have more control over
 how plot axes are labeled.
+* Added `--only-test` and a few other CLI options to comparison mode to limit visualization plots.
 
 ### 0.6.0 - (2026-05-07)
 

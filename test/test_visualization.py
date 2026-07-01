@@ -32,4 +32,5 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
         output_path=Path(tmpdir) / "sample_output.png",
         flatten_versions=True,
         title="yes",
+        only_render_tests=tuple(),
     )

@@ -6,7 +6,7 @@ import math
 from collections import Counter
 from enum import Enum
 from pathlib import Path
-from typing import NamedTuple, Tuple, cast
+from typing import Iterable, NamedTuple, Optional, Tuple, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -114,6 +114,7 @@ def _system_evaluations_to_dataframe(
     evaluations_and_base: EvaluationsBase,
     labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
     flatten_versions: bool,
+    only_render_tests: Tuple[BenchmarkName, ...],
 ) -> _DFSpecs:
     """
     Convert a list of SystemEvaluation objects into a wide dataframe.
@@ -122,6 +123,8 @@ def _system_evaluations_to_dataframe(
     what the x-axis label should be.
     :param labeled_evaluations: Iterator of the loaded evaluations and their specific x-axis label.
     :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
+    :param only_render_tests: Only benchmarks with these names will be included in the ouput
+    visualization.
     :return: A tuple containing
         - DataFrame: index = system title, columns = benchmarks
         - Dict mapping column name -> representative BenchmarkResult (spec)
@@ -138,14 +141,20 @@ def _system_evaluations_to_dataframe(
 
         output: dict[str, float] = {}
 
-        for result in evaluation.results:
-            column = _benchmark_column_name(result, flatten_version=flatten_versions)
+        benchmark_results: Iterable[BenchmarkResult] = evaluation.results
+
+        if any(only_render_tests):
+            benchmark_results = filter(lambda b_r: b_r.name in only_render_tests, benchmark_results)
+
+        for benchmark_result in benchmark_results:
+
+            column = _benchmark_column_name(benchmark_result, flatten_version=flatten_versions)
 
             # Record spec once (first occurrence wins)
-            specs.setdefault(column, result)
+            specs.setdefault(column, benchmark_result)
 
             # We could parameterize this later.
-            value = _extract_critical_value(result)
+            value = _extract_critical_value(benchmark_result)
 
             # Allow missing / unsupported results to stay NaN
             if value is not None:
@@ -177,8 +186,9 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     flatten_versions: bool,
     output_path: Path,
     title: str,
+    only_render_tests: Tuple[BenchmarkName, ...],
     n_cols: int = 4,
-    max_bar_label_length: int = 15,
+    max_bar_label_length_chars: Optional[int] = 15,
 ) -> None:
     """
     Create a comparison visualization with one subplot per benchmark.
@@ -188,9 +198,11 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
     :param output_path: Where to write the resulting image.
     :param title: Overall figure title.
+    :param only_render_tests: Only benchmarks with these names will be included in the output
+    visualization.
     :param n_cols: Number of columns to show.
-    :param max_bar_label_length: For the x-axis bars, this is the max number of characters to show
-    before truncation.
+    :param max_bar_label_length_chars: For the x-axis bars, this is the max number of characters
+    to show before truncation.
     :return: None
     """
 
@@ -198,6 +210,7 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
         evaluations_and_base=evaluations_and_base,
         labeled_evaluations=labeled_evaluations,
         flatten_versions=flatten_versions,
+        only_render_tests=only_render_tests,
     )
 
     if df_specs.df.empty:
@@ -244,7 +257,6 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
             )
 
         ax.set_title(subtitle, fontsize="medium")
-
         ax.set_ylabel(spec.verbose_unit)
 
         if series.min() >= 0:
@@ -257,10 +269,20 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
         labels = list(series.index)
 
         if ax is not axes[n_plots - 1]:
-            labels = [_truncate_label(lbl, max_bar_label_length) for lbl in labels]
+            labels = [
+                (
+                    _truncate_label(lbl, max_bar_label_length_chars)
+                    if max_bar_label_length_chars
+                    else lbl
+                )
+                for lbl in labels
+            ]
 
         ax.set_xticks(range(len(labels)))
         ax.set_xticklabels(labels, rotation=30, ha="right")
+
+    for ax in axes[n_plots:]:
+        ax.set_visible(False)
 
     fig.suptitle(title, fontsize="large")
     fig.tight_layout(rect=(0, 0, 1, 0.97))
