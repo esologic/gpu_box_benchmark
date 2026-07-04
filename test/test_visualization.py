@@ -33,4 +33,7 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
         flatten_versions=True,
         title="yes",
         only_render_tests=tuple(),
+        n_cols=2,
+        watermark=None,
+        y_axis_pad_pct=None,
     )

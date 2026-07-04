@@ -187,8 +187,9 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     output_path: Path,
     title: str,
     only_render_tests: Tuple[BenchmarkName, ...],
-    n_cols: int = 4,
-    max_bar_label_length_chars: Optional[int] = 15,
+    n_cols: int,
+    watermark: Optional[str],
+    y_axis_pad_pct: Optional[float],
 ) -> None:
     """
     Create a comparison visualization with one subplot per benchmark.
@@ -201,8 +202,11 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     :param only_render_tests: Only benchmarks with these names will be included in the output
     visualization.
     :param n_cols: Number of columns to show.
-    :param max_bar_label_length_chars: For the x-axis bars, this is the max number of characters
     to show before truncation.
+    :param watermark: String written along the right center of the image.
+    :param y_axis_pad_pct: If given, The y-axis range of each subplot is restricted to this value
+    multiplied by the min max values in the y range to clearly show the ranking. If not given,
+    auto y-axis settings are used.
     :return: None
     """
 
@@ -222,11 +226,10 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     fig, axes = plt.subplots(
         nrows=n_rows,
         ncols=n_cols,
-        figsize=(8 * n_cols, 5 * n_rows),
+        figsize=(3 * n_cols, 2.5 * n_rows),
         sharex=False,
     )
 
-    # Flatten axes for easy iteration
     axes = [axes] if isinstance(axes, plt.Axes) else axes.flatten()
 
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
@@ -246,7 +249,8 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
             color=[system_colors[system] for system in series.index],
             width=1,
         )
-        ax.set_xticks(x_ticks)
+
+        ax.set_xticks([])
 
         subtitle = BENCHMARK_TO_PRETTY[BenchmarkName(spec.name)]
         if spec.benchmark_version:
@@ -257,42 +261,74 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
             )
 
         ax.set_title(subtitle, fontsize="medium")
-        ax.set_ylabel(spec.verbose_unit)
+        ax.set_ylabel(spec.verbose_unit, fontsize="small")
 
         value_range = series.max() - series.min()
 
-        padding: float = value_range * 0.2 if value_range > 0 else max(abs(series.max()) * 0.2, 1.0)
+        if y_axis_pad_pct is not None:
 
-        ax.set_ylim(
-            bottom=max(0.0, series.min() - padding),
-            top=series.max() + padding,
-        )
+            y_axis_numerical_pad_value: float = (
+                value_range * y_axis_pad_pct
+                if value_range > 0
+                else max(abs(series.max()) * y_axis_pad_pct, 1.0)
+            )
+
+            ax.set_ylim(
+                bottom=max(0.0, series.min() - y_axis_numerical_pad_value),
+                top=series.max() + y_axis_numerical_pad_value,
+            )
 
         ax.grid(axis="y", linestyle=":", alpha=0.8)
-
-    for ax, column in zip(axes[:n_plots], df_specs.df.columns):
-        series = df_specs.df[column].dropna()
-        labels = list(series.index)
-
-        if ax is not axes[n_plots - 1]:
-            labels = [
-                (
-                    _truncate_label(lbl, max_bar_label_length_chars)
-                    if max_bar_label_length_chars
-                    else lbl
-                )
-                for lbl in labels
-            ]
-
-        ax.set_xticks(range(len(labels)))
-        ax.set_xticklabels(labels, rotation=30, ha="right")
 
     for ax in axes[n_plots:]:
         ax.set_visible(False)
 
     fig.suptitle(title, fontsize="large")
-    fig.tight_layout(rect=(0, 0, 1, 0.97))
+
+    legend_handles = [
+        plt.Rectangle((0, 0), 0.5, 1, color=color) for color in system_colors.values()
+    ]
+
+    legend_labels = list(system_colors.keys())
+    longest_label_length: int = max((len(label) for label in legend_labels), default=0)
+    num_legend_columns: int = (
+        1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3)
+    )
+
+    resulting_legend = fig.legend(
+        legend_handles,
+        legend_labels,
+        loc="outside lower center",
+        ncol=num_legend_columns,
+        frameon=True,
+        facecolor="#f5f5f5",
+        edgecolor="lightgrey",
+        fontsize="small",
+    )
+
+    # Figure out where the top of the legend is.
+    legend_bbox = resulting_legend.get_window_extent(
+        fig.canvas.get_renderer()  # type: ignore[attr-defined]
+    )
+    legend_bbox_fig = legend_bbox.transformed(fig.transFigure.inverted())
+    tight_layout_bottom = legend_bbox_fig.y1
+
+    if watermark:
+        fig.text(
+            0.99,  # x-position: pinned to right edge
+            0.5,  # y-position: vertically centered
+            watermark,
+            fontsize="small",
+            color="gray",
+            alpha=0.6,
+            ha="right",  # horizontal alignment: right side of text is at x
+            va="center",  # vertical alignment: center of text is at y
+            rotation="vertical",  # rotate text 90 degrees counter-clockwise
+        )
+    # Use a slightly smaller bottom rect value to push the plots down toward the legend
+    # and use the legend's own space for the layout calculation
+    fig.tight_layout(pad=1.5, w_pad=2, rect=(0, tight_layout_bottom, 1, 1))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path)
+    fig.savefig(output_path, dpi=300)
     plt.close(fig)

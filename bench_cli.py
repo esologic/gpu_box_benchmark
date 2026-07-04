@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, List, NamedTuple, Optional, Tuple
 
 import click
+import matplotlib.pyplot as plt
 import psutil
 from bonus_click import options
 from click.decorators import FC
@@ -460,11 +461,22 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     type=click.IntRange(min=1),
 )
 @click.option(
-    "--x-label-max-chars",
-    default=None,
-    show_default=True,
-    help="If given, x labels are truncated to this length.",
-    type=click.IntRange(min=1),
+    "--watermark",
+    required=False,
+    help="Subtly written along the right side of the image.",
+    type=click.STRING,
+)
+@click.option(
+    "--y-axis-pad-pct",
+    required=False,
+    help="Numerical pad percent applied to the Y-Axes of the subplots.",
+    type=click.FloatRange(min=0),
+)
+@click.option(
+    "--font-family",
+    required=False,
+    help="Passed to rcParams['font.family'].",
+    type=click.STRING,
 )
 def compare(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
@@ -475,7 +487,9 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
     flatten_versions: bool,
     only_test: Tuple[BenchmarkName, ...],
     n_cols: int,
-    x_label_max_chars: Optional[int],
+    watermark: Optional[str],
+    y_axis_pad_pct: Optional[float],
+    font_family: Optional[str],
 ) -> None:
     """
     Draws a matplotlib visualization comparing the results of the different input benchmarks.
@@ -490,9 +504,14 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
     :param flatten_versions: See click help for docs!
     :param only_test: See click help for docs!
     :param n_cols: See click help for docs!
-    :param x_label_max_chars: See click help for docs!
+    :param watermark: See click help for docs!
+    :param y_axis_pad_pct: See click help for docs!
+    :param font_family: See click help for docs!
     :return: None
     """
+
+    if font_family is not None:
+        plt.rcParams["font.family"] = font_family
 
     visualization.create_comparison_visualization(
         evaluations_and_base=EvaluationsBase(
@@ -510,7 +529,8 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
         title=title,
         only_render_tests=only_test,
         n_cols=n_cols,
-        max_bar_label_length_chars=x_label_max_chars,
+        watermark=watermark,
+        y_axis_pad_pct=y_axis_pad_pct,
     )
 
 
