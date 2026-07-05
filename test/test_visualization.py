@@ -2,13 +2,23 @@
 Test to make sure visualisation happy path works as expected.
 """
 
+import pytest
+from typing import Tuple, Optional
 from pathlib import Path
-
+from itertools import combinations
+from gpu_box_benchmark.benchmark_types import BenchmarkName, SystemEvaluation
 from gpu_box_benchmark import benchmark_types
 from gpu_box_benchmark import visualization
 from gpu_box_benchmark.visualization import EvaluationsBase, XLabelBase
-from test.assets import ALL_SAMPLE_OUTPUTS
+from test import assets
 from _pytest._py.path import LocalPath
+
+_SAMPLE_EVALUATIONS = tuple(
+    map(
+        benchmark_types.load_system_evaluation_from_disk,
+        assets.ALL_SAMPLE_OUTPUTS,
+    )
+)
 
 
 def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
@@ -20,20 +30,118 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
 
     visualization.create_comparison_visualization(
         evaluations_and_base=EvaluationsBase(
-            evaluations=tuple(
-                map(
-                    benchmark_types.load_system_evaluation_from_disk,
-                    ALL_SAMPLE_OUTPUTS,
-                )
-            ),
+            evaluations=_SAMPLE_EVALUATIONS,
             x_label_base=XLabelBase.gpu,
         ),
         labeled_evaluations=tuple(),
         output_path=Path(tmpdir) / "sample_output.png",
         flatten_versions=True,
-        title="yes",
+        title="A Regular Figure Title!",
         only_render_tests=tuple(),
         n_cols=2,
         watermark=None,
         y_axis_pad_pct=None,
     )
+
+
+@pytest.mark.parametrize(
+    "evaluations_and_base",
+    [
+        EvaluationsBase(
+            evaluations=_SAMPLE_EVALUATIONS,
+            x_label_base=XLabelBase.gpu,
+        ),
+        EvaluationsBase(
+            evaluations=_SAMPLE_EVALUATIONS,
+            x_label_base=XLabelBase.cpu,
+        ),
+        EvaluationsBase(
+            evaluations=tuple(),
+            x_label_base=XLabelBase.gpu,
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "labeled_evaluations",
+    [
+        tuple(
+            (evaluation, f"label: {index}") for index, evaluation in enumerate(_SAMPLE_EVALUATIONS)
+        ),
+        tuple(),
+    ],
+)
+@pytest.mark.parametrize(
+    "only_render_tests",
+    list(combinations(BenchmarkName, 4))[0:10],
+)
+@pytest.mark.parametrize(
+    "n_cols",
+    [
+        1,
+        2,
+        3,
+    ],
+)
+@pytest.mark.parametrize(
+    "watermark",
+    [None, "This is a sample watermark"],
+)
+@pytest.mark.parametrize(
+    "y_axis_pad_pct",
+    [
+        None,
+        0.1,
+        0.5,
+    ],
+)
+def test_create_comparison_visualization_exhaustive(  # pylint: disable=too-many-positional-arguments
+    evaluations_and_base: EvaluationsBase,
+    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
+    only_render_tests: Tuple[BenchmarkName, ...],
+    n_cols: int,
+    watermark: Optional[str],
+    y_axis_pad_pct: Optional[float],
+    tmpdir: LocalPath,
+) -> None:
+    """
+    Parameterizations create an exhaustive set of which options could be passed to visualization
+    functions. This will be slow but make sure there are no weird corner case problems.
+    :param evaluations_and_base: Passed to viz function.
+    :param labeled_evaluations: Passed to viz function.
+    :param only_render_tests: Passed to viz function.
+    :param n_cols: Passed to viz function.
+    :param watermark: Passed to viz function.
+    :param y_axis_pad_pct: Passed to viz function.
+    :param tmpdir: Test fixture.
+    :return: None
+    """
+
+    def create_viz() -> Path:
+        """
+        Wrapper to run the viz creation operation.
+        :return: None
+        """
+
+        output_path = Path(tmpdir) / "sample_output.png"
+
+        visualization.create_comparison_visualization(
+            evaluations_and_base=evaluations_and_base,
+            labeled_evaluations=labeled_evaluations,
+            output_path=output_path,
+            flatten_versions=True,
+            title="A Regular Figure Title!",
+            only_render_tests=only_render_tests,
+            n_cols=n_cols,
+            watermark=watermark,
+            y_axis_pad_pct=y_axis_pad_pct,
+        )
+
+        return output_path
+
+    if any(evaluations_and_base.evaluations) or any(
+        (evaluations for evaluations, _labels in labeled_evaluations)
+    ):
+        assert create_viz().exists()
+    else:
+        with pytest.raises(ValueError):
+            create_viz()

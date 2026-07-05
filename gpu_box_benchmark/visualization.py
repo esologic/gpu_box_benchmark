@@ -6,7 +6,7 @@ import math
 from collections import Counter
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, NamedTuple, Optional, Tuple, cast
+from typing import Iterable, NamedTuple, Optional, Set, Tuple, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -77,17 +77,14 @@ def _row_title_from_base(index: int, evaluation: SystemEvaluation, x_label_base:
         raise ValueError(f"Unsupported x_label_base: {x_label_base}")
 
 
-def _truncate_label(text: str, max_len: int) -> str:
+def _names_in_evaluation(evaluation: SystemEvaluation) -> Set[BenchmarkName]:
     """
-    Truncates the given text to the length, adds an ellipsis.
-    :param text: To modify.
-    :param max_len: Max length inclusive.
-    :return: Truncated label.
+    Helper function to read the names of the tests in the benchmark evaluation.
+    :param evaluation: Loaded system evaluation.
+    :return: A set of the names of the benchmarks found in the loaded evaluation.
     """
 
-    if len(text) <= max_len:
-        return text
-    return text[:max_len] + "..."
+    return set((result.name for result in evaluation.results))
 
 
 class _DFSpecs(NamedTuple):
@@ -129,6 +126,24 @@ def _system_evaluations_to_dataframe(
         - DataFrame: index = system title, columns = benchmarks
         - Dict mapping column name -> representative BenchmarkResult (spec)
     """
+
+    benchmarks_in_evaluations: Set[BenchmarkName] = set().union(
+        *[
+            _names_in_evaluation(evaluation=evaluation)
+            for evaluation in evaluations_and_base.evaluations
+        ]
+        + [_names_in_evaluation(evaluation) for evaluation, _label in labeled_evaluations]
+    )
+
+    if any(only_render_tests) and (
+        not any((benchmark in benchmarks_in_evaluations for benchmark in only_render_tests))
+    ):
+        raise ValueError(
+            "Benchmarking results did not contain any of the requested tests. "
+            f"Requested tests: {only_render_tests} "
+            f"Discovered tests: {benchmarks_in_evaluations}"
+        )
+
     rows: dict[str, dict[str, float]] = {}
     specs: dict[str, BenchmarkResult] = {}
 
@@ -163,6 +178,7 @@ def _system_evaluations_to_dataframe(
         return output
 
     for index, unlabeled_evaluation in enumerate(evaluations_and_base.evaluations, start=1):
+
         row_title = _row_title_from_base(
             index=index,
             evaluation=unlabeled_evaluation,
@@ -325,8 +341,7 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
             va="center",  # vertical alignment: center of text is at y
             rotation="vertical",  # rotate text 90 degrees counter-clockwise
         )
-    # Use a slightly smaller bottom rect value to push the plots down toward the legend
-    # and use the legend's own space for the layout calculation
+
     fig.tight_layout(pad=1.5, w_pad=2, rect=(0, tight_layout_bottom, 1, 1))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

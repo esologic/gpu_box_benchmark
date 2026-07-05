@@ -217,7 +217,7 @@ class BenchmarkResult(BaseModel):
 
     name: BenchmarkName
     """
-    Why wasn't this just the enum?
+    The test that was run in this evaluation.
     """
 
     benchmark_version: str
