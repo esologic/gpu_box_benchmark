@@ -9,6 +9,8 @@ Tracks changes of the codebase.
 * Added `--x-label` and `--labeled-input` to comparison mode to be able to have more control over
 how plot axes are labeled.
 * Added `--only-test` and a few other CLI options to comparison mode to limit visualization plots.
+* Introduced a more exhaustive set of unit tests around rendering figures to ensure edge cases
+at least produce images.
 
 ### 0.6.0 - (2026-05-07)
 
