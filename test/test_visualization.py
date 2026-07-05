@@ -2,10 +2,10 @@
 Test to make sure visualisation happy path works as expected.
 """
 
+import random
 import pytest
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, Iterator, Set
 from pathlib import Path
-from itertools import combinations
 from gpu_box_benchmark.benchmark_types import BenchmarkName, SystemEvaluation
 from gpu_box_benchmark import benchmark_types
 from gpu_box_benchmark import visualization
@@ -44,6 +44,40 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
     )
 
 
+def get_benchmark_iterator(
+    num_random_combos: int = 20, seed: int = 42
+) -> Iterator[List[BenchmarkName]]:
+    """
+    Yields every individual benchmark, followed by a reproducible
+    sequence of random combinations.
+    :param num_random_combos: Number of random combinations.
+    :param seed: For `random`.
+    :return: Iterator of lists of benchmarks.
+    """
+
+    # Initialize the random state for reproducibility
+    rng = random.Random(seed)
+
+    # 1. Yield each individual member first
+    for bench in BenchmarkName:
+        yield [bench]
+
+    # 2. Generate specified number of random combinations
+    bench_list = list(BenchmarkName)
+    generated: Set[Tuple[BenchmarkName, ...]] = set()
+
+    while len(generated) < num_random_combos:
+        # Choose a random length between 2 and the full list length
+        r = rng.randint(2, len(bench_list))
+
+        # Pick a random sample and convert to tuple for set storage (hashing)
+        combo = tuple(rng.sample(bench_list, r))
+
+        if combo not in generated:
+            generated.add(combo)
+            yield list(combo)
+
+
 @pytest.mark.parametrize(
     "evaluations_and_base",
     [
@@ -72,7 +106,7 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
 )
 @pytest.mark.parametrize(
     "only_render_tests",
-    list(combinations(BenchmarkName, 4))[0:10],
+    get_benchmark_iterator(num_random_combos=5),
 )
 @pytest.mark.parametrize(
     "n_cols",
