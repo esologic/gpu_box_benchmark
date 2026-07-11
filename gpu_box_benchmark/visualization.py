@@ -290,7 +290,7 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
             )
 
             ax.set_ylim(
-                bottom=max(0.0, series.min() - y_axis_numerical_pad_value),
+                bottom=series.min() - y_axis_numerical_pad_value,
                 top=series.max() + y_axis_numerical_pad_value,
             )
 

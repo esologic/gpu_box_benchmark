@@ -26,6 +26,7 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     whisper,
 )
 from gpu_box_benchmark.benchmark_types import (
+    BENCHMARK_TO_PRETTY,
     EXTENDED_BENCHMARK_DOCUMENTS,
     BenchmarkExecutor,
     BenchmarkFamily,
@@ -337,7 +338,13 @@ def explain_benchmarks(
     """
 
     for family in BenchmarkFamily:
-        tests = " ".join([test.value for test in BenchmarkName if family.name in test.value])
+        tests = " ".join(
+            [
+                f"{test.value} (Pretty: {BENCHMARK_TO_PRETTY[test]})"
+                for test in BenchmarkName
+                if family.name in test.value
+            ]
+        )
         click.echo(
             textwrap.fill(f"Benchmark Family: {family.name}, Tests: {tests}", width=width) + "\n"
         )
