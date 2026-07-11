@@ -6,7 +6,7 @@ import pytest
 from gpu_box_benchmark import docker_wrapper
 from test.assets import HELLO_WORLD_DOCKERFILE_PATH
 from gpu_box_benchmark import locate_describe_hardware
-from gpu_box_benchmark.numeric_benchmark_result import ReportFileNumerical
+from gpu_box_benchmark.benchmark_types import ReportFileNumerical
 
 
 @pytest.mark.integration

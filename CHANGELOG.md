@@ -4,6 +4,17 @@
 
 Tracks changes of the codebase. 
 
+### 0.7.0 - (2026-07-11)
+
+* Added `--x-label` and `--labeled-input` to comparison mode to be able to have more control over
+how plot axes are labeled.
+* Added `--only-test` and a few other CLI options to comparison mode to limit visualization plots.
+* Introduced a more exhaustive set of unit tests around rendering figures to ensure edge cases
+at least produce images.
+* Switched `benchmark_name` type in result to the actual Enum instead of a string.
+* Improved docs, both in the README and CLI. 
+* Flattened type system to a single file.
+
 ### 0.6.0 - (2026-05-07)
 
 * Bumped a few underlying test versions to be able to support Tesla T40.

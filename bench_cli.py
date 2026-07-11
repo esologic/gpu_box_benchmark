@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, List, NamedTuple, Optional, Tuple
 
 import click
+import matplotlib.pyplot as plt
 import psutil
 from bonus_click import options
 from click.decorators import FC
@@ -24,12 +25,16 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     nvidia_gds,
     whisper,
 )
-from gpu_box_benchmark.benchmark_jobs import (
+from gpu_box_benchmark.benchmark_types import (
+    BENCHMARK_TO_PRETTY,
     EXTENDED_BENCHMARK_DOCUMENTS,
     BenchmarkExecutor,
     BenchmarkFamily,
     BenchmarkName,
+    BenchmarkResult,
     CreateBenchmarkExecutor,
+    SystemEvaluation,
+    load_system_evaluation_from_disk,
 )
 from gpu_box_benchmark.cli_common import (
     BENCHMARK_COMMAND_NAME,
@@ -42,12 +47,8 @@ from gpu_box_benchmark.locate_describe_hardware import (
     discover_cpu,
     discover_gpus,
 )
-from gpu_box_benchmark.numeric_benchmark_result import (
-    BenchmarkResult,
-    SystemEvaluation,
-    load_system_evaluation_from_disk,
-)
 from gpu_box_benchmark.render_systemd import render_systemd_file
+from gpu_box_benchmark.visualization import EvaluationsBase, XLabelBase
 
 LOGGER_FORMAT = "[%(asctime)s - %(levelname)s] %(message)s"
 LOGGER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -337,7 +338,13 @@ def explain_benchmarks(
     """
 
     for family in BenchmarkFamily:
-        tests = " ".join([test.value for test in BenchmarkName if family.name in test.value])
+        tests = " ".join(
+            [
+                f"{test.value} (Pretty: {BENCHMARK_TO_PRETTY[test]})"
+                for test in BenchmarkName
+                if family.name in test.value
+            ]
+        )
         click.echo(
             textwrap.fill(f"Benchmark Family: {family.name}, Tests: {tests}", width=width) + "\n"
         )
@@ -400,6 +407,30 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     ),
     multiple=True,
 )
+@options.create_enum_option(
+    "--x-label",
+    help_message=(
+        "Default basis for the X label. This will be overriden if a label is "
+        "specifically provided for the run."
+    ),
+    input_enum=XLabelBase,
+    default=XLabelBase.gpu,
+)
+@click.option(
+    "--labeled-input",
+    help="A benchmark JSON file and its label. Can be given multiple times.",
+    type=(
+        click.Path(
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+            path_type=Path,
+        ),
+        str,
+    ),
+    multiple=True,
+)
 @click.option(
     "--output-path",
     default=Path("./comparison.png").resolve(),
@@ -423,11 +454,49 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     help="If given tests of different versions will be combined in the result.",
     type=click.BOOL,
 )
+@options.create_enum_option(
+    "--only-test",
+    help_message="Only include this test / these tests in the output visualization.",
+    input_enum=BenchmarkName,
+    multiple=True,
+)
+@click.option(
+    "--n-cols",
+    default=4,
+    show_default=True,
+    help="If given tests of different versions will be combined in the result.",
+    type=click.IntRange(min=1),
+)
+@click.option(
+    "--watermark",
+    required=False,
+    help="Subtly written along the right side of the image.",
+    type=click.STRING,
+)
+@click.option(
+    "--y-axis-pad-pct",
+    required=False,
+    help="Numerical pad percent applied to the Y-Axes of the subplots.",
+    type=click.FloatRange(min=0),
+)
+@click.option(
+    "--font-family",
+    required=False,
+    help="Passed to rcParams['font.family'].",
+    type=click.STRING,
+)
 def compare(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
+    labeled_input: Tuple[Tuple[Path, str], ...],
+    x_label: XLabelBase,
     output_path: Path,
     title: str,
     flatten_versions: bool,
+    only_test: Tuple[BenchmarkName, ...],
+    n_cols: int,
+    watermark: Optional[str],
+    y_axis_pad_pct: Optional[float],
+    font_family: Optional[str],
 ) -> None:
     """
     Draws a matplotlib visualization comparing the results of the different input benchmarks.
@@ -435,19 +504,40 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
     \f
 
     :param input_path: See click help for docs!
+    :param labeled_input: See click help for docs!
+    :param x_label: See click help for docs!
     :param output_path: See click help for docs!
     :param title: See click help for docs!
     :param flatten_versions: See click help for docs!
+    :param only_test: See click help for docs!
+    :param n_cols: See click help for docs!
+    :param watermark: See click help for docs!
+    :param y_axis_pad_pct: See click help for docs!
+    :param font_family: See click help for docs!
     :return: None
     """
 
+    if font_family is not None:
+        plt.rcParams["font.family"] = font_family
+
     visualization.create_comparison_visualization(
-        evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
+        evaluations_and_base=EvaluationsBase(
+            evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
+            x_label_base=x_label,
+        ),
+        labeled_evaluations=tuple(
+            (
+                (load_system_evaluation_from_disk(path=evaluation_path), label)
+                for evaluation_path, label in labeled_input
+            )
+        ),
         flatten_versions=flatten_versions,
         output_path=output_path,
         title=title,
-        n_cols=4,
-        max_bar_label_length=15,
+        only_render_tests=only_test,
+        n_cols=n_cols,
+        watermark=watermark,
+        y_axis_pad_pct=y_axis_pad_pct,
     )
 
 

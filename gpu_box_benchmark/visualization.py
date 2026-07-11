@@ -4,14 +4,28 @@ Core of the comparison between different benchmarks.
 
 import math
 from collections import Counter
+from enum import Enum
 from pathlib import Path
-from typing import NamedTuple, Tuple, cast
+from typing import Iterable, NamedTuple, Optional, Set, Tuple, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from gpu_box_benchmark.benchmark_jobs import BENCHMARK_TO_PRETTY, BenchmarkName
-from gpu_box_benchmark.numeric_benchmark_result import BenchmarkResult, SystemEvaluation
+from gpu_box_benchmark.benchmark_types import (
+    BENCHMARK_TO_PRETTY,
+    BenchmarkName,
+    BenchmarkResult,
+    SystemEvaluation,
+)
+
+
+class XLabelBase(str, Enum):
+    """
+    Options for the basis of the labels on the x axis of the graphs in the resulting visualizations.
+    """
+
+    gpu = "gpu"
+    cpu = "cpu"
 
 
 def _benchmark_column_name(result: BenchmarkResult, flatten_version: bool) -> str:
@@ -34,35 +48,43 @@ def _extract_critical_value(result: BenchmarkResult) -> float | None:
     return cast(float | None, getattr(result.numerical_results, key))
 
 
-def _create_title(index: int, evaluation: SystemEvaluation) -> str:
+def _row_title_from_base(index: int, evaluation: SystemEvaluation, x_label_base: XLabelBase) -> str:
     """
     Create a row title for the given evaluation.
     :param index: The index evaluation in the larger batch.
     :param evaluation: To read.
-    :return: The count of each GPU and type of GPU sorted by quantity as a stwing.
+    :param x_label_base: Selects which field in the evaluation is the basis for the resulting value.
+    :return: Depends on `x_label_base`. For gpu: the count of each GPU and type of GPU sorted by
+    quantity as a stwing.
     """
 
-    return f"#{index}: " + ",".join(
-        [
-            f"{v}X {k}"
-            for k, v in sorted(
-                Counter([gpu.name for gpu in evaluation.gpus]).items(), key=lambda item: item[1]
-            )
-        ]
-    )
+    if x_label_base == XLabelBase.gpu:
+        return f"#{index}: " + ",".join(
+            [
+                f"{v}X {k}"
+                for k, v in sorted(
+                    Counter([gpu.name for gpu in evaluation.gpus]).items(), key=lambda item: item[1]
+                )
+            ]
+        )
+    elif x_label_base == XLabelBase.cpu:
+        return (
+            f"#{index}: " + f"Phys. {evaluation.cpu.physical_cpus}, "
+            f"Logi. {evaluation.cpu.logical_cpus} "
+            f"- {evaluation.cpu.name}"
+        )
+    else:
+        raise ValueError(f"Unsupported x_label_base: {x_label_base}")
 
 
-def _truncate_label(text: str, max_len: int) -> str:
+def _names_in_evaluation(evaluation: SystemEvaluation) -> Set[BenchmarkName]:
     """
-    Truncates the given text to the length, adds an ellipsis.
-    :param text: To modify.
-    :param max_len: Max length inclusive.
-    :return: Truncated label.
+    Helper function to read the names of the tests in the benchmark evaluation.
+    :param evaluation: Loaded system evaluation.
+    :return: A set of the names of the benchmarks found in the loaded evaluation.
     """
 
-    if len(text) <= max_len:
-        return text
-    return text[:max_len] + "..."
+    return set((result.name for result in evaluation.results))
 
 
 class _DFSpecs(NamedTuple):
@@ -75,69 +97,141 @@ class _DFSpecs(NamedTuple):
     specs: dict[str, BenchmarkResult]
 
 
+class EvaluationsBase(NamedTuple):
+    """
+    Intermediate type. Links a set of evaluations with the distinguishing element of the run that
+    should be used as the basis for the resulting x-axis label.
+    """
+
+    evaluations: Tuple[SystemEvaluation, ...]
+    x_label_base: XLabelBase
+
+
 def _system_evaluations_to_dataframe(
-    evaluations: Tuple[SystemEvaluation, ...], flatten_versions: bool
+    evaluations_and_base: EvaluationsBase,
+    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
+    flatten_versions: bool,
+    only_render_tests: Tuple[BenchmarkName, ...],
 ) -> _DFSpecs:
     """
     Convert a list of SystemEvaluation objects into a wide dataframe.
 
-    :param evaluations: To convert.
+    :param evaluations_and_base: NT containing a list of Evaluations and an enum that describes
+    what the x-axis label should be.
+    :param labeled_evaluations: Iterator of the loaded evaluations and their specific x-axis label.
     :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
+    :param only_render_tests: Only benchmarks with these names will be included in the ouput
+    visualization.
     :return: A tuple containing
         - DataFrame: index = system title, columns = benchmarks
         - Dict mapping column name -> representative BenchmarkResult (spec)
     """
+
+    benchmarks_in_evaluations: Set[BenchmarkName] = set().union(
+        *[
+            _names_in_evaluation(evaluation=evaluation)
+            for evaluation in evaluations_and_base.evaluations
+        ]
+        + [_names_in_evaluation(evaluation) for evaluation, _label in labeled_evaluations]
+    )
+
+    if any(only_render_tests) and (
+        not any((benchmark in benchmarks_in_evaluations for benchmark in only_render_tests))
+    ):
+        raise ValueError(
+            "Benchmarking results did not contain any of the requested tests. "
+            f"Requested tests: {only_render_tests} "
+            f"Discovered tests: {benchmarks_in_evaluations}"
+        )
+
     rows: dict[str, dict[str, float]] = {}
     specs: dict[str, BenchmarkResult] = {}
 
-    for index, evaluation in enumerate(evaluations, start=1):
-        system_row: dict[str, float] = {}
+    def column_values_dict(evaluation: SystemEvaluation) -> dict[str, float]:
+        """
+        Helper function to create the dictionary that will become the values for the column values.
+        :param evaluation: To turn into a row.
+        :return: Row for the given evaluation.
+        """
 
-        for result in evaluation.results:
-            column = _benchmark_column_name(result, flatten_version=flatten_versions)
+        output: dict[str, float] = {}
+
+        benchmark_results: Iterable[BenchmarkResult] = evaluation.results
+
+        if any(only_render_tests):
+            benchmark_results = filter(lambda b_r: b_r.name in only_render_tests, benchmark_results)
+
+        for benchmark_result in benchmark_results:
+
+            column = _benchmark_column_name(benchmark_result, flatten_version=flatten_versions)
 
             # Record spec once (first occurrence wins)
-            specs.setdefault(column, result)
+            specs.setdefault(column, benchmark_result)
 
             # We could parameterize this later.
-            value = _extract_critical_value(result)
+            value = _extract_critical_value(benchmark_result)
 
             # Allow missing / unsupported results to stay NaN
             if value is not None:
-                system_row[column] = value
+                output[column] = value
 
-        rows[_create_title(index=index, evaluation=evaluation)] = system_row
+        return output
+
+    for index, unlabeled_evaluation in enumerate(evaluations_and_base.evaluations, start=1):
+
+        row_title = _row_title_from_base(
+            index=index,
+            evaluation=unlabeled_evaluation,
+            x_label_base=evaluations_and_base.x_label_base,
+        )
+
+        rows[row_title] = column_values_dict(evaluation=unlabeled_evaluation)
+
+    for labeled_evaluation, row_title in labeled_evaluations:
+        rows[row_title] = column_values_dict(evaluation=labeled_evaluation)
 
     df = pd.DataFrame.from_dict(rows, orient="index")
-
-    # Stable, deterministic ordering
-    df = df.sort_index(axis=0).sort_index(axis=1)
 
     # Keep specs aligned with dataframe columns
     return _DFSpecs(df=df, specs={col: specs[col] for col in df.columns})
 
 
 def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many-positional-arguments
-    evaluations: Tuple[SystemEvaluation, ...],
+    evaluations_and_base: EvaluationsBase,
+    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
     flatten_versions: bool,
     output_path: Path,
     title: str,
-    n_cols: int = 4,
-    max_bar_label_length: int = 15,
+    only_render_tests: Tuple[BenchmarkName, ...],
+    n_cols: int,
+    watermark: Optional[str],
+    y_axis_pad_pct: Optional[float],
 ) -> None:
     """
     Create a comparison visualization with one subplot per benchmark.
 
-    :param evaluations: System evaluations to compare.
+    :param evaluations_and_base: To convert.
+    :param labeled_evaluations: To convert.
     :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
     :param output_path: Where to write the resulting image.
-    :param n_cols: Number of columns to show.
-    :param max_bar_label_length: For the x-axis bars, this is the max number of characters to show
-    before truncation.
     :param title: Overall figure title.
+    :param only_render_tests: Only benchmarks with these names will be included in the output
+    visualization.
+    :param n_cols: Number of columns to show.
+    to show before truncation.
+    :param watermark: String written along the right center of the image.
+    :param y_axis_pad_pct: If given, The y-axis range of each subplot is restricted to this value
+    multiplied by the min max values in the y range to clearly show the ranking. If not given,
+    auto y-axis settings are used.
+    :return: None
     """
 
-    df_specs = _system_evaluations_to_dataframe(evaluations, flatten_versions=flatten_versions)
+    df_specs: _DFSpecs = _system_evaluations_to_dataframe(
+        evaluations_and_base=evaluations_and_base,
+        labeled_evaluations=labeled_evaluations,
+        flatten_versions=flatten_versions,
+        only_render_tests=only_render_tests,
+    )
 
     if df_specs.df.empty:
         raise ValueError("No benchmark data available to plot")
@@ -148,11 +242,10 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     fig, axes = plt.subplots(
         nrows=n_rows,
         ncols=n_cols,
-        figsize=(12 * n_cols / 3, 5 * n_rows),
+        figsize=(3 * n_cols, 2.5 * n_rows),
         sharex=False,
     )
 
-    # Flatten axes for easy iteration
     axes = [axes] if isinstance(axes, plt.Axes) else axes.flatten()
 
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
@@ -172,7 +265,8 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
             color=[system_colors[system] for system in series.index],
             width=1,
         )
-        ax.set_xticks(x_ticks)
+
+        ax.set_xticks([])
 
         subtitle = BENCHMARK_TO_PRETTY[BenchmarkName(spec.name)]
         if spec.benchmark_version:
@@ -183,27 +277,73 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
             )
 
         ax.set_title(subtitle, fontsize="medium")
+        ax.set_ylabel(spec.verbose_unit, fontsize="small")
 
-        ax.set_ylabel(spec.verbose_unit)
+        value_range = series.max() - series.min()
 
-        if series.min() >= 0:
-            ax.set_ylim(bottom=0)
+        if y_axis_pad_pct is not None:
+
+            y_axis_numerical_pad_value: float = (
+                value_range * y_axis_pad_pct
+                if value_range > 0
+                else max(abs(series.max()) * y_axis_pad_pct, 1.0)
+            )
+
+            ax.set_ylim(
+                bottom=series.min() - y_axis_numerical_pad_value,
+                top=series.max() + y_axis_numerical_pad_value,
+            )
 
         ax.grid(axis="y", linestyle=":", alpha=0.8)
 
-    for ax, column in zip(axes[:n_plots], df_specs.df.columns):
-        series = df_specs.df[column].dropna()
-        labels = list(series.index)
-
-        if ax is not axes[n_plots - 1]:
-            labels = [_truncate_label(lbl, max_bar_label_length) for lbl in labels]
-
-        ax.set_xticks(range(len(labels)))
-        ax.set_xticklabels(labels, rotation=30, ha="right")
+    for ax in axes[n_plots:]:
+        ax.set_visible(False)
 
     fig.suptitle(title, fontsize="large")
-    fig.tight_layout(rect=(0, 0, 1, 0.97))
+
+    legend_handles = [
+        plt.Rectangle((0, 0), 0.5, 1, color=color) for color in system_colors.values()
+    ]
+
+    legend_labels = list(system_colors.keys())
+    longest_label_length: int = max((len(label) for label in legend_labels), default=0)
+    num_legend_columns: int = (
+        1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3)
+    )
+
+    resulting_legend = fig.legend(
+        legend_handles,
+        legend_labels,
+        loc="outside lower center",
+        ncol=num_legend_columns,
+        frameon=True,
+        facecolor="#f5f5f5",
+        edgecolor="lightgrey",
+        fontsize="small",
+    )
+
+    # Figure out where the top of the legend is.
+    legend_bbox = resulting_legend.get_window_extent(
+        fig.canvas.get_renderer()  # type: ignore[attr-defined]
+    )
+    legend_bbox_fig = legend_bbox.transformed(fig.transFigure.inverted())
+    tight_layout_bottom = legend_bbox_fig.y1
+
+    if watermark:
+        fig.text(
+            0.99,  # x-position: pinned to right edge
+            0.5,  # y-position: vertically centered
+            watermark,
+            fontsize="small",
+            color="gray",
+            alpha=0.6,
+            ha="right",  # horizontal alignment: right side of text is at x
+            va="center",  # vertical alignment: center of text is at y
+            rotation="vertical",  # rotate text 90 degrees counter-clockwise
+        )
+
+    fig.tight_layout(pad=1.5, w_pad=2, rect=(0, tight_layout_bottom, 1, 1))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path)
+    fig.savefig(output_path, dpi=300)
     plt.close(fig)

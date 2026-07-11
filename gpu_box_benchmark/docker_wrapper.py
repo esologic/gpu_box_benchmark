@@ -15,8 +15,8 @@ from docker.errors import APIError, BuildError
 from docker.models.containers import Container
 from docker.models.images import Image
 
+from gpu_box_benchmark.benchmark_types import ReportFileNumerical
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
-from gpu_box_benchmark.numeric_benchmark_result import ReportFileNumerical
 
 LOGGER = logging.getLogger(__name__)
 
@@ -367,7 +367,8 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
 
     :param dockerfile_path: Path to the dockerfile to run.
     :param benchmark_name: Passed to image tagging process.
-    :param benchmark_version: Passed to image tagging process.
+    :param benchmark_version: Passed to image tagging process. Not consumed anywhere but in the
+    name of the image.
     :param gpus: GPUs to run on.
     :param create_runtime_env_vars: Callable to create runtime environment variables.
     :param outputs_to_result: Converts the outputs from the container (logs and optional output
