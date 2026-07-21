@@ -2,12 +2,11 @@
 set -euo pipefail
 
 # Environment variables
-MODEL_DIR="${MODEL_DIR:-/models}"
-
+MODEL_DIR="${MODEL_DIR:-/tmp/downloads/models}"
 MODEL_PATH="${MODEL_PATH:-${MODEL_DIR}/qwen2.5-1.5b-instruct-q4_k_m.gguf}"
 NUM_PROMPT_TOKENS="${NUM_PROMPT_TOKENS:-512}"
 NUM_GENERATION_TOKENS="${NUM_GENERATION_TOKENS:-128}"
-PERFORMANCE_ONLY="${PERFORMANCE_ONLY:-0}"
+PERFORMANCE_ONLY="${PERFORMANCE_ONLY:-1}"
 
 
 download_model() {
@@ -37,6 +36,7 @@ download_model() {
     exit 1
 }
 
+mkdir -p "${MODEL_DIR}"
 
 # Performance benchmark models
 download_model "Qwen/Qwen2.5-1.5B-Instruct-GGUF" "qwen2.5-1.5b-instruct-q4_k_m.gguf"
@@ -44,7 +44,7 @@ download_model "bartowski/Meta-Llama-3-8B-Instruct-GGUF" "Meta-Llama-3-8B-Instru
 download_model "tensorblock/Qwen1.5-MoE-A2.7B-Chat-GGUF" "Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf"
 
 
-if [[ "${PERFORMANCE_ONLY}" != "1" ]]; then
+if [[ "${PERFORMANCE_ONLY}" != 1 ]]; then
     # Capacity benchmark models
     download_model "bartowski/Qwen3-7B-GGUF" "Qwen3-7B-Q4_K_M.gguf"
     download_model "bartowski/Qwen3-14B-GGUF" "Qwen3-14B-Q4_K_M.gguf"

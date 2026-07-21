@@ -4,6 +4,12 @@
 
 Tracks changes of the codebase. 
 
+### 0.8.0 - (2026-07-XX)
+
+* Added invocation of a few benchmarks as unit tests.
+* All docker containers now optionally have a "downloads" directory for saving assets outside the 
+container. CLI arg for this as well.
+
 ### 0.7.0 - (2026-07-11)
 
 * Added `--x-label` and `--labeled-input` to comparison mode to be able to have more control over

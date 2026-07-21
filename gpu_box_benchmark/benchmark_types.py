@@ -270,13 +270,22 @@ class CreateBenchmarkExecutor(Protocol):
     """
 
     def __call__(
-        self, benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
+        self,
+        benchmark_name: BenchmarkName,
+        gpus: Tuple[GPUIdentity, ...],
+        docker_cleanup: bool,
+        downloads_directory_path: Optional[Path],
     ) -> Optional[BenchmarkExecutor]:
         """
-        :param benchmark_name: To look up.
+        :param benchmark_name: The enum representation of the benchmark to run.
         :param gpus: List of GPUs to run the benchmark on. Jobs can utilize the GPU or decide not
         to use them.
         :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+        :param downloads_directory_path: Benchmark docker containers may need to download test
+        assets during build time or runtime. By default, if this is not given, those assets are
+        downloaded into the image. If this is given, the assets are downloaded to this location
+        which is bind
+        mounted into the container so the downloads can be re-used.
         :return: Returns None if the wrapper module does not contain the desired benchmark.
         """
 

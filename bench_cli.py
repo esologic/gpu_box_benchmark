@@ -156,6 +156,17 @@ def cli() -> None:
         "Enabling this will make things slower but consume less disk."
     ),
 )
+@click.option(
+    "--downloads",
+    type=click.Path(exists=True, dir_okay=True, file_okay=False, writable=True, path_type=Path),
+    default=False,
+    show_default=True,
+    help=(
+        "Some benchmark docker containers need to download test assets. If no path is given here, "
+        "those assets are downloaded into the image. If this is given, the assets are downloaded "
+        "to this location which is bind mounted into the container so the downloads can be re-used."
+    ),
+)
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     test: Tuple[BenchmarkName, ...],
     gpu: Tuple[GPUIdentity, ...],
@@ -164,6 +175,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     title: str,
     description: str,
     docker_cleanup: bool,
+    downloads: Path,
 ) -> None:
     """
     Run one or more benchmarks and records the results.
@@ -177,6 +189,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     :param title: See click help for docs!
     :param description: See click help for docs!
     :param docker_cleanup: See click help for docs!
+    :param downloads: See click help for docs!
     :return: None
     """
 
@@ -210,7 +223,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     results: List[BenchmarkResult] = []
 
     for named_executor in render_named_executors(
-        benchmarks=test, gpu=gpu, docker_cleanup=docker_cleanup
+        benchmarks=test, gpu=gpu, docker_cleanup=docker_cleanup, downloads_directory_path=downloads
     ):
         if named_executor is not None:
             LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")

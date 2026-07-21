@@ -7,6 +7,7 @@ Code for running the "nvidia deep learning examples" benchmarks and parsing the 
 import json
 import logging
 from functools import partial
+from pathlib import Path
 from typing import NamedTuple, Optional, Tuple
 
 import pandas as pd
@@ -75,7 +76,10 @@ def _parse_report_file(mode_training: bool, container_output: ContainerOutputs) 
 
 
 def create_resnet50_executor(
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
+    benchmark_name: BenchmarkName,
+    gpus: Tuple[GPUIdentity, ...],
+    docker_cleanup: bool,
+    downloads_directory_path: Optional[Path],
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some resnet50 benchmarks.
@@ -83,6 +87,10 @@ def create_resnet50_executor(
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
     :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
     :return: The callable to run the benchmark, None if the input name is not a resnet benchmark.
     """
 
@@ -130,6 +138,7 @@ def create_resnet50_executor(
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=partial(_parse_report_file, resnet_parameters.mode_training),
                 docker_cleanup=docker_cleanup,
+                downloads_directory_path=downloads_directory_path,
             ),
         )
 

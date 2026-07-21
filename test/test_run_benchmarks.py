@@ -2,21 +2,56 @@
 UT suite to really run tests given the currently attached hardware.
 """
 
+from contextlib import contextmanager
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Iterator, Tuple
+
 import pytest
-from typing import Tuple
+
 from gpu_box_benchmark.benchmark_types import BenchmarkName
 from gpu_box_benchmark.benchmark_types import BenchmarkResult
-from gpu_box_benchmark.locate_describe_hardware import (
-    discover_gpus,
+from gpu_box_benchmark.executor_lookup import render_named_executors
+from gpu_box_benchmark.locate_describe_hardware import discover_gpus
+
+
+_NONZERO_NUMERICAL_RESULT_KEYS = (
+    "min_by_gpu_type",
+    "max_by_gpu_type",
+    "mean_by_gpu_type",
+    "theoretical_multi_gpu_mean",
+    "theoretical_multi_gpu_sum",
+    "forced_multi_gpu_numerical_mean",
+    "forced_multi_gpu_sum",
 )
 
-from gpu_box_benchmark.executor_lookup import render_named_executors
+
+@contextmanager
+def assets_directory() -> Iterator[Path]:
+    """
+    Yield the NAS models directory if available, otherwise a temporary directory.
+    :return: Context manager with the directory.
+    """
+
+    nas_path = Path("/mnt/network_storage/Devon Bray/Active Projects/models")
+
+    if nas_path.exists():
+        yield nas_path
+        return
+
+    with TemporaryDirectory() as tmp_dir:
+        yield Path(tmp_dir)
 
 
 @pytest.mark.parametrize(
     "benchmarks",
     [
+        (BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt,),
         (BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation,),
+        (BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt,),
+        (BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation,),
+        (BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt,),
+        (BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation,),
     ],
 )
 def test_run_benchmarks(benchmarks: Tuple[BenchmarkName, ...]) -> None:
@@ -26,15 +61,21 @@ def test_run_benchmarks(benchmarks: Tuple[BenchmarkName, ...]) -> None:
     :return: None
     """
 
-    executors = render_named_executors(
-        benchmarks=benchmarks,
-        gpu=discover_gpus(),
-        docker_cleanup=True,
-    )
+    with assets_directory() as downloads_directory_path:
+        executors = render_named_executors(
+            benchmarks=benchmarks,
+            gpu=discover_gpus(),
+            docker_cleanup=False,
+            downloads_directory_path=downloads_directory_path,
+        )
 
-    for named_executor in executors:
+        for named_executor in executors:
+            if named_executor is not None:
+                result: BenchmarkResult = named_executor.executor()
 
-        if named_executor is not None:
-            _result: BenchmarkResult = named_executor.executor()
-        else:
-            pytest.fail("No executor found.")
+                # Happy path is all tests produce numerical values in this set of keys.
+                numerical_results_dict = result.numerical_results.model_dump()
+
+                assert all(numerical_results_dict[key] for key in _NONZERO_NUMERICAL_RESULT_KEYS)
+            else:
+                pytest.fail("No executor found.")

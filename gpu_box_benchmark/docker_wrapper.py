@@ -27,6 +27,12 @@ output directly to a file. This is the path the containers write to internally, 
 that volume mount. 
 """
 
+INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH = "/tmp/downloads"
+"""
+Similarly, this is the universal path inside the containers that will be optionally bind
+mounted to to preserve downloaded assets between runs. 
+"""
+
 
 class ContainerOutputs(NamedTuple):
     """
@@ -71,12 +77,13 @@ class OutputsToResult(Protocol):
         """
 
 
-def _create_gpu_container(
+def _create_gpu_container(  # pylint: disable=too-many-positional-arguments
     client: DockerClient,
     image: Image,
     gpus: Tuple[GPUIdentity, ...],
     env_vars: List[Tuple[str, str]],
     output_file_path: Path,
+    downloads_directory_path: Optional[Path],
 ) -> Container:
     """
     Wrapper around the container creation function to pre-fill the params needed for GPU usage.
@@ -88,8 +95,27 @@ def _create_gpu_container(
     :param output_file_path: Some containers output via stdout, some containers need to write their
     results to a file. This path is volume mounted into the container so that it may optionally
     write to it.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
     :return: The unstarted container.
     """
+
+    volumes: Dict[str, Dict[str, str]] = {
+        str(output_file_path): {
+            # This location is baked into all dockerfiles used by the benchmarking suite that
+            # need to output to a file.
+            "bind": _INTERNAL_CONTAINER_OUTPUT_FILE_PATH,
+            "mode": "rw",
+        }
+    }
+
+    if downloads_directory_path is not None:
+        volumes[str(downloads_directory_path)] = {
+            "bind": INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH,
+            "mode": "rw",
+        }
 
     container = client.containers.create(
         image=image,
@@ -102,19 +128,7 @@ def _create_gpu_container(
         environment=dict(env_vars),
         ipc_mode="host",
         detach=True,
-        volumes={
-            str(output_file_path): {
-                # This location is baked into all dockerfiles used by the benchmarking suite that
-                # need to output to a file.
-                "bind": _INTERNAL_CONTAINER_OUTPUT_FILE_PATH,
-                "mode": "rw",
-            },
-            # TODO: need to be threading this through in a bunch of places.
-            str("/mnt/network_storage/Devon Bray/Active Projects/models"): {
-                "bind": "/models",
-                "mode": "rw",
-            },
-        },
+        volumes=volumes,
     )
 
     return container
@@ -160,6 +174,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     gpus: Tuple[GPUIdentity, ...],
     env_vars: List[Tuple[str, str]],
     output_file_path: Path,
+    downloads_directory_path: Optional[Path],
 ) -> Optional[ContainerOutputs]:
     """
     Creates a container, starts it, and waits for its completion on a set of GPUs. This blocks
@@ -170,11 +185,20 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     :param gpus: GPUs to run the container on.
     :param env_vars: Passed as environment.
     :param output_file_path: Passed into container for optional usage.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
     :return: The set of outputs from the container.
     """
 
     container = _create_gpu_container(
-        client=client, image=image, gpus=gpus, env_vars=env_vars, output_file_path=output_file_path
+        client=client,
+        image=image,
+        gpus=gpus,
+        env_vars=env_vars,
+        output_file_path=output_file_path,
+        downloads_directory_path=downloads_directory_path,
     )
 
     container.start()
@@ -251,6 +275,7 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     gpus: Tuple[GPUIdentity, ...],
     create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
     outputs_to_result: OutputsToResult,
+    downloads_directory_path: Optional[Path],
 ) -> List[float]:
     """
     Creates one docker container per GPU then starts each GPU at the same time. This is a simulation
@@ -263,6 +288,10 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     :param gpus: GPUs to run on.
     :param create_runtime_env_vars: Creates environment variables if required.
     :param outputs_to_result: Converts outputs to a numerical result.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
     :return: Results per GPU.
     """
 
@@ -276,6 +305,7 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
                 gpus=(gpu,),
                 env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
                 output_file_path=file,
+                downloads_directory_path=downloads_directory_path,
             ),
             file,
         )
@@ -355,6 +385,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
     outputs_to_result: OutputsToResult,
     multi_gpu_native: bool,
     docker_cleanup: bool,
+    downloads_directory_path: Optional[Path],
 ) -> ReportFileNumerical:
     """
     Benchmarks a given dockerfile. The run sequence is as follows:
@@ -382,6 +413,10 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
     GPUs passed in and utilize the multiple inputs simultaneously. If False, docker is used to
     run the benchmark on multiple GPUs at once.
     :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
     :return: Numerical results.
     """
 
@@ -434,6 +469,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
                     gpus=(gpu,),
                     env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
                     output_file_path=new_output_file(),
+                    downloads_directory_path=downloads_directory_path,
                 )
             )
             for gpu in serial_gpus
@@ -451,6 +487,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
                 gpus=gpus,
                 create_runtime_env_vars=create_runtime_env_vars,
                 outputs_to_result=outputs_to_result,
+                downloads_directory_path=downloads_directory_path,
             )
             if multiple_gpus_to_test
             else [first_result]
@@ -469,6 +506,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
                     gpus=gpus,
                     env_vars=create_runtime_env_vars(runtime_gpus=gpus),
                     output_file_path=multi_gpu_file,
+                    downloads_directory_path=downloads_directory_path,
                 )
                 multi_gpu_container.start()
 

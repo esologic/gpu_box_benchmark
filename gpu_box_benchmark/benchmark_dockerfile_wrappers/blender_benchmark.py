@@ -6,6 +6,7 @@ Doesn't yet support multiple GPUs.
 import json
 import logging
 import re
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from benchmark_dockerfiles import BLENDER_BENCHMARK_DOCKERFILE
@@ -79,6 +80,7 @@ def create_blender_benchmark_executor(  # pylin
     benchmark_name: BenchmarkName,
     gpus: Tuple[GPUIdentity, ...],
     docker_cleanup: bool,
+    downloads_directory_path: Optional[Path],
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some blender-based benchmarks.
@@ -87,6 +89,10 @@ def create_blender_benchmark_executor(  # pylin
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
     :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
     :return: The callable to run the benchmark.
     """
 
@@ -172,6 +178,7 @@ def create_blender_benchmark_executor(  # pylin
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=_parse_samples_per_minute,
                 docker_cleanup=docker_cleanup,
+                downloads_directory_path=downloads_directory_path,
             ),
         )
 

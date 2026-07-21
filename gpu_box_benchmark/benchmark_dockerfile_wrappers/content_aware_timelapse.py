@@ -4,6 +4,7 @@ Code for running the benchmarking tool in content aware timelapse and parsing th
 
 import json
 import logging
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from benchmark_dockerfiles import CONTENT_AWARE_TIMELAPSE_DOCKERFILE
@@ -48,7 +49,10 @@ def _parse_fps(container_outputs: ContainerOutputs) -> float:
 
 
 def create_content_aware_timelapse_executor(  # pylin
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
+    benchmark_name: BenchmarkName,
+    gpus: Tuple[GPUIdentity, ...],
+    docker_cleanup: bool,
+    downloads_directory_path: Optional[Path],
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run the benchmark in content aware timelapse.
@@ -57,6 +61,10 @@ def create_content_aware_timelapse_executor(  # pylin
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
     :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
     :return: The callable to run the benchmark.
     """
 
@@ -93,6 +101,7 @@ def create_content_aware_timelapse_executor(  # pylin
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=_parse_fps,
                 docker_cleanup=docker_cleanup,
+                downloads_directory_path=downloads_directory_path,
             ),
         )
 

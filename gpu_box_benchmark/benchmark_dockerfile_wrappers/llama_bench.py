@@ -22,7 +22,10 @@ from gpu_box_benchmark.benchmark_types import (
     BenchmarkResult,
     NumericalResultKey,
 )
-from gpu_box_benchmark.docker_wrapper import ContainerOutputs
+from gpu_box_benchmark.docker_wrapper import (
+    INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH,
+    ContainerOutputs,
+)
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 
 LOGGER = logging.getLogger(__name__)
@@ -43,6 +46,16 @@ _LLAMA_BENCH_VERSION = "0.3.0"
 """
 
 _NUM_TEST_TOKENS = 512
+
+_QWEN_2_5_1_5B_MODEL = (
+    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/" "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+)
+_META_LLAMA_3_8B_MODEL = (
+    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/" "Meta-Llama-3-8B-Instruct-Q4_K_M.gguf"
+)
+_QWEN_1_5_MOE_MODEL = (
+    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/" "Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf"
+)
 
 
 class _LlamaBenchParams(NamedTuple):
@@ -110,7 +123,10 @@ def _parse_docker_logs(container_outputs: ContainerOutputs) -> float:
 
 
 def create_llama_bench_throughput_executor(
-    benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
+    benchmark_name: BenchmarkName,
+    gpus: Tuple[GPUIdentity, ...],
+    docker_cleanup: bool,
+    downloads_directory_path: Optional[Path],
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run some llama bench benchmarks.
@@ -118,6 +134,10 @@ def create_llama_bench_throughput_executor(
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
     :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
     :return: The callable to run the benchmark.
     """
 
@@ -140,34 +160,34 @@ def create_llama_bench_throughput_executor(
     name_to_parameters = {
         # --- Qwen 2.5 1.5B (Dense) ---
         BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: _LlamaBenchParams(
-            internal_model_path="/models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+            internal_model_path=_QWEN_2_5_1_5B_MODEL,
             prompt_tokens=_NUM_TEST_TOKENS,
             generation_tokens=0,
         ),
         BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: _LlamaBenchParams(
-            internal_model_path="/models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+            internal_model_path=_QWEN_2_5_1_5B_MODEL,
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
         ),
         # --- Meta Llama 3 8B (Dense) ---
         BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: _LlamaBenchParams(
-            internal_model_path="/models/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf",
+            internal_model_path=_META_LLAMA_3_8B_MODEL,
             prompt_tokens=_NUM_TEST_TOKENS,
             generation_tokens=0,
         ),
         BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: _LlamaBenchParams(
-            internal_model_path="/models/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf",
+            internal_model_path=_META_LLAMA_3_8B_MODEL,
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
         ),
         # --- Qwen 1.5 MoE A2.7B (Sparse MoE) ---
         BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: _LlamaBenchParams(
-            internal_model_path="/models/Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf",
+            internal_model_path=_QWEN_1_5_MOE_MODEL,
             prompt_tokens=_NUM_TEST_TOKENS,
             generation_tokens=0,
         ),
         BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: _LlamaBenchParams(
-            internal_model_path="/models/Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf",
+            internal_model_path=_QWEN_1_5_MOE_MODEL,
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
         ),
@@ -210,6 +230,7 @@ def create_llama_bench_throughput_executor(
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=_parse_docker_logs,
                 docker_cleanup=docker_cleanup,
+                downloads_directory_path=downloads_directory_path,
             ),
         )
 
