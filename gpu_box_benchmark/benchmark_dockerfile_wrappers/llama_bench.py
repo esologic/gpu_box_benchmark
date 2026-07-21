@@ -10,7 +10,7 @@ but until then ik_llama isn't supported.
 import json
 import logging
 from pathlib import Path
-from typing import NamedTuple, Optional, Tuple
+from typing import Dict, NamedTuple, Optional, Tuple
 
 import pandas as pd
 
@@ -25,13 +25,16 @@ from gpu_box_benchmark.benchmark_types import (
 from gpu_box_benchmark.docker_wrapper import (
     INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH,
     ContainerOutputs,
+    OutputsToResult,
 )
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 
 LOGGER = logging.getLogger(__name__)
 
-_LLAMA_BENCH_VERSION = "0.3.0"
+_LLAMA_BENCH_PERFORMANCE_VERSION = "0.3.0"
 """
+The benchmarks related to Tok/S throughput.
+
 # Version History
 
 ## 0.3.0 - (2026-05-07)
@@ -48,13 +51,13 @@ _LLAMA_BENCH_VERSION = "0.3.0"
 _NUM_TEST_TOKENS = 512
 
 _QWEN_2_5_1_5B_MODEL = (
-    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/" "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 )
 _META_LLAMA_3_8B_MODEL = (
-    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/" "Meta-Llama-3-8B-Instruct-Q4_K_M.gguf"
+    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf"
 )
 _QWEN_1_5_MOE_MODEL = (
-    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/" "Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf"
+    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf"
 )
 
 
@@ -68,13 +71,22 @@ class _LlamaBenchParams(NamedTuple):
     generation_tokens: int
 
 
-def _parse_docker_logs(container_outputs: ContainerOutputs) -> float:
+class _LlamaBenchOutputs(NamedTuple):
+    """
+    Different outputs from llama.cpp that we care about from the runs.
+    """
+
+    tokens_per_second: float
+    model_number_parameters: int
+
+
+def _parse_docker_logs(container_outputs: ContainerOutputs) -> _LlamaBenchOutputs:
     """
     Parse a report file to the standard set of numerical results.
     Handles standard docker logs mixed into the JSON output stream.
     :param container_outputs: Contains the logs from the docker container as a string! These logs
     contain our results, and we need to extract.
-    :return: Numerical results
+    :return: Numerical results as an NT that will be parsed later.
     """
     docker_logs = container_outputs.logs
 
@@ -116,82 +128,62 @@ def _parse_docker_logs(container_outputs: ContainerOutputs) -> float:
     loaded = results[0]
 
     summary_dict = (
-        pd.Series(loaded["samples_ts"]).dropna().describe().to_dict()  # Tokens/Sample results.
+        pd.Series(loaded["samples_ts"]).dropna().describe().to_dict()  # Tokens/Second results.
     )
 
-    return float(summary_dict["mean"])
+    return _LlamaBenchOutputs(
+        tokens_per_second=float(summary_dict["mean"]),
+        model_number_parameters=loaded["model_n_params"],
+    )
 
 
-def create_llama_bench_throughput_executor(
+def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     benchmark_name: BenchmarkName,
+    benchmarks: Tuple[BenchmarkName, ...],
+    version: str,
+    dockerfile_path: Path,
+    name_to_parameters: Dict[BenchmarkName, _LlamaBenchParams],
+    verbose_unit: str,
+    unit: str,
+    performance_only: bool,
+    outputs_to_results: OutputsToResult,
     gpus: Tuple[GPUIdentity, ...],
     docker_cleanup: bool,
     downloads_directory_path: Optional[Path],
 ) -> Optional[BenchmarkExecutor]:
     """
-    Creates an executor that uses docker to run some llama bench benchmarks.
-    The args here fit the outer API.
-    :param benchmark_name: To lookup.
-    :param gpus: GPUs to use in the benchmark.
-    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
-    :param downloads_directory_path: Benchmark docker containers may need to download test assets
-    during build time or runtime. By default, if this is not given, those assets are downloaded
-    into the image. If this is given, the assets are downloaded to this location which is bind
-    mounted into the container so the downloads can be re-used.
-    :return: The callable to run the benchmark.
+    Creates a llama.cpp benchmark executor backed by the generic Docker benchmark
+    infrastructure.
+
+    This helper encapsulates the common logic for the various llama.cpp benchmark
+    families. Callers provide the set of supported benchmark names, benchmark-specific
+    parameters, Docker image configuration, and a parser that extracts the desired
+    numerical result from the container output.
+
+    :param benchmark_name: Benchmark to create an executor for.
+    :param benchmarks: Benchmark names supported by this executor family.
+    :param version: Benchmark implementation version.
+    :param dockerfile_path: Dockerfile used to build the benchmark image.
+    :param name_to_parameters: Mapping from benchmark name to the llama.cpp model and runtime
+    parameters used for that benchmark.
+    :param verbose_unit: Human-readable unit for the reported result.
+    :param unit: Short unit string for the reported result.
+    :param performance_only: If true, only download assets required for performance benchmarks
+    inside the benchmark container.
+    :param outputs_to_results: Parses the benchmark container output into the numerical result
+    reported by the benchmark.
+    :param gpus: GPUs to use when running the benchmark.
+    :param docker_cleanup: If true, remove the benchmark Docker image after benchmarking.
+    :param downloads_directory_path: Benchmark Docker containers may need to download test assets
+    during build time or runtime. If not given, the assets are downloaded into the image. If given,
+    assets are downloaded to this directory and bind-mounted into the container so they can be
+    reused across benchmark runs.
+    :return: A callable that executes the benchmark, or `None` if `benchmark_name` is not
+    supported by this executor.
     """
 
-    version: Optional[str] = None
-    dockerfile_path: Optional[Path] = None
-
-    if benchmark_name in (
-        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt,
-        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation,
-        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt,
-        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation,
-        BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt,
-        BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation,
-    ):
-        version = _LLAMA_BENCH_VERSION
-        dockerfile_path = LLAMA_BENCH_DOCKERFILE
-    else:
+    if benchmark_name not in benchmarks:
         return None
-
-    name_to_parameters = {
-        # --- Qwen 2.5 1.5B (Dense) ---
-        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: _LlamaBenchParams(
-            internal_model_path=_QWEN_2_5_1_5B_MODEL,
-            prompt_tokens=_NUM_TEST_TOKENS,
-            generation_tokens=0,
-        ),
-        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: _LlamaBenchParams(
-            internal_model_path=_QWEN_2_5_1_5B_MODEL,
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-        ),
-        # --- Meta Llama 3 8B (Dense) ---
-        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: _LlamaBenchParams(
-            internal_model_path=_META_LLAMA_3_8B_MODEL,
-            prompt_tokens=_NUM_TEST_TOKENS,
-            generation_tokens=0,
-        ),
-        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: _LlamaBenchParams(
-            internal_model_path=_META_LLAMA_3_8B_MODEL,
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-        ),
-        # --- Qwen 1.5 MoE A2.7B (Sparse MoE) ---
-        BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: _LlamaBenchParams(
-            internal_model_path=_QWEN_1_5_MOE_MODEL,
-            prompt_tokens=_NUM_TEST_TOKENS,
-            generation_tokens=0,
-        ),
-        BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: _LlamaBenchParams(
-            internal_model_path=_QWEN_1_5_MOE_MODEL,
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-        ),
-    }
 
     llama_bench_parameters: Optional[_LlamaBenchParams] = name_to_parameters.get(
         benchmark_name, None
@@ -213,25 +205,104 @@ def create_llama_bench_throughput_executor(
             benchmark_version=version,
             override_parameters={},
             larger_better=True,
-            verbose_unit="Tokens / Second",
-            unit="toks/s",
+            verbose_unit=verbose_unit,
+            unit=unit,
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.native_multi_gpu_result,
             numerical_results=docker_wrapper.benchmark_dockerfile(
                 dockerfile_path=dockerfile_path,
                 benchmark_name=benchmark_name.value,
-                benchmark_version=_LLAMA_BENCH_VERSION,
+                benchmark_version=version,
                 gpus=gpus,
                 create_runtime_env_vars=lambda runtime_gpus: [
                     ("MODEL_PATH", str(llama_bench_parameters.internal_model_path)),
                     ("NUM_PROMPT_TOKENS", str(llama_bench_parameters.prompt_tokens)),
                     ("NUM_GENERATION_TOKENS", str(llama_bench_parameters.generation_tokens)),
+                    ("PERFORMANCE_ONLY", str(int(performance_only))),
                 ],
                 multi_gpu_native=multi_gpu_native,
-                outputs_to_result=_parse_docker_logs,
+                outputs_to_result=outputs_to_results,
                 docker_cleanup=docker_cleanup,
                 downloads_directory_path=downloads_directory_path,
             ),
         )
 
     return run_llama_bench_docker
+
+
+def create_llama_bench_throughput_executor(
+    benchmark_name: BenchmarkName,
+    gpus: Tuple[GPUIdentity, ...],
+    docker_cleanup: bool,
+    downloads_directory_path: Optional[Path],
+) -> Optional[BenchmarkExecutor]:
+    """
+    Creates an executor that uses docker to run some llama bench benchmarks.
+    The args here fit the outer API.
+    :param benchmark_name: To lookup.
+    :param gpus: GPUs to use in the benchmark.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
+    :return: The callable to run the benchmark.
+    """
+
+    return _abstract_llama_bench_executor(
+        benchmark_name=benchmark_name,
+        benchmarks=(
+            BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt,
+            BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation,
+            BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt,
+            BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation,
+            BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt,
+            BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation,
+        ),
+        version=_LLAMA_BENCH_PERFORMANCE_VERSION,
+        dockerfile_path=LLAMA_BENCH_DOCKERFILE,
+        name_to_parameters={
+            # --- Qwen 2.5 1.5B (Dense) ---
+            BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: _LlamaBenchParams(
+                internal_model_path=_QWEN_2_5_1_5B_MODEL,
+                prompt_tokens=_NUM_TEST_TOKENS,
+                generation_tokens=0,
+            ),
+            BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: _LlamaBenchParams(
+                internal_model_path=_QWEN_2_5_1_5B_MODEL,
+                prompt_tokens=0,
+                generation_tokens=_NUM_TEST_TOKENS,
+            ),
+            # --- Meta Llama 3 8B (Dense) ---
+            BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: _LlamaBenchParams(
+                internal_model_path=_META_LLAMA_3_8B_MODEL,
+                prompt_tokens=_NUM_TEST_TOKENS,
+                generation_tokens=0,
+            ),
+            BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: _LlamaBenchParams(
+                internal_model_path=_META_LLAMA_3_8B_MODEL,
+                prompt_tokens=0,
+                generation_tokens=_NUM_TEST_TOKENS,
+            ),
+            # --- Qwen 1.5 MoE A2.7B (Sparse MoE) ---
+            BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: _LlamaBenchParams(
+                internal_model_path=_QWEN_1_5_MOE_MODEL,
+                prompt_tokens=_NUM_TEST_TOKENS,
+                generation_tokens=0,
+            ),
+            BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: _LlamaBenchParams(
+                internal_model_path=_QWEN_1_5_MOE_MODEL,
+                prompt_tokens=0,
+                generation_tokens=_NUM_TEST_TOKENS,
+            ),
+        },
+        verbose_unit="Tokens / Second",
+        unit="toks/s",
+        performance_only=True,
+        outputs_to_results=lambda container_outputs: _parse_docker_logs(
+            container_outputs
+        ).tokens_per_second,
+        gpus=gpus,
+        docker_cleanup=docker_cleanup,
+        downloads_directory_path=downloads_directory_path,
+    )
