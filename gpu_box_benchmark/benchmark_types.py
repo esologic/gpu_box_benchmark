@@ -5,7 +5,7 @@ Abstractions to define different named benchmarks and how they get run.
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import Dict, List, NamedTuple, Optional, Protocol, Tuple
 
 from pydantic import BaseModel
 
@@ -318,3 +318,12 @@ def load_system_evaluation_from_disk(path: Path) -> SystemEvaluation:
 
     with path.open() as file:
         return SystemEvaluation.model_validate_json(file.read())
+
+
+class NamedExecutor(NamedTuple):
+    """
+    Intermediate Type for labeling executors.
+    """
+
+    benchmark_name: BenchmarkName
+    executor: BenchmarkExecutor

@@ -108,7 +108,12 @@ def _create_gpu_container(
                 # need to output to a file.
                 "bind": _INTERNAL_CONTAINER_OUTPUT_FILE_PATH,
                 "mode": "rw",
-            }
+            },
+            # TODO: need to be threading this through in a bunch of places.
+            str("/mnt/network_storage/Devon Bray/Active Projects/models"): {
+                "bind": "/models",
+                "mode": "rw",
+            },
         },
     )
 

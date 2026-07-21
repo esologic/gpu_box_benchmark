@@ -109,7 +109,7 @@ def _parse_docker_logs(container_outputs: ContainerOutputs) -> float:
     return float(summary_dict["mean"])
 
 
-def create_llama_bench_executor(
+def create_llama_bench_throughput_executor(
     benchmark_name: BenchmarkName, gpus: Tuple[GPUIdentity, ...], docker_cleanup: bool
 ) -> Optional[BenchmarkExecutor]:
     """

@@ -5,7 +5,7 @@ import os
 import textwrap
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, NamedTuple, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import click
 import matplotlib.pyplot as plt
@@ -14,25 +14,12 @@ from bonus_click import options
 from click.decorators import FC
 
 from gpu_box_benchmark import visualization
-from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
-    ai_benchmark,
-    blender_benchmark,
-    content_aware_timelapse,
-    folding_at_home,
-    hashcat,
-    llama_bench,
-    nvidia_deep_learning_examples,
-    nvidia_gds,
-    whisper,
-)
 from gpu_box_benchmark.benchmark_types import (
     BENCHMARK_TO_PRETTY,
     EXTENDED_BENCHMARK_DOCUMENTS,
-    BenchmarkExecutor,
     BenchmarkFamily,
     BenchmarkName,
     BenchmarkResult,
-    CreateBenchmarkExecutor,
     SystemEvaluation,
     load_system_evaluation_from_disk,
 )
@@ -41,6 +28,7 @@ from gpu_box_benchmark.cli_common import (
     ENV_VAR_MAPPING,
     create_default_output_name,
 )
+from gpu_box_benchmark.executor_lookup import render_named_executors
 from gpu_box_benchmark.locate_describe_hardware import (
     GPU_CLICK_OPTION,
     GPUIdentity,
@@ -65,15 +53,6 @@ _GPU_BOX_BENCHMARK_VERSION = "0.2.0"
 """
 See top level `CHANGELOG.md` for version history of this format.
 """
-
-
-class NamedExecutor(NamedTuple):
-    """
-    Intermediate Type for labeling executors.
-    """
-
-    benchmark_name: BenchmarkName
-    executor: BenchmarkExecutor
 
 
 def run_options() -> Callable[[FC], FC]:
@@ -228,57 +207,11 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
 
     # Create the tests the user requested and run them.
 
-    creation_functions: List[CreateBenchmarkExecutor] = [
-        nvidia_deep_learning_examples.create_resnet50_executor,
-        llama_bench.create_llama_bench_executor,
-        blender_benchmark.create_blender_benchmark_executor,
-        folding_at_home.create_fah_bench_executor,
-        ai_benchmark.create_ai_benchmark_executor,
-        whisper.create_whisper_executor,
-        content_aware_timelapse.create_content_aware_timelapse_executor,
-        nvidia_gds.create_gdsio_executor,
-        hashcat.create_hashcat_executor,
-    ]
-
-    def executor_for_test(requested_test: BenchmarkName) -> BenchmarkExecutor:
-        """
-        Look up the executor for the input test. Adds logging.
-        :param requested_test: From CLI.
-        :return: Executor for the test.
-        """
-        try:
-            return next(
-                filter(
-                    None,
-                    (
-                        creation_function(
-                            benchmark_name=requested_test,
-                            gpus=gpu,
-                            docker_cleanup=docker_cleanup,
-                        )
-                        for creation_function in creation_functions
-                    ),
-                ),
-            )
-        except StopIteration as lookup_error:
-            raise StopIteration(
-                f"Couldn't find executor for test: {requested_test.value}"
-            ) from lookup_error
-
-    try:
-        named_executors: List[Optional[NamedExecutor]] = [
-            NamedExecutor(
-                benchmark_name=requested_test,
-                executor=executor_for_test(requested_test=requested_test),
-            )
-            for requested_test in test
-        ]
-    except StopIteration as e:
-        raise ValueError("No valid tests for the given input.") from e
-
     results: List[BenchmarkResult] = []
 
-    for named_executor in named_executors:
+    for named_executor in render_named_executors(
+        benchmarks=test, gpu=gpu, docker_cleanup=docker_cleanup
+    ):
         if named_executor is not None:
             LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
             try:
