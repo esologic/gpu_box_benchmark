@@ -236,7 +236,7 @@ def _build_image(
     build_directory = dockerfile_path.parent
 
     try:
-        image, _build_logs = client.images.build(
+        image, build_logs = client.images.build(
             path=str(build_directory),
             dockerfile=str(dockerfile_path.relative_to(build_directory)),
             tag=tag,
@@ -244,6 +244,11 @@ def _build_image(
             pull=False,
             rm=True,
             forcerm=True,
+        )
+
+        LOGGER.debug(
+            "Image Built. Complete "
+            f"Logs: {''.join(entry['stream'] for entry in build_logs if 'stream' in entry)}"
         )
 
         return image

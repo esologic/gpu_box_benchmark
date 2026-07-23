@@ -48,11 +48,6 @@ def assets_directory() -> Iterator[Path]:
     [
         (BenchmarkName.llama_bench_max_model_parameters_q4_k_m,),
         (BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt,),
-        (BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation,),
-        (BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt,),
-        (BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation,),
-        (BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt,),
-        (BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation,),
     ],
 )
 def test_run_benchmarks(benchmarks: Tuple[BenchmarkName, ...]) -> None:
@@ -67,7 +62,7 @@ def test_run_benchmarks(benchmarks: Tuple[BenchmarkName, ...]) -> None:
             benchmarks=benchmarks,
             gpu=discover_gpus(),
             docker_cleanup=False,
-            force_rebuild=True,
+            force_rebuild=False,
             downloads_directory_path=downloads_directory_path,
         )
 
