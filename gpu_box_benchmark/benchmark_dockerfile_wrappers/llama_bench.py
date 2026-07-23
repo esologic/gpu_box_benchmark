@@ -31,11 +31,15 @@ from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 
 LOGGER = logging.getLogger(__name__)
 
-_LLAMA_BENCH_PERFORMANCE_VERSION = "0.3.0"
+_LLAMA_BENCH_PERFORMANCE_VERSION = "0.4.0"
 """
 The benchmarks related to Tok/S throughput.
 
 # Version History
+
+## 0.4.0 - (2026-07-22)
+* Updated runner script to optionally run multiple models to enable the max parameters benchmark.
+* Touched a bunch of code to decrease redundancy between the two testing modalities.
 
 ## 0.3.0 - (2026-05-07)
 * Added CUDA architecture 75 to support Tesla T40.
@@ -48,17 +52,24 @@ The benchmarks related to Tok/S throughput.
 * First version 
 """
 
-_NUM_TEST_TOKENS = 512
+_LLAMA_BENCH_MAX_MODEL_PARAMETERS_VERSION = "0.1.0"
+"""
+The benchmarks related to seeing the largest model that can fit in the GPU.
 
-_QWEN_2_5_1_5B_MODEL = (
-    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
-)
-_META_LLAMA_3_8B_MODEL = (
-    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf"
-)
-_QWEN_1_5_MOE_MODEL = (
-    f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models/Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf"
-)
+# Version History
+
+## 0.1.0 - (2026-07-21)
+* First version 
+"""
+
+_NUM_TEST_TOKENS = 512
+_NUM_REPETITIONS = 10
+
+_MODELS_LOCATION_ROOT = f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models"
+
+_QWEN_2_5_1_5B_MODEL = f"{_MODELS_LOCATION_ROOT}/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+_META_LLAMA_3_8B_MODEL = f"{_MODELS_LOCATION_ROOT}/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf"
+_QWEN_1_5_MOE_MODEL = f"{_MODELS_LOCATION_ROOT}/Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf"
 
 
 class _LlamaBenchParams(NamedTuple):
@@ -137,7 +148,7 @@ def _parse_docker_logs(container_outputs: ContainerOutputs) -> _LlamaBenchOutput
     )
 
 
-def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     benchmark_name: BenchmarkName,
     benchmarks: Tuple[BenchmarkName, ...],
     version: str,
@@ -146,9 +157,11 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
     verbose_unit: str,
     unit: str,
     performance_only: bool,
+    repetitions: int,
     outputs_to_results: OutputsToResult,
     gpus: Tuple[GPUIdentity, ...],
     docker_cleanup: bool,
+    force_rebuild: bool,
     downloads_directory_path: Optional[Path],
 ) -> Optional[BenchmarkExecutor]:
     """
@@ -170,10 +183,13 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
     :param unit: Short unit string for the reported result.
     :param performance_only: If true, only download assets required for performance benchmarks
     inside the benchmark container.
+    :param repetitions: Passed to `llama-bench`, the number of times to run the benchmark.
     :param outputs_to_results: Parses the benchmark container output into the numerical result
     reported by the benchmark.
     :param gpus: GPUs to use when running the benchmark.
     :param docker_cleanup: If true, remove the benchmark Docker image after benchmarking.
+    :param force_rebuild: If given, the underlying docker containers are rebuilt from scratch
+    before running. This will take more time that using the existing images.
     :param downloads_directory_path: Benchmark Docker containers may need to download test assets
     during build time or runtime. If not given, the assets are downloaded into the image. If given,
     assets are downloaded to this directory and bind-mounted into the container so they can be
@@ -218,11 +234,13 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
                     ("MODEL_PATH", str(llama_bench_parameters.internal_model_path)),
                     ("NUM_PROMPT_TOKENS", str(llama_bench_parameters.prompt_tokens)),
                     ("NUM_GENERATION_TOKENS", str(llama_bench_parameters.generation_tokens)),
+                    ("NUM_REPETITIONS", str(repetitions)),
                     ("PERFORMANCE_ONLY", str(int(performance_only))),
                 ],
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=outputs_to_results,
                 docker_cleanup=docker_cleanup,
+                force_rebuild=force_rebuild,
                 downloads_directory_path=downloads_directory_path,
             ),
         )
@@ -234,6 +252,7 @@ def create_llama_bench_throughput_executor(
     benchmark_name: BenchmarkName,
     gpus: Tuple[GPUIdentity, ...],
     docker_cleanup: bool,
+    force_rebuild: bool,
     downloads_directory_path: Optional[Path],
 ) -> Optional[BenchmarkExecutor]:
     """
@@ -242,6 +261,8 @@ def create_llama_bench_throughput_executor(
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
     :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param force_rebuild: If given, the underlying docker containers are rebuilt from scratch
+    before running. This will take more time that using the existing images.
     :param downloads_directory_path: Benchmark docker containers may need to download test assets
     during build time or runtime. By default, if this is not given, those assets are downloaded
     into the image. If this is given, the assets are downloaded to this location which is bind
@@ -299,10 +320,104 @@ def create_llama_bench_throughput_executor(
         verbose_unit="Tokens / Second",
         unit="toks/s",
         performance_only=True,
+        repetitions=_NUM_REPETITIONS,
         outputs_to_results=lambda container_outputs: _parse_docker_logs(
             container_outputs
         ).tokens_per_second,
         gpus=gpus,
         docker_cleanup=docker_cleanup,
+        force_rebuild=force_rebuild,
         downloads_directory_path=downloads_directory_path,
     )
+
+
+def create_llama_bench_max_model_parameters_executor(
+    benchmark_name: BenchmarkName,
+    gpus: Tuple[GPUIdentity, ...],
+    docker_cleanup: bool,
+    force_rebuild: bool,
+    downloads_directory_path: Optional[Path],
+) -> Optional[BenchmarkExecutor]:
+    """
+    Creates an executor that uses docker to run some llama bench benchmarks.
+    The args here fit the outer API.
+    :param benchmark_name: To lookup.
+    :param gpus: GPUs to use in the benchmark.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param force_rebuild: If given, the underlying docker containers are rebuilt from scratch
+    before running. This will take more time that using the existing images.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
+    :return: The callable to run the benchmark.
+
+    """
+
+    version: Optional[str] = None
+    dockerfile_path: Optional[Path] = None
+
+    if benchmark_name == BenchmarkName.llama_bench_max_model_parameters_q4_k_m:
+        version = _LLAMA_BENCH_MAX_MODEL_PARAMETERS_VERSION
+        dockerfile_path = LLAMA_BENCH_DOCKERFILE
+    else:
+        return None
+
+    model_path_input = " ".join(
+        f"{_MODELS_LOCATION_ROOT}/{model_name}"
+        for model_name in [
+            (
+                "Gigaberg-Mistral-Large-123B-Q4_K_M/"
+                "Gigaberg-Mistral-Large-123B-Q4_K_M-00001-of-00002.gguf"
+            ),
+            "qwen2.5-72b-instruct-q4_k_m-00001-of-00012.gguf",
+            "qwen2.5-32b-instruct-q4_k_m-00001-of-00005.gguf",
+            "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
+            "qwen2.5-3b-instruct-q4_k_m.gguf",
+            "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+            "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        ]
+    )
+
+    def run_llama_bench_docker() -> BenchmarkResult:
+        """
+        Build and run the docker image that runs the benchmark.
+        :return: Parsed results.
+        """
+
+        multi_gpu_native = True
+
+        numerical_results = docker_wrapper.benchmark_dockerfile(
+            dockerfile_path=dockerfile_path,
+            benchmark_name=benchmark_name.value,
+            benchmark_version=_LLAMA_BENCH_MAX_MODEL_PARAMETERS_VERSION,
+            gpus=gpus,
+            create_runtime_env_vars=lambda runtime_gpus: [
+                ("MODEL_PATH", model_path_input),
+                ("NUM_PROMPT_TOKENS", str(1)),
+                ("NUM_GENERATION_TOKENS", str(1)),
+                ("NUM_REPETITIONS", str(1)),
+                ("PERFORMANCE_ONLY", str(int(False))),
+            ],
+            multi_gpu_native=multi_gpu_native,
+            outputs_to_result=lambda container_outputs: _parse_docker_logs(
+                container_outputs
+            ).model_number_parameters,
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+            downloads_directory_path=downloads_directory_path,
+        )
+
+        return BenchmarkResult(
+            name=benchmark_name,
+            benchmark_version=version,
+            override_parameters={},
+            larger_better=True,
+            verbose_unit="4-Bit K-Quantized (Medium) Parameters",
+            unit="q4_k_m params",
+            multi_gpu_native=multi_gpu_native,
+            critical_result_key=NumericalResultKey.native_multi_gpu_result,
+            numerical_results=numerical_results,
+        )
+
+    return run_llama_bench_docker

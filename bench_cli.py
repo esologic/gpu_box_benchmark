@@ -157,6 +157,16 @@ def cli() -> None:
     ),
 )
 @click.option(
+    "--force-rebuild",
+    type=click.BOOL,
+    default=False,
+    show_default=True,
+    help=(
+        "If given, the underlying docker containers are rebuilt from scratch before running. "
+        "This will take more time that using the existing images."
+    ),
+)
+@click.option(
     "--downloads",
     type=click.Path(exists=True, dir_okay=True, file_okay=False, writable=True, path_type=Path),
     default=False,
@@ -175,6 +185,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     title: str,
     description: str,
     docker_cleanup: bool,
+    force_rebuild: bool,
     downloads: Path,
 ) -> None:
     """
@@ -189,6 +200,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     :param title: See click help for docs!
     :param description: See click help for docs!
     :param docker_cleanup: See click help for docs!
+    :param force_rebuild: See click help for docs!
     :param downloads: See click help for docs!
     :return: None
     """
@@ -223,7 +235,11 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     results: List[BenchmarkResult] = []
 
     for named_executor in render_named_executors(
-        benchmarks=test, gpu=gpu, docker_cleanup=docker_cleanup, downloads_directory_path=downloads
+        benchmarks=test,
+        gpu=gpu,
+        docker_cleanup=docker_cleanup,
+        force_rebuild=force_rebuild,
+        downloads_directory_path=downloads,
     ):
         if named_executor is not None:
             LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")

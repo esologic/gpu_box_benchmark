@@ -9,6 +9,11 @@ Tracks changes of the codebase.
 * Added invocation of a few benchmarks as unit tests.
 * All docker containers now optionally have a "downloads" directory for saving assets outside the 
 container. CLI arg for this as well.
+* Underlying script for llama bench `run_llama_bench.sh` updated to add more models, and updated
+running mechanism to run multiple models in a sequence.
+* Added new benchmark, `llama_bench_max_model_parameters_q4_k_m` to see the largest number of LLM
+parameters that can be loaded into the attached GPUs using real models.
+* New flagging code to force rebuilding docker images.
 
 ### 0.7.0 - (2026-07-11)
 

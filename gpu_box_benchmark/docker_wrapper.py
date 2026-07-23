@@ -145,7 +145,6 @@ def _wait_get_logs(container: Container) -> Optional[str]:
     logs: Optional[str] = None
 
     try:
-
         result = container.wait()  # blocks until exit
 
         logs = container.logs(stdout=True, stderr=True).decode()
@@ -154,7 +153,11 @@ def _wait_get_logs(container: Container) -> Optional[str]:
         if status_code != 0:
             LOGGER.error("Container failed with exit code %s", status_code)
             LOGGER.error("Container logs:\n%s", logs)
-            raise RuntimeError("Container execution failed")
+
+            raise RuntimeError(
+                f"Container execution failed with exit code {status_code}.\n\n"
+                f"Container logs:\n{logs}"
+            )
 
         LOGGER.debug("Container completed successfully")
         LOGGER.debug("Container logs:\n%s", logs)
@@ -163,7 +166,7 @@ def _wait_get_logs(container: Container) -> Optional[str]:
         container.remove(force=True)
 
     if logs is None:
-        raise ValueError("Couldn't read logs from container")
+        raise RuntimeError("Container exited before logs could be retrieved.")
 
     return logs
 
@@ -213,7 +216,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
 
 
 def _build_image(
-    client: DockerClient, dockerfile_path: Path, tag: str, docker_cleanup: bool
+    client: DockerClient, dockerfile_path: Path, tag: str, force_rebuild: bool
 ) -> Image:
     """
     Canonical wrapper to build images.
@@ -222,30 +225,25 @@ def _build_image(
     :param dockerfile_path: Path to the dockerfile to build. The build context will be the parent
     of this file.
     :param tag: Tag for the image.
-    :param docker_cleanup: If True, efforts are made to leave little behind related to docker.
+    :param force_rebuild: If True, ignore Docker's build cache and rebuild the image from scratch.
+    If False, Docker will automatically reuse cached layers where possible while still detecting
+    changes to the Dockerfile and build context.
     :return: The built image.
     """
 
     LOGGER.debug("Building Image")
-
-    if not docker_cleanup:
-        try:
-            LOGGER.debug(f"Checking for existing image {tag}...")
-            return client.images.get(tag)
-        except docker.errors.ImageNotFound:
-            LOGGER.debug("Image not found locally. Proceeding to build.")
 
     build_directory = dockerfile_path.parent
 
     try:
         image, _build_logs = client.images.build(
             path=str(build_directory),
-            dockerfile=str(dockerfile_path),
+            dockerfile=str(dockerfile_path.relative_to(build_directory)),
             tag=tag,
-            nocache=docker_cleanup,
+            nocache=force_rebuild,
+            pull=False,
             rm=True,
             forcerm=True,
-            pull=docker_cleanup,
         )
 
         return image
@@ -376,65 +374,24 @@ def _docker_image_cleanup(client: DockerClient, run_image: Image, keep_images: L
         LOGGER.debug(f"Removed cruft image: {cruft_image.id}")
 
 
-def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
-    dockerfile_path: Path,
-    benchmark_name: str,
-    benchmark_version: str,
+def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arguments,too-many-locals
+    client: DockerClient,
+    image: Image,
     gpus: Tuple[GPUIdentity, ...],
     create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
     outputs_to_result: OutputsToResult,
     multi_gpu_native: bool,
-    docker_cleanup: bool,
     downloads_directory_path: Optional[Path],
 ) -> ReportFileNumerical:
     """
-    Benchmarks a given dockerfile. The run sequence is as follows:
 
-    0. The image is built and environment prepped.
-    1. A container is run sequentially on _one_ of each type of GPUs passed in. So if there are four
-    M10 cores and a P100, it is run on one of the M10 cores and the P100.
-    2. A container is run on all the input GPUs in parallel.
-
-    This strategy helps us understand the cost of parallelizing.
-
-    Because all of these images and containers and images can become massive on disk, steps have
-    been taken to prune and remove artifacts between tests. This makes the overall runtime slower.
-    This shouldn't impact GPU scores and will likely be improved in the future.
-
-    :param dockerfile_path: Path to the dockerfile to run.
-    :param benchmark_name: Passed to image tagging process.
-    :param benchmark_version: Passed to image tagging process. Not consumed anywhere but in the
-    name of the image.
-    :param gpus: GPUs to run on.
-    :param create_runtime_env_vars: Callable to create runtime environment variables.
-    :param outputs_to_result: Converts the outputs from the container (logs and optional output
-    file) to a numerical result.
-    :param multi_gpu_native: If True, the input dockerfile can take advantage of having multiple
-    GPUs passed in and utilize the multiple inputs simultaneously. If False, docker is used to
-    run the benchmark on multiple GPUs at once.
-    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
-    :param downloads_directory_path: Benchmark docker containers may need to download test assets
-    during build time or runtime. By default, if this is not given, those assets are downloaded
-    into the image. If this is given, the assets are downloaded to this location which is bind
-    mounted into the container so the downloads can be re-used.
-    :return: Numerical results.
+    :param gpus:
+    :param create_runtime_env_vars:
+    :param outputs_to_result:
+    :param multi_gpu_native:
+    :param downloads_directory_path:
+    :return:
     """
-
-    if not gpus:
-        raise ValueError("Non GPU test aren't supported yet.")
-
-    client = docker.from_env()
-
-    # Images that would be pruned but existed on the system before the run. We don't want to
-    # touch these because they might be used for something outside the scope of our app.
-    existed_before_run = _list_prunable_images(client=client)
-
-    image: Image = _build_image(
-        client=client,
-        dockerfile_path=dockerfile_path,
-        tag="_".join([benchmark_name, benchmark_version]),
-        docker_cleanup=docker_cleanup,
-    )
 
     # If there's only a single GPU attached we can skip a lot of work.
     multiple_gpus_to_test = len(gpus) > 1
@@ -521,13 +478,6 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
         theoretical_multi_gpu_sum = sum((name_to_serial_result[gpu.name] for gpu in gpus))
         forced_multi_gpu_sum = sum(parallel_results)
 
-        if docker_cleanup:
-            _docker_image_cleanup(
-                client=client,
-                run_image=image,
-                keep_images=existed_before_run,
-            )
-
         return ReportFileNumerical(
             min_by_gpu_type=min(name_to_serial_result.values()),
             max_by_gpu_type=max(name_to_serial_result.values()),
@@ -538,3 +488,86 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
             forced_multi_gpu_sum=forced_multi_gpu_sum,
             native_multi_gpu_result=native_multi_gpu_result,
         )
+
+
+def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
+    dockerfile_path: Path,
+    benchmark_name: str,
+    benchmark_version: str,
+    gpus: Tuple[GPUIdentity, ...],
+    create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
+    outputs_to_result: OutputsToResult,
+    multi_gpu_native: bool,
+    docker_cleanup: bool,
+    force_rebuild: bool,
+    downloads_directory_path: Optional[Path],
+) -> ReportFileNumerical:
+    """
+    Benchmarks a given dockerfile. The run sequence is as follows:
+
+    0. The image is built and environment prepped.
+    1. A container is run sequentially on _one_ of each type of GPUs passed in. So if there are four
+    M10 cores and a P100, it is run on one of the M10 cores and the P100.
+    2. A container is run on all the input GPUs in parallel.
+
+    This strategy helps us understand the cost of parallelizing.
+
+    Because all of these images and containers and images can become massive on disk, steps have
+    been taken to prune and remove artifacts between tests. This makes the overall runtime slower.
+    This shouldn't impact GPU scores and will likely be improved in the future.
+
+    :param dockerfile_path: Path to the dockerfile to run.
+    :param benchmark_name: Passed to image tagging process.
+    :param benchmark_version: Passed to image tagging process. Not consumed anywhere but in the
+    name of the image.
+    :param gpus: GPUs to run on.
+    :param create_runtime_env_vars: Callable to create runtime environment variables.
+    :param outputs_to_result: Converts the outputs from the container (logs and optional output
+    file) to a numerical result.
+    :param multi_gpu_native: If True, the input dockerfile can take advantage of having multiple
+    GPUs passed in and utilize the multiple inputs simultaneously. If False, docker is used to
+    run the benchmark on multiple GPUs at once.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param force_rebuild: If given, the underlying docker containers are rebuilt from scratch
+    before running. This will take more time that using the existing images.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
+    :return: Numerical results.
+    """
+
+    if not gpus:
+        raise ValueError("Non GPU test aren't supported yet.")
+
+    client = docker.from_env()
+
+    # Images that would be pruned but existed on the system before the run. We don't want to
+    # touch these because they might be used for something outside the scope of our app.
+    existed_before_run = _list_prunable_images(client=client)
+
+    image: Image = _build_image(
+        client=client,
+        dockerfile_path=dockerfile_path,
+        tag="_".join([benchmark_name, benchmark_version]),
+        force_rebuild=force_rebuild,
+    )
+
+    numerical_result = _run_benchmarking_image_sequence(
+        client=client,
+        image=image,
+        gpus=gpus,
+        create_runtime_env_vars=create_runtime_env_vars,
+        outputs_to_result=outputs_to_result,
+        multi_gpu_native=multi_gpu_native,
+        downloads_directory_path=downloads_directory_path,
+    )
+
+    if docker_cleanup:
+        _docker_image_cleanup(
+            client=client,
+            run_image=image,
+            keep_images=existed_before_run,
+        )
+
+    return numerical_result

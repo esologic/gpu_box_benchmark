@@ -79,6 +79,7 @@ def create_resnet50_executor(
     benchmark_name: BenchmarkName,
     gpus: Tuple[GPUIdentity, ...],
     docker_cleanup: bool,
+    force_rebuild: bool,
     downloads_directory_path: Optional[Path],
 ) -> Optional[BenchmarkExecutor]:
     """
@@ -87,6 +88,8 @@ def create_resnet50_executor(
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
     :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param force_rebuild: If given, the underlying docker containers are rebuilt from scratch
+    before running. This will take more time that using the existing images.
     :param downloads_directory_path: Benchmark docker containers may need to download test assets
     during build time or runtime. By default, if this is not given, those assets are downloaded
     into the image. If this is given, the assets are downloaded to this location which is bind
@@ -138,6 +141,7 @@ def create_resnet50_executor(
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=partial(_parse_report_file, resnet_parameters.mode_training),
                 docker_cleanup=docker_cleanup,
+                force_rebuild=force_rebuild,
                 downloads_directory_path=downloads_directory_path,
             ),
         )

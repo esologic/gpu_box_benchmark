@@ -49,7 +49,7 @@ class BenchmarkName(str, Enum):
     llama_bench_qwen_1_5_moe_chat_prompt = "llama_bench_qwen_1_5_moe_chat_prompt"
     llama_bench_qwen_1_5_moe_chat_generation = "llama_bench_qwen_1_5_moe_chat_generation"
 
-    llama_bench_max_model_parameters = "llama_bench_max_model_parameters"
+    llama_bench_max_model_parameters_q4_k_m = "llama_bench_max_model_parameters_q4_k_m"
 
     blender_benchmark_monster_cpu = "blender_benchmark_monster_cpu"
     blender_benchmark_monster_gpu = "blender_benchmark_monster_gpu"
@@ -85,7 +85,7 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     # Qwen 1.5 MoE (Sparse)
     BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: "llama.cpp Qwen1.5 MoE Prompt",
     BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: "llama.cpp Qwen1.5 MoE Gen",
-    BenchmarkName.llama_bench_max_model_parameters: "llama.cpp Max Model Parameters",
+    BenchmarkName.llama_bench_max_model_parameters_q4_k_m: "llama.cpp Max Model Parameters (Q4KM)",
     # Hardware & Other Benchmarks
     BenchmarkName.blender_benchmark_monster_cpu: "Blender CPU",
     BenchmarkName.blender_benchmark_monster_gpu: "Blender GPU",
@@ -272,11 +272,12 @@ class CreateBenchmarkExecutor(Protocol):
     to the pre-configured function to actually execute the function.
     """
 
-    def __call__(
+    def __call__(  # pylint: disable=too-many-positional-arguments
         self,
         benchmark_name: BenchmarkName,
         gpus: Tuple[GPUIdentity, ...],
         docker_cleanup: bool,
+        force_rebuild: bool,
         downloads_directory_path: Optional[Path],
     ) -> Optional[BenchmarkExecutor]:
         """
@@ -284,6 +285,8 @@ class CreateBenchmarkExecutor(Protocol):
         :param gpus: List of GPUs to run the benchmark on. Jobs can utilize the GPU or decide not
         to use them.
         :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+        :param force_rebuild: If given, the underlying docker containers are rebuilt from scratch
+        before running. This will take more time that using the existing images.
         :param downloads_directory_path: Benchmark docker containers may need to download test
         assets during build time or runtime. By default, if this is not given, those assets are
         downloaded into the image. If this is given, the assets are downloaded to this location

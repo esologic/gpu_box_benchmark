@@ -29,6 +29,7 @@ def test_benchmark_dockerfile_small() -> None:
         ),
         multi_gpu_native=False,
         docker_cleanup=True,  # This is the default from the CLI.
+        force_rebuild=True,
         downloads_directory_path=None,
     )
 
