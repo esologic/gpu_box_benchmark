@@ -10,9 +10,10 @@ but until then ik_llama isn't supported.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 import pandas as pd
+from pydantic import BaseModel
 
 from benchmark_dockerfiles import LLAMA_BENCH_DOCKERFILE
 from gpu_box_benchmark import docker_wrapper
@@ -65,11 +66,47 @@ The benchmarks related to seeing the largest model that can fit in the GPU.
 _NUM_TEST_TOKENS = 512
 _NUM_REPETITIONS = 10
 
+
+class _HFModelSpec(BaseModel):
+    """
+    Describes a model available on huggingface to be used for benchmarking.
+    """
+
+    repo: str
+    """
+    HF repo.
+    """
+
+    download: str
+    """
+    Item to download in the repo, can contain wildcard to get multipart models.
+    """
+
+    entrypoint: str
+    """
+    Name of model to run. For multipart models, the first part must be used.
+    """
+
+
 _MODELS_LOCATION_ROOT = f"{INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH}/models"
 
-_QWEN_2_5_1_5B_MODEL = f"{_MODELS_LOCATION_ROOT}/qwen2.5-1.5b-instruct-q4_k_m.gguf"
-_META_LLAMA_3_8B_MODEL = f"{_MODELS_LOCATION_ROOT}/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf"
-_QWEN_1_5_MOE_MODEL = f"{_MODELS_LOCATION_ROOT}/Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf"
+_QWEN_2_5_1_5B_MODEL = _HFModelSpec(
+    repo="Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+    download="qwen2.5-1.5b-instruct-q4_k_m*.gguf",
+    entrypoint="qwen2.5-1.5b-instruct-q4_k_m.gguf",
+)
+
+_META_LLAMA_3_8B_MODEL = _HFModelSpec(
+    repo="bartowski/Meta-Llama-3-8B-Instruct-GGUF",
+    download="Meta-Llama-3-8B-Instruct-Q4_K_M*.gguf",
+    entrypoint="Meta-Llama-3-8B-Instruct-Q4_K_M.gguf",
+)
+
+_QWEN_1_5_MOE_MODEL = _HFModelSpec(
+    repo="tensorblock/Qwen1.5-MoE-A2.7B-Chat-GGUF",
+    download="Qwen1.5-MoE-A2.7B-Chat-Q2_K*.gguf",
+    entrypoint="Qwen1.5-MoE-A2.7B-Chat-Q2_K.gguf",
+)
 
 
 class _LlamaBenchParams(NamedTuple):
@@ -77,9 +114,11 @@ class _LlamaBenchParams(NamedTuple):
     Defines the knobs that can be turned for a ResNet50 Benchmark run.
     """
 
-    internal_model_path: str
+    model_spec: List[_HFModelSpec]
     prompt_tokens: int
     generation_tokens: int
+    context_depth: int
+    repetitions: int
 
 
 class _LlamaBenchOutputs(NamedTuple):
@@ -150,14 +189,10 @@ def _parse_docker_logs(container_outputs: ContainerOutputs) -> _LlamaBenchOutput
 
 def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     benchmark_name: BenchmarkName,
-    benchmarks: Tuple[BenchmarkName, ...],
     version: str,
-    dockerfile_path: Path,
     name_to_parameters: Dict[BenchmarkName, _LlamaBenchParams],
     verbose_unit: str,
     unit: str,
-    performance_only: bool,
-    repetitions: int,
     outputs_to_results: OutputsToResult,
     gpus: Tuple[GPUIdentity, ...],
     docker_cleanup: bool,
@@ -174,16 +209,11 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
     numerical result from the container output.
 
     :param benchmark_name: Benchmark to create an executor for.
-    :param benchmarks: Benchmark names supported by this executor family.
     :param version: Benchmark implementation version.
-    :param dockerfile_path: Dockerfile used to build the benchmark image.
     :param name_to_parameters: Mapping from benchmark name to the llama.cpp model and runtime
     parameters used for that benchmark.
     :param verbose_unit: Human-readable unit for the reported result.
     :param unit: Short unit string for the reported result.
-    :param performance_only: If true, only download assets required for performance benchmarks
-    inside the benchmark container.
-    :param repetitions: Passed to `llama-bench`, the number of times to run the benchmark.
     :param outputs_to_results: Parses the benchmark container output into the numerical result
     reported by the benchmark.
     :param gpus: GPUs to use when running the benchmark.
@@ -197,9 +227,6 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
     :return: A callable that executes the benchmark, or `None` if `benchmark_name` is not
     supported by this executor.
     """
-
-    if benchmark_name not in benchmarks:
-        return None
 
     llama_bench_parameters: Optional[_LlamaBenchParams] = name_to_parameters.get(
         benchmark_name, None
@@ -226,16 +253,16 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.native_multi_gpu_result,
             numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=dockerfile_path,
+                dockerfile_path=LLAMA_BENCH_DOCKERFILE,
                 benchmark_name=benchmark_name.value,
                 benchmark_version=version,
                 gpus=gpus,
                 create_runtime_env_vars=lambda runtime_gpus: [
-                    ("MODEL_PATH", str(llama_bench_parameters.internal_model_path)),
+                    ("MODEL_PATH", str(json.dumps(llama_bench_parameters.model_spec))),
                     ("NUM_PROMPT_TOKENS", str(llama_bench_parameters.prompt_tokens)),
                     ("NUM_GENERATION_TOKENS", str(llama_bench_parameters.generation_tokens)),
-                    ("NUM_REPETITIONS", str(repetitions)),
-                    ("PERFORMANCE_ONLY", str(int(performance_only))),
+                    ("NUM_REPETITIONS", str(llama_bench_parameters.repetitions)),
+                    ("CONTEXT_DEPTH", str(llama_bench_parameters.context_depth)),
                 ],
                 multi_gpu_native=multi_gpu_native,
                 outputs_to_result=outputs_to_results,
@@ -272,55 +299,56 @@ def create_llama_bench_throughput_executor(
 
     return _abstract_llama_bench_executor(
         benchmark_name=benchmark_name,
-        benchmarks=(
-            BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt,
-            BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation,
-            BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt,
-            BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation,
-            BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt,
-            BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation,
-        ),
         version=_LLAMA_BENCH_PERFORMANCE_VERSION,
-        dockerfile_path=LLAMA_BENCH_DOCKERFILE,
         name_to_parameters={
             # --- Qwen 2.5 1.5B (Dense) ---
             BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: _LlamaBenchParams(
-                internal_model_path=_QWEN_2_5_1_5B_MODEL,
+                model_spec=[_QWEN_2_5_1_5B_MODEL],
                 prompt_tokens=_NUM_TEST_TOKENS,
                 generation_tokens=0,
+                context_depth=0,
+                repetitions=_NUM_REPETITIONS,
             ),
             BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: _LlamaBenchParams(
-                internal_model_path=_QWEN_2_5_1_5B_MODEL,
+                model_spec=[_QWEN_2_5_1_5B_MODEL],
                 prompt_tokens=0,
                 generation_tokens=_NUM_TEST_TOKENS,
+                context_depth=0,
+                repetitions=_NUM_REPETITIONS,
             ),
             # --- Meta Llama 3 8B (Dense) ---
             BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: _LlamaBenchParams(
-                internal_model_path=_META_LLAMA_3_8B_MODEL,
+                model_spec=[_META_LLAMA_3_8B_MODEL],
                 prompt_tokens=_NUM_TEST_TOKENS,
                 generation_tokens=0,
+                context_depth=0,
+                repetitions=_NUM_REPETITIONS,
             ),
             BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: _LlamaBenchParams(
-                internal_model_path=_META_LLAMA_3_8B_MODEL,
+                model_spec=[_META_LLAMA_3_8B_MODEL],
                 prompt_tokens=0,
                 generation_tokens=_NUM_TEST_TOKENS,
+                context_depth=0,
+                repetitions=_NUM_REPETITIONS,
             ),
             # --- Qwen 1.5 MoE A2.7B (Sparse MoE) ---
             BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: _LlamaBenchParams(
-                internal_model_path=_QWEN_1_5_MOE_MODEL,
+                model_spec=[_QWEN_1_5_MOE_MODEL],
                 prompt_tokens=_NUM_TEST_TOKENS,
                 generation_tokens=0,
+                context_depth=0,
+                repetitions=_NUM_REPETITIONS,
             ),
             BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: _LlamaBenchParams(
-                internal_model_path=_QWEN_1_5_MOE_MODEL,
+                model_spec=[_QWEN_1_5_MOE_MODEL],
                 prompt_tokens=0,
                 generation_tokens=_NUM_TEST_TOKENS,
+                context_depth=0,
+                repetitions=_NUM_REPETITIONS,
             ),
         },
         verbose_unit="Tokens / Second",
         unit="toks/s",
-        performance_only=True,
-        repetitions=_NUM_REPETITIONS,
         outputs_to_results=lambda container_outputs: _parse_docker_logs(
             container_outputs
         ).tokens_per_second,
@@ -354,70 +382,64 @@ def create_llama_bench_max_model_parameters_executor(
 
     """
 
-    version: Optional[str] = None
-    dockerfile_path: Optional[Path] = None
-
-    if benchmark_name == BenchmarkName.llama_bench_max_model_parameters_q4_k_m:
-        version = _LLAMA_BENCH_MAX_MODEL_PARAMETERS_VERSION
-        dockerfile_path = LLAMA_BENCH_DOCKERFILE
-    else:
-        return None
-
-    model_path_input = " ".join(
-        f"{_MODELS_LOCATION_ROOT}/{model_name}"
-        for model_name in [
-            (
-                "Gigaberg-Mistral-Large-123B-Q4_K_M/"
-                "Gigaberg-Mistral-Large-123B-Q4_K_M-00001-of-00002.gguf"
+    return _abstract_llama_bench_executor(
+        benchmark_name=benchmark_name,
+        version=_LLAMA_BENCH_MAX_MODEL_PARAMETERS_VERSION,
+        name_to_parameters={
+            BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: _LlamaBenchParams(
+                model_spec=[
+                    _HFModelSpec(
+                        repo="bartowski/Gigaberg-Mistral-Large-123B-GGUF",
+                        download="Gigaberg-Mistral-Large-123B-Q4_K_M*.gguf",
+                        entrypoint=(
+                            "Gigaberg-Mistral-Large-123B-Q4_K_M/"
+                            "Gigaberg-Mistral-Large-123B-Q4_K_M-00001-of-00002.gguf"
+                        ),
+                    ),
+                    _HFModelSpec(
+                        repo="Qwen/Qwen2.5-72B-Instruct-GGUF",
+                        download="qwen2.5-72b-instruct-q4_k_m*.gguf",
+                        entrypoint="qwen2.5-72b-instruct-q4_k_m-00001-of-00012.gguf",
+                    ),
+                    _HFModelSpec(
+                        repo="Qwen/Qwen2.5-32B-Instruct-GGUF",
+                        download="qwen2.5-32b-instruct-q4_k_m*.gguf",
+                        entrypoint="qwen2.5-32b-instruct-q4_k_m-00001-of-00005.gguf",
+                    ),
+                    _HFModelSpec(
+                        repo="Qwen/Qwen2.5-7B-Instruct-GGUF",
+                        download="qwen2.5-7b-instruct-q4_k_m*.gguf",
+                        entrypoint="qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
+                    ),
+                    _HFModelSpec(
+                        repo="Qwen/Qwen2.5-3B-Instruct-GGUF",
+                        download="qwen2.5-3b-instruct-q4_k_m*.gguf",
+                        entrypoint="qwen2.5-3b-instruct-q4_k_m.gguf",
+                    ),
+                    _HFModelSpec(
+                        repo="Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+                        download="qwen2.5-1.5b-instruct-q4_k_m*.gguf",
+                        entrypoint="qwen2.5-1.5b-instruct-q4_k_m.gguf",
+                    ),
+                    _HFModelSpec(
+                        repo="Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+                        download="qwen2.5-0.5b-instruct-q4_k_m*.gguf",
+                        entrypoint="qwen2.5-0.5b-instruct-q4_k_m.gguf",
+                    ),
+                ],
+                prompt_tokens=1,
+                generation_tokens=1,
+                context_depth=32768,
+                repetitions=1,
             ),
-            "qwen2.5-72b-instruct-q4_k_m-00001-of-00012.gguf",
-            "qwen2.5-32b-instruct-q4_k_m-00001-of-00005.gguf",
-            "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
-            "qwen2.5-3b-instruct-q4_k_m.gguf",
-            "qwen2.5-1.5b-instruct-q4_k_m.gguf",
-            "qwen2.5-0.5b-instruct-q4_k_m.gguf",
-        ]
+        },
+        verbose_unit="4-Bit K-Quantized (Medium) Parameters",
+        unit="q4_k_m params",
+        outputs_to_results=lambda container_outputs: _parse_docker_logs(
+            container_outputs
+        ).tokens_per_second,
+        gpus=gpus,
+        docker_cleanup=docker_cleanup,
+        force_rebuild=force_rebuild,
+        downloads_directory_path=downloads_directory_path,
     )
-
-    def run_llama_bench_docker() -> BenchmarkResult:
-        """
-        Build and run the docker image that runs the benchmark.
-        :return: Parsed results.
-        """
-
-        multi_gpu_native = True
-
-        numerical_results = docker_wrapper.benchmark_dockerfile(
-            dockerfile_path=dockerfile_path,
-            benchmark_name=benchmark_name.value,
-            benchmark_version=_LLAMA_BENCH_MAX_MODEL_PARAMETERS_VERSION,
-            gpus=gpus,
-            create_runtime_env_vars=lambda runtime_gpus: [
-                ("MODEL_PATH", model_path_input),
-                ("NUM_PROMPT_TOKENS", str(1)),
-                ("NUM_GENERATION_TOKENS", str(1)),
-                ("NUM_REPETITIONS", str(1)),
-                ("PERFORMANCE_ONLY", str(int(False))),
-            ],
-            multi_gpu_native=multi_gpu_native,
-            outputs_to_result=lambda container_outputs: _parse_docker_logs(
-                container_outputs
-            ).model_number_parameters,
-            docker_cleanup=docker_cleanup,
-            force_rebuild=force_rebuild,
-            downloads_directory_path=downloads_directory_path,
-        )
-
-        return BenchmarkResult(
-            name=benchmark_name,
-            benchmark_version=version,
-            override_parameters={},
-            larger_better=True,
-            verbose_unit="4-Bit K-Quantized (Medium) Parameters",
-            unit="q4_k_m params",
-            multi_gpu_native=multi_gpu_native,
-            critical_result_key=NumericalResultKey.native_multi_gpu_result,
-            numerical_results=numerical_results,
-        )
-
-    return run_llama_bench_docker
