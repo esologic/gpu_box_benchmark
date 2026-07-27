@@ -62,7 +62,7 @@ def test_run_benchmarks(benchmarks: Tuple[BenchmarkName, ...]) -> None:
             benchmarks=benchmarks,
             gpu=discover_gpus(),
             docker_cleanup=False,
-            force_rebuild=True,
+            force_rebuild=False,
             downloads_directory_path=downloads_directory_path,
         )
 

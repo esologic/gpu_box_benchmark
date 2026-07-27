@@ -27,7 +27,7 @@ output directly to a file. This is the path the containers write to internally, 
 that volume mount. 
 """
 
-INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH = "/tmp/downloads"
+_INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH = "/tmp/downloads"
 """
 Similarly, this is the universal path inside the containers that will be optionally bind
 mounted to to preserve downloaded assets between runs. 
@@ -113,7 +113,7 @@ def _create_gpu_container(  # pylint: disable=too-many-positional-arguments
 
     if downloads_directory_path is not None:
         volumes[str(downloads_directory_path)] = {
-            "bind": INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH,
+            "bind": _INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH,
             "mode": "rw",
         }
 

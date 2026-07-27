@@ -22,7 +22,7 @@ HF_CACHE_DIR="${HF_CACHE_DIR:-${MODEL_DIR}/.cache}"
 #   The GGUF file passed to llama-bench --model.
 #   For multipart GGUF models, this must be the first shard
 #   (for example: -00001-of-00012.gguf).
-MODEL_SPECS="${MODEL_SPECS:-[]}"
+MODEL_SPECS="${MODEL_SPECS:-[{"repo":"Qwen/Qwen2.5-1.5B-Instruct-GGUF","download":"qwen2.5-1.5b-instruct-q4_k_m*.gguf","entrypoint":"qwen2.5-1.5b-instruct-q4_k_m.gguf"}]}"
 
 NUM_PROMPT_TOKENS="${NUM_PROMPT_TOKENS:-512}"
 NUM_GENERATION_TOKENS="${NUM_GENERATION_TOKENS:-128}"

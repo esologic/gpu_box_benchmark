@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     curl \
     gpg \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor -o /usr/share/keyrings/kitware.gpg && \

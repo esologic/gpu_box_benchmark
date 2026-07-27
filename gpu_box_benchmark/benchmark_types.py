@@ -49,9 +49,17 @@ class BenchmarkName(str, Enum):
     llama_bench_qwen_1_5_moe_chat_prompt = "llama_bench_qwen_1_5_moe_chat_prompt"
     llama_bench_qwen_1_5_moe_chat_generation = "llama_bench_qwen_1_5_moe_chat_generation"
 
+    llama_bench_max_model_parameters_q4_k_m_4k_ctx = (
+        "llama_bench_max_model_parameters_q4_k_m_4k_ctx"
+    )
+
     llama_bench_max_model_parameters_q4_k_m_32k_ctx = (
         "llama_bench_max_model_parameters_q4_k_m_32k_ctx"
     )
+
+    llama_bench_max_model_parameters_q8_4k_ctx = "llama_bench_max_model_parameters_q8_4k_ctx"
+
+    llama_bench_max_model_parameters_q8_32k_ctx = "llama_bench_max_model_parameters_q8_32k_ctx"
 
     blender_benchmark_monster_cpu = "blender_benchmark_monster_cpu"
     blender_benchmark_monster_gpu = "blender_benchmark_monster_gpu"
@@ -87,8 +95,17 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     # Qwen 1.5 MoE (Sparse)
     BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: "llama.cpp Qwen1.5 MoE Prompt",
     BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: "llama.cpp Qwen1.5 MoE Gen",
+    BenchmarkName.llama_bench_max_model_parameters_q4_k_m_4k_ctx: (
+        "llama.cpp Max Model Parameters (Q4KM) + 4K Context"
+    ),
     BenchmarkName.llama_bench_max_model_parameters_q4_k_m_32k_ctx: (
-        "llama.cpp Max Model Parameters (Q4KM) w/ 32K Context"
+        "llama.cpp Max Model Parameters (Q4KM) + 32K Context"
+    ),
+    BenchmarkName.llama_bench_max_model_parameters_q8_4k_ctx: (
+        "llama.cpp Max Model Parameters (Q8) + 4K Context"
+    ),
+    BenchmarkName.llama_bench_max_model_parameters_q8_32k_ctx: (
+        "llama.cpp Max Model Parameters (Q8) + 32K Context"
     ),
     # Hardware & Other Benchmarks
     BenchmarkName.blender_benchmark_monster_cpu: "Blender CPU",
