@@ -49,17 +49,35 @@ class BenchmarkName(str, Enum):
     llama_bench_qwen_1_5_moe_chat_prompt = "llama_bench_qwen_1_5_moe_chat_prompt"
     llama_bench_qwen_1_5_moe_chat_generation = "llama_bench_qwen_1_5_moe_chat_generation"
 
+    llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_prompt = (
+        "llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_prompt"
+    )
+    llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_generation = (
+        "llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_generation"
+    )
+    llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_prompt = (
+        "llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_prompt"
+    )
+    llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_generation = (
+        "llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_generation"
+    )
+    llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_prompt = (
+        "llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_prompt"
+    )
+    llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_generation = (
+        "llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_generation"
+    )
+
     llama_bench_max_model_parameters_q4_k_m_4k_ctx = (
         "llama_bench_max_model_parameters_q4_k_m_4k_ctx"
     )
-
     llama_bench_max_model_parameters_q4_k_m_32k_ctx = (
         "llama_bench_max_model_parameters_q4_k_m_32k_ctx"
     )
-
     llama_bench_max_model_parameters_q8_4k_ctx = "llama_bench_max_model_parameters_q8_4k_ctx"
-
     llama_bench_max_model_parameters_q8_32k_ctx = "llama_bench_max_model_parameters_q8_32k_ctx"
+    llama_bench_max_model_parameters_f16_4k_ctx = "llama_bench_max_model_parameters_f16_4k_ctx"
+    llama_bench_max_model_parameters_f16_32k_ctx = "llama_bench_max_model_parameters_f16_32k_ctx"
 
     blender_benchmark_monster_cpu = "blender_benchmark_monster_cpu"
     blender_benchmark_monster_gpu = "blender_benchmark_monster_gpu"
@@ -106,6 +124,12 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     ),
     BenchmarkName.llama_bench_max_model_parameters_q8_32k_ctx: (
         "llama.cpp Max Model Parameters (Q8) + 32K Context"
+    ),
+    BenchmarkName.llama_bench_max_model_parameters_f16_4k_ctx: (
+        "llama.cpp Max Model Parameters (F16) + 4K Context"
+    ),
+    BenchmarkName.llama_bench_max_model_parameters_f16_32k_ctx: (
+        "llama.cpp Max Model Parameters (F16) + 32K Context"
     ),
     # Hardware & Other Benchmarks
     BenchmarkName.blender_benchmark_monster_cpu: "Blender CPU",
