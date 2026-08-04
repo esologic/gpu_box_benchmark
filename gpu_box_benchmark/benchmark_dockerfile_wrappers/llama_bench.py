@@ -37,6 +37,7 @@ The benchmarks related to Tok/S throughput.
 ## 0.4.0 - (2026-07-22)
 * Updated runner script to optionally run multiple models to enable the max parameters benchmark.
 * Touched a bunch of code to decrease redundancy between the two testing modalities.
+* Added tests for a set of new models, quants, and context lengths per feedback from first release. 
 
 ## 0.3.0 - (2026-05-07)
 * Added CUDA architecture 75 to support Tesla T40.
@@ -104,10 +105,13 @@ _QWEN_1_5_MOE_MODEL = _HFModelSpec(
 
 
 class _ModelQuantization(NamedTuple):
+    """
+    Locations of the different quantization's of a given model.
+    """
 
     q4: _HFModelSpec
     q8: _HFModelSpec
-    q16: _HFModelSpec
+    f16: _HFModelSpec
 
 
 _QWEN_2_5_3B_INSTRUCT = _ModelQuantization(
@@ -121,7 +125,11 @@ _QWEN_2_5_3B_INSTRUCT = _ModelQuantization(
         download="qwen2.5-3b-instruct-q8_0*.gguf",
         entrypoint="qwen2.5-3b-instruct-q8_0.gguf",
     ),
-    q16=None,
+    f16=_HFModelSpec(
+        repo="Qwen/Qwen2.5-3B-Instruct-GGUF",
+        download="qwen2.5-3b-instruct-fp16*.gguf",
+        entrypoint="qwen2.5-3b-instruct-fp16.gguf",
+    ),
 )
 
 _QWEN_2_5_14B_INSTRUCT = _ModelQuantization(
@@ -135,7 +143,7 @@ _QWEN_2_5_14B_INSTRUCT = _ModelQuantization(
         download="qwen2.5-14b-instruct-q8_0*.gguf",
         entrypoint="qwen2.5-14b-instruct-q8_0.gguf",
     ),
-    q16=_HFModelSpec(
+    f16=_HFModelSpec(
         repo="Qwen/Qwen2.5-Coder-14B-Instruct-GGUF",
         download="qwen2.5-coder-14b-instruct-fp16-*.gguf",
         entrypoint="qwen2.5-coder-14b-instruct-fp16-00001-of-00004.gguf",
@@ -153,7 +161,11 @@ _QWEN_2_5_32B_INSTRUCT = _ModelQuantization(
         download="qwen2.5-32b-instruct-q8_0*.gguf",
         entrypoint="qwen2.5-32b-instruct-q8_0-00001-of-00009.gguf",
     ),
-    q16=None,
+    f16=_HFModelSpec(
+        repo="Qwen/Qwen2.5-32B-Instruct-GGUF",
+        download="qwen2.5-32b-instruct-fp16*.gguf",
+        entrypoint="qwen2.5-32b-instruct-fp16-00001-of-00015.gguf",
+    ),
 )
 
 _QWEN_2_5_72B_INSTRUCT = _ModelQuantization(
@@ -167,25 +179,45 @@ _QWEN_2_5_72B_INSTRUCT = _ModelQuantization(
         download="qwen2.5-72b-instruct-q8_0*.gguf",
         entrypoint="qwen2.5-72b-instruct-q8_0-00001-of-00021.gguf",
     ),
-    q16=None,
+    f16=_HFModelSpec(
+        repo="Qwen/Qwen2.5-72B-Instruct-GGUF",
+        download="qwen2.5-72b-instruct-fp16*.gguf",
+        entrypoint="qwen2.5-72b-instruct-fp16-00001-of-00030.gguf",
+    ),
 )
 
 # Should be 16B
 _DEEPSEEK_CODER_V2_LITE = _ModelQuantization(
-    q4=None,
+    q4=_HFModelSpec(
+        repo="lmstudio-community/DeepSeek-Coder-V2-Lite-Instruct-GGUF",
+        download="DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M*.gguf",
+        entrypoint="DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf",
+    ),
     q8=_HFModelSpec(
         repo="lmstudio-community/DeepSeek-Coder-V2-Lite-Instruct-GGUF",
         download="DeepSeek-Coder-V2-Lite-Instruct-Q8*.gguf",
         entrypoint="DeepSeek-Coder-V2-Lite-Instruct-Q8_0.gguf",
     ),
-    q16=None,
+    f16=_HFModelSpec(
+        repo="lmstudio-community/DeepSeek-Coder-V2-Lite-Instruct-GGUF",
+        download="DeepSeek-Coder-V2-Lite-Instruct-F16*.gguf",
+        entrypoint="DeepSeek-Coder-V2-Lite-Instruct-F16.gguf",
+    ),
 )
 
 
 _GEMMA_4_E4B_8B = _ModelQuantization(
-    q4=None,
-    q8=None,
-    q16=_HFModelSpec(
+    q4=_HFModelSpec(
+        repo="unsloth/gemma-4-E4B-it-GGUF",
+        download="gemma-4-E4B-it-Q4_K_M*.gguf",
+        entrypoint="gemma-4-E4B-it-Q4_K_M.gguf",
+    ),
+    q8=_HFModelSpec(
+        repo="unsloth/gemma-4-E4B-it-GGUF",
+        download="gemma-4-E4B-it-Q8_0*.gguf",
+        entrypoint="gemma-4-E4B-it-Q8_0.gguf",
+    ),
+    f16=_HFModelSpec(
         repo="unsloth/gemma-4-E4B-it-GGUF",
         download="gemma-4-E4B-it-BF16*.gguf",
         entrypoint="gemma-4-E4B-it-BF16.gguf",
@@ -194,9 +226,17 @@ _GEMMA_4_E4B_8B = _ModelQuantization(
 
 
 _GEMMA_4_12B = _ModelQuantization(
-    q4=None,
-    q8=None,
-    q16=_HFModelSpec(
+    q4=_HFModelSpec(
+        repo="unsloth/gemma-4-12b-it-GGUF",
+        download="gemma-4-12b-it-Q4_K_M*.gguf",
+        entrypoint="gemma-4-12b-it-Q4_K_M.gguf",
+    ),
+    q8=_HFModelSpec(
+        repo="unsloth/gemma-4-12b-it-GGUF",
+        download="gemma-4-12b-it-Q8_0*.gguf",
+        entrypoint="gemma-4-12b-it-Q8_0.gguf",
+    ),
+    f16=_HFModelSpec(
         repo="unsloth/gemma-4-12b-it-GGUF",
         download="gemma-4-12b-it-BF16*.gguf",
         entrypoint="gemma-4-12b-it-BF16.gguf",
@@ -204,9 +244,17 @@ _GEMMA_4_12B = _ModelQuantization(
 )
 
 _GEMMA_4_26B = _ModelQuantization(
-    q4=None,
-    q8=None,
-    q16=_HFModelSpec(
+    q4=_HFModelSpec(
+        repo="unsloth/gemma-4-26B-A4B-it-GGUF",
+        download="gemma-4-26B-A4B-it-Q4_K_M*.gguf",
+        entrypoint="gemma-4-26B-A4B-it-Q4_K_M.gguf",
+    ),
+    q8=_HFModelSpec(
+        repo="unsloth/gemma-4-26B-A4B-it-GGUF",
+        download="gemma-4-26B-A4B-it-Q8_0*.gguf",
+        entrypoint="gemma-4-26B-A4B-it-Q8_0.gguf",
+    ),
+    f16=_HFModelSpec(
         repo="unsloth/gemma-4-26B-A4B-it-GGUF",
         download="BF16/gemma-4-26B-A4B-it-BF16-*.gguf",
         entrypoint="BF16/gemma-4-26B-A4B-it-BF16-00001-of-00002.gguf",
@@ -214,13 +262,17 @@ _GEMMA_4_26B = _ModelQuantization(
 )
 
 _GEMMA_4_31B = _ModelQuantization(
-    q4=None,
+    q4=_HFModelSpec(
+        repo="unsloth/gemma-4-31B-it-GGUF",
+        download="gemma-4-31B-it-Q4_K_M*.gguf",
+        entrypoint="gemma-4-31B-it-Q4_K_M.gguf",
+    ),
     q8=_HFModelSpec(
         repo="unsloth/gemma-4-31B-it-GGUF",
         download="gemma-4-31B-it-Q8*.gguf",
         entrypoint="gemma-4-31B-it-Q8_0.gguf",
     ),
-    q16=_HFModelSpec(
+    f16=_HFModelSpec(
         repo="unsloth/gemma-4-31B-it-GGUF",
         download="BF16/gemma-4-31B-it-BF16-*.gguf",
         entrypoint="BF16/gemma-4-31B-it-BF16-00001-of-00002.gguf",
@@ -228,9 +280,17 @@ _GEMMA_4_31B = _ModelQuantization(
 )
 
 _QWEN_3_6_27B = _ModelQuantization(
-    q4=None,
-    q8=None,
-    q16=_HFModelSpec(
+    q4=_HFModelSpec(
+        repo="unsloth/Qwen3.6-27B-GGUF",
+        download="Qwen3.6-27B-Q4_K_M*.gguf",
+        entrypoint="Qwen3.6-27B-Q4_K_M.gguf",
+    ),
+    q8=_HFModelSpec(
+        repo="unsloth/Qwen3.6-27B-GGUF",
+        download="Qwen3.6-27B-Q8_0*.gguf",
+        entrypoint="Qwen3.6-27B-Q8_0.gguf",
+    ),
+    f16=_HFModelSpec(
         repo="unsloth/Qwen3.6-27B-GGUF",
         download="BF16/Qwen3.6-27B-BF16-*.gguf",
         entrypoint="BF16/Qwen3.6-27B-BF16-00001-of-00002.gguf",
@@ -238,9 +298,17 @@ _QWEN_3_6_27B = _ModelQuantization(
 )
 
 _QWEN_3_6_35B = _ModelQuantization(
-    q4=None,
-    q8=None,
-    q16=_HFModelSpec(
+    q4=_HFModelSpec(
+        repo="unsloth/Qwen3.6-35B-A3B-GGUF",
+        download="Qwen3.6-35B-A3B-Q4_K_M*.gguf",
+        entrypoint="Qwen3.6-35B-A3B-Q4_K_M.gguf",
+    ),
+    q8=_HFModelSpec(
+        repo="unsloth/Qwen3.6-35B-A3B-GGUF",
+        download="Qwen3.6-35B-A3B-Q8_0*.gguf",
+        entrypoint="Qwen3.6-35B-A3B-Q8_0.gguf",
+    ),
+    f16=_HFModelSpec(
         repo="unsloth/Qwen3.6-35B-A3B-GGUF",
         download="BF16/Qwen3.6-35B-A3B-BF16-*.gguf",
         entrypoint="BF16/Qwen3.6-35B-A3B-BF16-00001-of-00002.gguf",
@@ -248,7 +316,7 @@ _QWEN_3_6_35B = _ModelQuantization(
 )
 
 
-_MODEL_SIZE_Q4_SPECS = [
+_MODEL_SIZE_Q4_SPECS: List[_HFModelSpec] = [
     _HFModelSpec(
         repo="bartowski/Gigaberg-Mistral-Large-123B-GGUF",
         download="Gigaberg-Mistral-Large-123B-Q4_K_M*.gguf",
@@ -284,7 +352,7 @@ _MODEL_SIZE_Q4_SPECS = [
 ]
 
 
-_MODEL_SIZE_Q8_SPECS = [
+_MODEL_SIZE_Q8_SPECS: List[_HFModelSpec] = [
     _HFModelSpec(
         repo="bartowski/Gigaberg-Mistral-Large-123B-GGUF",
         download="Gigaberg-Mistral-Large-123B-Q8_0*.gguf",
@@ -302,7 +370,7 @@ _MODEL_SIZE_Q8_SPECS = [
         entrypoint="gemma-2-27b-it-Q8_0.gguf",
     ),
     # 16B Parameter Model
-    _DEEPSEEK_CODER_V2_LITE,
+    _DEEPSEEK_CODER_V2_LITE.q8,
     _QWEN_2_5_14B_INSTRUCT.q8,
     _HFModelSpec(
         repo="Qwen/Qwen2.5-7B-Instruct-GGUF",
@@ -323,13 +391,13 @@ _MODEL_SIZE_Q8_SPECS = [
 ]
 
 
-_MODEL_SIZE_F16_SPECS = [
-    _QWEN_3_6_35B.q16,
-    _GEMMA_4_31B.q16,
-    _QWEN_3_6_27B.q16,
-    _QWEN_2_5_14B_INSTRUCT.q16,
-    _GEMMA_4_E4B_8B.q16,
-    _GEMMA_4_12B.q16,
+_MODEL_SIZE_F16_SPECS: List[_HFModelSpec] = [
+    _QWEN_3_6_35B.f16,
+    _GEMMA_4_31B.f16,
+    _QWEN_3_6_27B.f16,
+    _QWEN_2_5_14B_INSTRUCT.f16,
+    _GEMMA_4_E4B_8B.f16,
+    _GEMMA_4_12B.f16,
 ]
 
 _CONTEXT_DEPTH_4K = 4096
@@ -510,7 +578,7 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
     return run_llama_bench_docker
 
 
-def create_llama_bench_throughput_executor(
+def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
     benchmark_name: BenchmarkName,
     gpus: Tuple[GPUIdentity, ...],
     docker_cleanup: bool,
@@ -533,7 +601,7 @@ def create_llama_bench_throughput_executor(
     """
 
     # These are the classic benchmarks with no preloaded context
-    no_context = {
+    name_to_parameters = {
         # --- Qwen 2.5 1.5B (Dense) ---
         BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: _LlamaBenchParams(
             model_specs=[_QWEN_2_5_1_5B_MODEL],
@@ -542,7 +610,7 @@ def create_llama_bench_throughput_executor(
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
         ),
-        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: _LlamaBenchParams(
+        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_gen: _LlamaBenchParams(
             model_specs=[_QWEN_2_5_1_5B_MODEL],
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
@@ -557,7 +625,7 @@ def create_llama_bench_throughput_executor(
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
         ),
-        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: _LlamaBenchParams(
+        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_gen: _LlamaBenchParams(
             model_specs=[_META_LLAMA_3_8B_MODEL],
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
@@ -572,7 +640,7 @@ def create_llama_bench_throughput_executor(
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
         ),
-        BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: _LlamaBenchParams(
+        BenchmarkName.llama_bench_qwen_1_5_moe_chat_gen: _LlamaBenchParams(
             model_specs=[_QWEN_1_5_MOE_MODEL],
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
@@ -581,211 +649,51 @@ def create_llama_bench_throughput_executor(
         ),
     }
 
-    additional = {
-        BenchmarkName.llama_bench_qwen_2_5_14b_q4_k_m_16k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_2_5_14B_Q4],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_16K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_2_5_14b_q4_k_m_32k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_2_5_14B_Q4],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_2_5_14b_q4_k_m_64k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_2_5_14B_Q4],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 2,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_2_5_14b_q4_k_m_128k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_2_5_14B_Q4],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 4,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_2_5_32b_q4_k_m_16k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_2_5_32B_Q4],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_16K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_2_5_32B_Q4],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_2_5_32B_Q4],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 2,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_2_5_32B_Q4],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 4,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_16k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_DEEPSEEK_CODER_V2_LITE],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_16K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_DEEPSEEK_CODER_V2_LITE],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_DEEPSEEK_CODER_V2_LITE],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 2,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_DEEPSEEK_CODER_V2_LITE],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 4,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_gemma_4_31b_q8_16k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_Q8],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_16K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_gemma_4_31b_q8_32k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_Q8],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_gemma_4_31b_q8_64k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_Q8],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 2,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_gemma_4_31b_q8_128k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_Q8],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 4,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        # Qwen 3.6 27B F16
-        BenchmarkName.llama_bench_qwen_3_6_27b_f16_4k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_3_6_27B_BF16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_4K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_3_6_27b_f16_8k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_3_6_27B_BF16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_4K * 2,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_3_6_27b_f16_16k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_3_6_27B_BF16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_16K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_3_6_27b_f16_32k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_3_6_27B_BF16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_3_6_27b_f16_64k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_3_6_27B_BF16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 2,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_qwen_3_6_27b_f16_128k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_QWEN_3_6_27B_BF16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 4,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        # Gemma 4 27B F16
-        BenchmarkName.llama_bench_gemma_4_12b_f16_4k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_12B_F16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_4K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_gemma_4_12b_f16_8k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_12B_F16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_4K * 2,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_gemma_4_12b_f16_16k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_12B_F16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_16K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_gemma_4_12b_f16_32k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_12B_F16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_gemma_4_12b_f16_64k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_12B_F16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 2,
-            repetitions=_NUM_REPETITIONS,
-        ),
-        BenchmarkName.llama_bench_gemma_4_12b_f16_128k_ctx_generation: _LlamaBenchParams(
-            model_specs=[_GEMMA_4_12B_F16],
-            prompt_tokens=0,
-            generation_tokens=_NUM_TEST_TOKENS,
-            context_depth=_CONTEXT_DEPTH_32K * 4,
-            repetitions=_NUM_REPETITIONS,
-        ),
+    contexts = {
+        "4k": _CONTEXT_DEPTH_4K,
+        "32k": _CONTEXT_DEPTH_32K,
+        "64k": _CONTEXT_DEPTH_32K * 2,
+        "128k": _CONTEXT_DEPTH_32K * 4,
     }
+
+    models: Dict[str, _ModelQuantization] = {
+        "qwen_2_5_3b_instruct": _QWEN_2_5_3B_INSTRUCT,
+        "qwen_2_5_14b_instruct": _QWEN_2_5_14B_INSTRUCT,
+        "qwen_2_5_32b_instruct": _QWEN_2_5_32B_INSTRUCT,
+        "qwen_2_5_72b_instruct": _QWEN_2_5_72B_INSTRUCT,
+        "deepseek_coder_v2_lite": _DEEPSEEK_CODER_V2_LITE,
+        "gemma_4_8b": _GEMMA_4_E4B_8B,
+        "gemma_4_12b": _GEMMA_4_12B,
+        "gemma_4_26b": _GEMMA_4_26B,
+        "gemma_4_31b": _GEMMA_4_31B,
+        "qwen_3_6_27b": _QWEN_3_6_27B,
+        "qwen_3_6_35b": _QWEN_3_6_35B,
+    }
+
+    quants = ("q4", "q8", "f16")
+
+    for model_name, model in models.items():
+        for quant in quants:
+            spec = getattr(model, quant)
+
+            for ctx_name, ctx_depth in contexts.items():
+                benchmark = getattr(
+                    BenchmarkName,
+                    f"llama_bench_{model_name}_{quant}_{ctx_name}_ctx_gen",
+                )
+
+                name_to_parameters[benchmark] = _LlamaBenchParams(
+                    model_specs=[spec],
+                    prompt_tokens=0,
+                    generation_tokens=_NUM_TEST_TOKENS,
+                    context_depth=ctx_depth,
+                    repetitions=_NUM_REPETITIONS,
+                )
 
     return _abstract_llama_bench_executor(
         benchmark_name=benchmark_name,
         version=_LLAMA_BENCH_PERFORMANCE_VERSION,
-        name_to_parameters=no_context,
+        name_to_parameters=name_to_parameters,
         verbose_unit="Tokens / Second",
         unit="toks/s",
         outputs_to_results=lambda container_outputs: _parse_docker_logs(
@@ -840,10 +748,10 @@ def create_llama_bench_max_model_parameters_executor(
         benchmark_name=benchmark_name,
         version=_LLAMA_BENCH_MAX_MODEL_PARAMETERS_VERSION,
         name_to_parameters={
-            BenchmarkName.llama_bench_max_model_parameters_q4_k_m_4k_ctx: make_params(
+            BenchmarkName.llama_bench_max_model_parameters_q4_4k_ctx: make_params(
                 model_specs=_MODEL_SIZE_Q4_SPECS, context_depth=_CONTEXT_DEPTH_4K
             ),
-            BenchmarkName.llama_bench_max_model_parameters_q4_k_m_32k_ctx: make_params(
+            BenchmarkName.llama_bench_max_model_parameters_q4_32k_ctx: make_params(
                 model_specs=_MODEL_SIZE_Q4_SPECS, context_depth=_CONTEXT_DEPTH_32K
             ),
             BenchmarkName.llama_bench_max_model_parameters_q8_4k_ctx: make_params(

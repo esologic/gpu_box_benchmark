@@ -190,6 +190,39 @@ compute loop, providing a synthetic but highly GPU-bound workload that closely r
 arithmetic intensity of proof-of-work style hashing.
 ```
 
+#### LLM Performance Tests
+
+[Llama-bench](https://github.com/ggml-org/llama.cpp/blob/master/tools/llama-bench/README.md) is used 
+heavily in this tool to understand LLM throughput in different hardware configurations. Different 
+quantization and context lengths are used for each model in the test 
+series.
+
+The following quantizations are included for each model:
+
+* Q4 (K_M)
+* Q8
+* B/F16
+
+As well as context lengths: 4K, 32K, 64K, 128K.
+
+The series of models is be:
+
+* Qwen 2.5 3B Instruct
+* Qwen 2.5 14B Instruct
+* Qwen 2.5 32B Instruct
+* Qwen 2.5 72B Instruct
+* Deepseek Coder V2 Lite
+* Gemma 4 8B
+* Gemma 4 12B
+* Gemma 4 26B
+* Gemma 4 31B
+* Qwen 3.6 27B
+* Qwen 3.6 35B
+
+[I found](https://esologic.com/benchmarking-tesla-gpus/#gpu-generation-comparison) that prompt 
+processing was always an order of magnitude faster than generation. Many more generation test
+are included in the suite because this is likely the bottleneck over prompt processing.
+
 ### Range of GPUs
 
 Currently, NVidia GPUs from [Kepler](https://en.wikipedia.org/wiki/Kepler_(microarchitecture)) to

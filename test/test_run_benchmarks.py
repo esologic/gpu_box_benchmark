@@ -46,7 +46,7 @@ def assets_directory() -> Iterator[Path]:
 @pytest.mark.parametrize(
     "benchmarks",
     [
-        (BenchmarkName.llama_bench_max_model_parameters_q4_k_m_32k_ctx,),
+        (BenchmarkName.llama_bench_max_model_parameters_q4_32k_ctx,),
         (BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt,),
     ],
 )
@@ -69,8 +69,6 @@ def test_run_benchmarks(benchmarks: Tuple[BenchmarkName, ...]) -> None:
         for named_executor in executors:
             if named_executor is not None:
                 result: BenchmarkResult = named_executor.executor()
-
-                print(result)
 
                 # Happy path is all tests produce numerical values in this set of keys.
                 numerical_results_dict = result.numerical_results.model_dump()
