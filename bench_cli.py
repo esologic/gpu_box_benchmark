@@ -49,7 +49,7 @@ logging.basicConfig(
 
 LOGGER = logging.getLogger(__name__)
 
-_GPU_BOX_BENCHMARK_VERSION = "0.2.0"
+_GPU_BOX_BENCHMARK_VERSION = "0.3.0"
 """
 See top level `CHANGELOG.md` for version history of this format.
 """

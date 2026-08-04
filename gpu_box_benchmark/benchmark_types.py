@@ -19,6 +19,7 @@ class BenchmarkFamily(str, Enum):
 
     resnet50 = "resnet50"
     llama_bench = "llama_bench"
+    llama_bench_max_model_parameters = "llama_bench_max_model_parameters"
     blender_benchmark = "blender_benchmark"
     fah_bench = "fah_bench"
     ai_benchmark = "ai_benchmark"
@@ -49,23 +50,87 @@ class BenchmarkName(str, Enum):
     llama_bench_qwen_1_5_moe_chat_prompt = "llama_bench_qwen_1_5_moe_chat_prompt"
     llama_bench_qwen_1_5_moe_chat_generation = "llama_bench_qwen_1_5_moe_chat_generation"
 
-    llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_prompt = (
-        "llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_prompt"
+    llama_bench_qwen_2_5_14b_q4_k_m_16k_ctx_generation = (
+        "llama_bench_qwen_2_5_14b_q4_k_m_16k_ctx_generation"
+    )
+    llama_bench_qwen_2_5_14b_q4_k_m_32k_ctx_generation = (
+        "llama_bench_qwen_2_5_14b_q4_k_m_32k_ctx_generation"
+    )
+    llama_bench_qwen_2_5_14b_q4_k_m_64k_ctx_generation = (
+        "llama_bench_qwen_2_5_14b_q4_k_m_64k_ctx_generation"
+    )
+    llama_bench_qwen_2_5_14b_q4_k_m_128k_ctx_generation = (
+        "llama_bench_qwen_2_5_14b_q4_k_m_128k_ctx_generation"
+    )
+
+    llama_bench_qwen_2_5_32b_q4_k_m_16k_ctx_generation = (
+        "llama_bench_qwen_2_5_32b_q4_k_m_16k_ctx_generation"
     )
     llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_generation = (
         "llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_generation"
     )
-    llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_prompt = (
-        "llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_prompt"
-    )
     llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_generation = (
         "llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_generation"
     )
-    llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_prompt = (
-        "llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_prompt"
-    )
+    # Doesn't work on 3x P100
     llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_generation = (
         "llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_generation"
+    )
+
+    # Deepseek Coder V2 Lite is 16B Parameters
+    llama_bench_deepseek_coder_v2_lite_q8_16k_ctx_generation = (
+        "llama_bench_deepseek_coder_v2_lite_q8_16k_ctx_generation"
+    )
+    llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_generation = (
+        "llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_generation"
+    )
+    llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_generation = (
+        "llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_generation"
+    )
+    llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_generation = (
+        "llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_generation"
+    )
+
+    llama_bench_gemma_4_31b_q8_16k_ctx_generation = "llama_bench_gemma_4_31b_q8_16k_ctx_generation"
+    llama_bench_gemma_4_31b_q8_32k_ctx_generation = "llama_bench_gemma_4_31b_q8_32k_ctx_generation"
+    llama_bench_gemma_4_31b_q8_64k_ctx_generation = "llama_bench_gemma_4_31b_q8_64k_ctx_generation"
+    # Doesn't work on 3x P100
+    llama_bench_gemma_4_31b_q8_128k_ctx_generation = (
+        "llama_bench_gemma_4_31b_q8_128k_ctx_generation"
+    )
+
+    llama_bench_qwen_3_6_27b_f16_4k_ctx_generation = (
+        "llama_bench_qwen_3_6_27b_f16_4k_ctx_generation"
+    )
+    llama_bench_qwen_3_6_27b_f16_8k_ctx_generation = (
+        "llama_bench_qwen_3_6_27b_f16_8k_ctx_generation"
+    )
+    llama_bench_qwen_3_6_27b_f16_16k_ctx_generation = (
+        "llama_bench_qwen_3_6_27b_f16_16k_ctx_generation"
+    )
+    llama_bench_qwen_3_6_27b_f16_32k_ctx_generation = (
+        "llama_bench_qwen_3_6_27b_f16_32k_ctx_generation"
+    )
+    llama_bench_qwen_3_6_27b_f16_64k_ctx_generation = (
+        "llama_bench_qwen_3_6_27b_f16_64k_ctx_generation"
+    )
+    llama_bench_qwen_3_6_27b_f16_128k_ctx_generation = (
+        "llama_bench_qwen_3_6_27b_f16_128k_ctx_generation"
+    )
+
+    llama_bench_gemma_4_12b_f16_4k_ctx_generation = "llama_bench_gemma_4_12b_f16_4k_ctx_generation"
+    llama_bench_gemma_4_12b_f16_8k_ctx_generation = "llama_bench_gemma_4_12b_f16_8k_ctx_generation"
+    llama_bench_gemma_4_12b_f16_16k_ctx_generation = (
+        "llama_bench_gemma_4_12b_f16_16k_ctx_generation"
+    )
+    llama_bench_gemma_4_12b_f16_32k_ctx_generation = (
+        "llama_bench_gemma_4_12b_f16_32k_ctx_generation"
+    )
+    llama_bench_gemma_4_12b_f16_64k_ctx_generation = (
+        "llama_bench_gemma_4_12b_f16_64k_ctx_generation"
+    )
+    llama_bench_gemma_4_12b_f16_128k_ctx_generation = (
+        "llama_bench_gemma_4_12b_f16_128k_ctx_generation"
     )
 
     llama_bench_max_model_parameters_q4_k_m_4k_ctx = (
@@ -104,20 +169,98 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     BenchmarkName.resnet50_train_batch_64: "ResNet50 Train B=64",
     BenchmarkName.resnet50_infer_batch_1: "ResNet50 Infer B=1",
     BenchmarkName.resnet50_infer_batch_256: "ResNet50 Infer B=256",
-    # Qwen 2.5 1.5B (Dense)
-    BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: "llama.cpp Qwen2.5 1.5B Prompt",
-    BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: "llama.cpp Qwen2.5 1.5B Gen",
-    # Llama 3 8B (Dense)
-    BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: "llama.cpp Llama 3 8B Prompt",
-    BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: "llama.cpp Llama 3 8B Gen",
-    # Qwen 1.5 MoE (Sparse)
-    BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: "llama.cpp Qwen1.5 MoE Prompt",
-    BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: "llama.cpp Qwen1.5 MoE Gen",
+    # Qwen 2.5 1.5B
+    BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: ("llama.cpp Qwen2.5 1.5B Prompt"),
+    BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: ("llama.cpp Qwen2.5 1.5B Gen"),
+    # Llama 3 8B
+    BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: ("llama.cpp Llama 3 8B Prompt"),
+    BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: ("llama.cpp Llama 3 8B Gen"),
+    # Qwen 1.5 MoE
+    BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: ("llama.cpp Qwen1.5 MoE Prompt"),
+    BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: ("llama.cpp Qwen1.5 MoE Gen"),
+    # Qwen 2.5 14B Q4_K_M
+    BenchmarkName.llama_bench_qwen_2_5_14b_q4_k_m_16k_ctx_generation: (
+        "llama.cpp Qwen2.5 14B Q4_K_M Gen (16K)"
+    ),
+    BenchmarkName.llama_bench_qwen_2_5_14b_q4_k_m_32k_ctx_generation: (
+        "llama.cpp Qwen2.5 14B Q4_K_M Gen (32K)"
+    ),
+    BenchmarkName.llama_bench_qwen_2_5_14b_q4_k_m_64k_ctx_generation: (
+        "llama.cpp Qwen2.5 14B Q4_K_M Gen (64K)"
+    ),
+    BenchmarkName.llama_bench_qwen_2_5_14b_q4_k_m_128k_ctx_generation: (
+        "llama.cpp Qwen2.5 14B Q4_K_M Gen (128K)"
+    ),
+    # Qwen 2.5 32B Q4_K_M
+    BenchmarkName.llama_bench_qwen_2_5_32b_q4_k_m_16k_ctx_generation: (
+        "llama.cpp Qwen2.5 32B Q4_K_M Gen (16K)"
+    ),
+    BenchmarkName.llama_bench_qwen_2_5_32b_q4_k_m_32k_ctx_generation: (
+        "llama.cpp Qwen2.5 32B Q4_K_M Gen (32K)"
+    ),
+    BenchmarkName.llama_bench_qwen_2_5_32b_q4_k_m_64k_ctx_generation: (
+        "llama.cpp Qwen2.5 32B Q4_K_M Gen (64K)"
+    ),
+    BenchmarkName.llama_bench_qwen_2_5_32b_q4_k_m_128k_ctx_generation: (
+        "llama.cpp Qwen2.5 32B Q4_K_M Gen (128K)"
+    ),
+    # Gemma 4 31B Q8
+    BenchmarkName.llama_bench_gemma_4_31b_q8_16k_ctx_generation: (
+        "llama.cpp Gemma 4 31B Q8 Gen (16K)"
+    ),
+    BenchmarkName.llama_bench_gemma_4_31b_q8_32k_ctx_generation: (
+        "llama.cpp Gemma 4 31B Q8 Gen (32K)"
+    ),
+    BenchmarkName.llama_bench_gemma_4_31b_q8_64k_ctx_generation: (
+        "llama.cpp Gemma 4 31B Q8 Gen (64K)"
+    ),
+    BenchmarkName.llama_bench_gemma_4_31b_q8_128k_ctx_generation: (
+        "llama.cpp Gemma 4 31B Q8 Gen (128K)"
+    ),
+    # Qwen 3.6 27B F16
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_4k_ctx_generation: (
+        "llama.cpp Qwen3.6 27B F16 Gen (4K)"
+    ),
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_8k_ctx_generation: (
+        "llama.cpp Qwen3.6 27B F16 Gen (8K)"
+    ),
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_16k_ctx_generation: (
+        "llama.cpp Qwen3.6 27B F16 Gen (16K)"
+    ),
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_32k_ctx_generation: (
+        "llama.cpp Qwen3.6 27B F16 Gen (32K)"
+    ),
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_64k_ctx_generation: (
+        "llama.cpp Qwen3.6 27B F16 Gen (64K)"
+    ),
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_128k_ctx_generation: (
+        "llama.cpp Qwen3.6 27B F16 Gen (128K)"
+    ),
+    # Gemma 4 12B F16
+    BenchmarkName.llama_bench_gemma_4_12b_f16_4k_ctx_generation: (
+        "llama.cpp Gemma 4 12B F16 Gen (4K)"
+    ),
+    BenchmarkName.llama_bench_gemma_4_12b_f16_8k_ctx_generation: (
+        "llama.cpp Gemma 4 12B F16 Gen (8K)"
+    ),
+    BenchmarkName.llama_bench_gemma_4_12b_f16_16k_ctx_generation: (
+        "llama.cpp Gemma 4 12B F16 Gen (16K)"
+    ),
+    BenchmarkName.llama_bench_gemma_4_12b_f16_32k_ctx_generation: (
+        "llama.cpp Gemma 4 12B F16 Gen (32K)"
+    ),
+    BenchmarkName.llama_bench_gemma_4_12b_f16_64k_ctx_generation: (
+        "llama.cpp Gemma 4 12B F16 Gen (64K)"
+    ),
+    BenchmarkName.llama_bench_gemma_4_12b_f16_128k_ctx_generation: (
+        "llama.cpp Gemma 4 12B F16 Gen (128K)"
+    ),
+    # Maximum Model Size
     BenchmarkName.llama_bench_max_model_parameters_q4_k_m_4k_ctx: (
-        "llama.cpp Max Model Parameters (Q4KM) + 4K Context"
+        "llama.cpp Max Model Parameters (Q4_K_M) + 4K Context"
     ),
     BenchmarkName.llama_bench_max_model_parameters_q4_k_m_32k_ctx: (
-        "llama.cpp Max Model Parameters (Q4KM) + 32K Context"
+        "llama.cpp Max Model Parameters (Q4_K_M) + 32K Context"
     ),
     BenchmarkName.llama_bench_max_model_parameters_q8_4k_ctx: (
         "llama.cpp Max Model Parameters (Q8) + 4K Context"
@@ -140,8 +283,8 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     BenchmarkName.whisper_medium_fp16: "Whisper Med FP16",
     BenchmarkName.content_aware_timelapse_vit_scores: "CAT ViT Scores",
     BenchmarkName.content_aware_timelapse_vit_attention: "CAT ViT Attention",
-    BenchmarkName.gdsio_type_0: "Storage->GPU (gdiso)",
-    BenchmarkName.gdsio_type_2: "Storage->CPU->GPU (gdiso)",
+    BenchmarkName.gdsio_type_0: "Storage→GPU (GDSIO)",
+    BenchmarkName.gdsio_type_2: "Storage→CPU→GPU (GDSIO)",
     BenchmarkName.hashcat_sha256: "SHA-256",
 }
 
@@ -156,9 +299,11 @@ EXTENDED_BENCHMARK_DOCUMENTS: Dict[BenchmarkFamily, str] = {
     BenchmarkFamily.llama_bench: (
         "This benchmark uses the CUDA-enabled llama.cpp container to measure large language model "
         "inference performance on the GPU using the purpose-built llama-bench tool. The container "
-        "downloads quantized GGUF models, ranging from a small 1.5B-parameter Qwen model to a "
-        "standard 8B-parameter Llama 3 model, allowing performance testing across different VRAM "
-        "and compute requirements."
+        "downloads requested models at runtime. Stats are recorded as tokens/second."
+    ),
+    BenchmarkFamily.llama_bench_max_model_parameters: (
+        "Similar to the other llama bench set of benchmarks, but this set of tests looks to see "
+        "the largest model that can fit into the attached GPUs with a set context. "
     ),
     BenchmarkFamily.blender_benchmark: (
         "This benchmark uses Blender’s official Open Data benchmark suite to measure GPU rendering "
@@ -237,21 +382,29 @@ class NumericalResultKey(str, Enum):
 
 class ReportFileNumerical(BaseModel):
     """
-    Contain the numerical results for the run. Units etc are kept in the outer result.
+    Contain the numerical results for the run. Units etc. are kept in the outer result.
+
+    The keys: min_by_gpu_type, max_by_gpu_type, mean_by_gpu_type, theoretical_multi_gpu_mean,
+    theoretical_multi_gpu_sum, forced_multi_gpu_numerical_mean, forced_multi_gpu_sum are all
+    related to single GPU performance. If a benchmark fails on ANY of the individual GPUs involved,
+    these keys get set to None.
     """
 
-    min_by_gpu_type: float
-    max_by_gpu_type: float
-    mean_by_gpu_type: float
+    # Single GPU performance results
+    min_by_gpu_type: Optional[float]
+    max_by_gpu_type: Optional[float]
+    mean_by_gpu_type: Optional[float]
+    theoretical_multi_gpu_mean: Optional[float]
+    theoretical_multi_gpu_sum: Optional[float]
+    forced_multi_gpu_numerical_mean: Optional[float]
+    forced_multi_gpu_sum: Optional[float]
 
-    theoretical_multi_gpu_mean: float
-    theoretical_multi_gpu_sum: float
-
-    forced_multi_gpu_numerical_mean: float
-    forced_multi_gpu_sum: float
-
+    # True multi GPU performance results
     native_multi_gpu_result: Optional[float]
     """
+    Some benchmarks do not natively support multi GPU utilization. In those cases where it is not
+    supported, this will be set to None.
+    
     This could either map onto the theoretical sum _or_ mean depending on the benchmark. If it 
     becomes hard to distinguish here, add a a flag to the outer type. None here means there's no
     native multi-gpu scoring supported.

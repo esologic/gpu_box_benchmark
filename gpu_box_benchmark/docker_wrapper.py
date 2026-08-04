@@ -2,6 +2,7 @@
 Convince wrappers around the docker python API.
 """
 
+import contextlib
 import logging
 import tempfile
 import uuid
@@ -39,7 +40,7 @@ class ContainerOutputs(NamedTuple):
     Set of container outputs.
     """
 
-    logs: str
+    logs: Optional[str]
     """
     Stdout and Stderr logs as a string.
     """
@@ -151,9 +152,6 @@ def _wait_get_logs(container: Container) -> Optional[str]:
         status_code = result["StatusCode"]
 
         if status_code != 0:
-            LOGGER.error("Container failed with exit code %s", status_code)
-            LOGGER.error("Container logs:\n%s", logs)
-
             raise RuntimeError(
                 f"Container execution failed with exit code {status_code}.\n\n"
                 f"Container logs:\n{logs}"
@@ -178,7 +176,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     env_vars: List[Tuple[str, str]],
     output_file_path: Path,
     downloads_directory_path: Optional[Path],
-) -> Optional[ContainerOutputs]:
+) -> ContainerOutputs:
     """
     Creates a container, starts it, and waits for its completion on a set of GPUs. This blocks
     on waiting for the container to exit.
@@ -207,7 +205,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     container.start()
 
     # This removes the container.
-    outputs = _wait_get_logs(container=container)
+    outputs: Optional[str] = _wait_get_logs(container=container)
 
     return ContainerOutputs(
         logs=outputs,
@@ -387,14 +385,17 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
     outputs_to_result: OutputsToResult,
     multi_gpu_native: bool,
     downloads_directory_path: Optional[Path],
+    benchmark_name: str,
 ) -> ReportFileNumerical:
     """
-
+    TODO: The issue here is that some workloads may never fit on an individual GPU and will only
+    fit on multiple GPUs.
     :param gpus:
     :param create_runtime_env_vars:
     :param outputs_to_result:
     :param multi_gpu_native:
     :param downloads_directory_path:
+    :param benchmark_name: Consumed in logging.
     :return:
     """
 
@@ -421,39 +422,51 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
 
             return output_file
 
-        # A single datapoint per type of GPU attached to the system. When the benchmark is run on
-        # all attached GPUs at the same time this lets us understand how much overhead is added.
-        name_to_serial_result: Dict[str, float] = {
-            gpu.name: outputs_to_result(
-                _run_image_on_gpus(
-                    client=client,
-                    image=image,
-                    gpus=(gpu,),
-                    env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
-                    output_file_path=new_output_file(),
-                    downloads_directory_path=downloads_directory_path,
+        def exception_to_none(gpu: GPUIdentity) -> Optional[float]:
+            """
+
+            :param gpu:
+            :return:
+            """
+            try:
+                return outputs_to_result(
+                    _run_image_on_gpus(
+                        client=client,
+                        image=image,
+                        gpus=(gpu,),
+                        env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
+                        output_file_path=new_output_file(),
+                        downloads_directory_path=downloads_directory_path,
+                    )
                 )
-            )
-            for gpu in serial_gpus
+            except RuntimeError:
+                return None
+
+        # A single datapoint per type of GPU attached to the system.
+        # When the benchmark is run on all attached GPUs at the same time this lets us understand
+        # how much overhead is added.
+        name_to_serial_result: Dict[str, Optional[float]] = {
+            gpu.name: exception_to_none(gpu) for gpu in serial_gpus
         }
 
-        first_result: float = next(iter(name_to_serial_result.values()))
+        # Only consumed in the single attached GPU case.
+        single_gpu_result: float = next(iter(name_to_serial_result.values()))
 
-        # Creates a docker container per GPU for every input GPU, then
-        # starts them at the same time. Results are returned.
-        parallel_results = (
-            _force_parallel_run(
-                client=client,
-                image=image,
-                new_output_file=new_output_file,
-                gpus=gpus,
-                create_runtime_env_vars=create_runtime_env_vars,
-                outputs_to_result=outputs_to_result,
-                downloads_directory_path=downloads_directory_path,
-            )
-            if multiple_gpus_to_test
-            else [first_result]
-        )
+        if multiple_gpus_to_test:
+            # Creates a docker container per GPU for every input GPU, then
+            # starts them at the same time. Results are returned.
+            with contextlib.suppress(RuntimeError):
+                force_parallel_results: Optional[List[float]] = _force_parallel_run(
+                    client=client,
+                    image=image,
+                    new_output_file=new_output_file,
+                    gpus=gpus,
+                    create_runtime_env_vars=create_runtime_env_vars,
+                    outputs_to_result=outputs_to_result,
+                    downloads_directory_path=downloads_directory_path,
+                )
+        else:
+            force_parallel_results = [single_gpu_result]
 
         native_multi_gpu_result: Optional[float] = None
 
@@ -478,21 +491,34 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                     ContainerOutputs(logs=complete_logs, file=multi_gpu_file)
                 )
             else:
-                native_multi_gpu_result = first_result
+                native_multi_gpu_result = single_gpu_result
 
-        theoretical_multi_gpu_sum = sum((name_to_serial_result[gpu.name] for gpu in gpus))
-        forced_multi_gpu_sum = sum(parallel_results)
+        no_failures = None not in name_to_serial_result.values()
 
-        return ReportFileNumerical(
-            min_by_gpu_type=min(name_to_serial_result.values()),
-            max_by_gpu_type=max(name_to_serial_result.values()),
-            mean_by_gpu_type=mean(name_to_serial_result.values()),
-            theoretical_multi_gpu_mean=theoretical_multi_gpu_sum / len(gpus),
+        theoretical_multi_gpu_sum = (
+            sum((name_to_serial_result[gpu.name] for gpu in gpus)) if no_failures else None
+        )
+        theoretical_multi_gpu_mean = (
+            (theoretical_multi_gpu_sum / len(gpus)) if no_failures else None
+        )
+
+        output = ReportFileNumerical(
+            min_by_gpu_type=min(name_to_serial_result.values()) if no_failures else None,
+            max_by_gpu_type=max(name_to_serial_result.values()) if no_failures else None,
+            mean_by_gpu_type=mean(name_to_serial_result.values()) if no_failures else None,
+            theoretical_multi_gpu_mean=theoretical_multi_gpu_mean,
             theoretical_multi_gpu_sum=theoretical_multi_gpu_sum,
-            forced_multi_gpu_numerical_mean=forced_multi_gpu_sum / len(gpus),
-            forced_multi_gpu_sum=forced_multi_gpu_sum,
+            forced_multi_gpu_numerical_mean=(
+                (sum(force_parallel_results) / len(gpus)) if no_failures else None
+            ),
+            forced_multi_gpu_sum=sum(force_parallel_results) if no_failures else None,
             native_multi_gpu_result=native_multi_gpu_result,
         )
+
+        if not any(output.model_dump().values()):
+            raise ValueError(f"Benchmarking for {benchmark_name} produced no data")
+
+        return output
 
 
 def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
@@ -566,6 +592,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
         outputs_to_result=outputs_to_result,
         multi_gpu_native=multi_gpu_native,
         downloads_directory_path=downloads_directory_path,
+        benchmark_name=benchmark_name,
     )
 
     if docker_cleanup:
