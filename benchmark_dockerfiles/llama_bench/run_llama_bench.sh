@@ -76,7 +76,7 @@ while IFS=$'\t' read -r repo download entrypoint; do
         --n-depth "${CONTEXT_DEPTH}" \
         --n-prompt "${NUM_PROMPT_TOKENS}" \
         --n-gen "${NUM_GENERATION_TOKENS}" \
-        --n-gpu-layers 99 \
+        --n-gpu-layers -1 \
         --flash-attn 1 \
         --n-cpu-moe 0 \
         > "${TEMP_OUT}" \

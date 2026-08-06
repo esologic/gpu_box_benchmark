@@ -11,6 +11,7 @@ from statistics import mean
 from typing import Callable, Dict, List, NamedTuple, Optional, Protocol, Tuple
 
 import docker
+import psutil
 from docker.client import DockerClient
 from docker.errors import APIError, BuildError
 from docker.models.containers import Container
@@ -85,6 +86,7 @@ def _create_gpu_container(  # pylint: disable=too-many-positional-arguments
     env_vars: List[Tuple[str, str]],
     output_file_path: Path,
     downloads_directory_path: Optional[Path],
+    memory_limit: int,
 ) -> Container:
     """
     Wrapper around the container creation function to pre-fill the params needed for GPU usage.
@@ -100,6 +102,7 @@ def _create_gpu_container(  # pylint: disable=too-many-positional-arguments
     during build time or runtime. By default, if this is not given, those assets are downloaded
     into the image. If this is given, the assets are downloaded to this location which is bind
     mounted into the container so the downloads can be re-used.
+    :param memory_limit: Memory limit for the container in bytes.
     :return: The unstarted container.
     """
 
@@ -130,6 +133,8 @@ def _create_gpu_container(  # pylint: disable=too-many-positional-arguments
         ipc_mode="host",
         detach=True,
         volumes=volumes,
+        mem_limit=memory_limit,
+        memswap_limit=memory_limit,
     )
 
     return container
@@ -176,6 +181,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     env_vars: List[Tuple[str, str]],
     output_file_path: Path,
     downloads_directory_path: Optional[Path],
+    memory_limit: int,
 ) -> ContainerOutputs:
     """
     Creates a container, starts it, and waits for its completion on a set of GPUs. This blocks
@@ -190,6 +196,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     during build time or runtime. By default, if this is not given, those assets are downloaded
     into the image. If this is given, the assets are downloaded to this location which is bind
     mounted into the container so the downloads can be re-used.
+    :param memory_limit: Memory limit for the container in bytes.
     :return: The set of outputs from the container.
     """
 
@@ -200,6 +207,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
         env_vars=env_vars,
         output_file_path=output_file_path,
         downloads_directory_path=downloads_directory_path,
+        memory_limit=memory_limit,
     )
 
     container.start()
@@ -277,6 +285,7 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
     outputs_to_result: OutputsToResult,
     downloads_directory_path: Optional[Path],
+    total_memory_limit: int,
 ) -> List[float]:
     """
     Creates one docker container per GPU then starts each GPU at the same time. This is a simulation
@@ -293,10 +302,14 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     during build time or runtime. By default, if this is not given, those assets are downloaded
     into the image. If this is given, the assets are downloaded to this location which is bind
     mounted into the container so the downloads can be re-used.
+    :param total_memory_limit: Each container will be limited to this amount of memory // the
+    number of input GPUs. The idea here is to defend against OOMs.
     :return: Results per GPU.
     """
 
     gpu_file: List[Tuple[GPUIdentity, Path]] = [(gpu, new_output_file()) for gpu in gpus]
+
+    memory_per_container = total_memory_limit // len(gpus)
 
     container_file: List[Tuple[Container, Path]] = [
         (
@@ -307,6 +320,7 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
                 env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
                 output_file_path=file,
                 downloads_directory_path=downloads_directory_path,
+                memory_limit=memory_per_container,
             ),
             file,
         )
@@ -422,11 +436,16 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
 
             return output_file
 
+        total_memory = psutil.virtual_memory().total
+        memory_limit = int(total_memory * 0.8)  # reserve 20% for host, prevent OOMs.
+
+        LOGGER.debug(f"Setting memory limit on containers to: {memory_limit}")
+
         def exception_to_none(gpu: GPUIdentity) -> Optional[float]:
             """
-
-            :param gpu:
-            :return:
+            Wrapper to fall through on known exceptions.
+            :param gpu: Passed into the run.
+            :return: Forwarded from `outputs_to_result`, or `None` if the exception occurs.
             """
             try:
                 return outputs_to_result(
@@ -437,6 +456,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                         env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
                         output_file_path=new_output_file(),
                         downloads_directory_path=downloads_directory_path,
+                        memory_limit=memory_limit,
                     )
                 )
             except RuntimeError:
@@ -464,6 +484,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                     create_runtime_env_vars=create_runtime_env_vars,
                     outputs_to_result=outputs_to_result,
                     downloads_directory_path=downloads_directory_path,
+                    total_memory_limit=memory_limit,
                 )
         else:
             force_parallel_results = [single_gpu_result]
@@ -482,6 +503,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                     env_vars=create_runtime_env_vars(runtime_gpus=gpus),
                     output_file_path=multi_gpu_file,
                     downloads_directory_path=downloads_directory_path,
+                    memory_limit=memory_limit,
                 )
                 multi_gpu_container.start()
 

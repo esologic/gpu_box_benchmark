@@ -661,7 +661,7 @@ class SystemEvaluation(BaseModel):
 
     results: List[BenchmarkResult]
 
-    # failed_tests: List[BenchmarkName]
+    failed_tests: List[BenchmarkName]
     """
     A list of the names of evaluations that were run but unable to produce a result.
     """

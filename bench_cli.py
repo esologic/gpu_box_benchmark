@@ -169,7 +169,6 @@ def cli() -> None:
 @click.option(
     "--downloads",
     type=click.Path(exists=True, dir_okay=True, file_okay=False, writable=True, path_type=Path),
-    default=False,
     show_default=True,
     help=(
         "Some benchmark docker containers need to download test assets. If no path is given here, "
@@ -186,7 +185,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     description: str,
     docker_cleanup: bool,
     force_rebuild: bool,
-    downloads: Path,
+    downloads: Optional[Path],
 ) -> None:
     """
     Run one or more benchmarks and records the results.
@@ -233,6 +232,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     # Create the tests the user requested and run them.
 
     results: List[BenchmarkResult] = []
+    failed_tests: List[BenchmarkName] = []
 
     for named_executor in render_named_executors(
         benchmarks=test,
@@ -251,7 +251,8 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
                 )
                 LOGGER.info(f"Result: {result_number} {result.unit}")
             except Exception as _e:  # pylint: disable=broad-except
-                LOGGER.exception(f"Benchmark: {named_executor.benchmark_name} failed!")
+                failed_tests.append(named_executor.benchmark_name)
+                LOGGER.info("Failed!")
 
     # Tests are complete, write the output.
 
@@ -267,6 +268,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         results=results,
         start_time=start_time,
         runtime_seconds=(datetime.now() - start_time).total_seconds(),
+        failed_tests=failed_tests,
     )
 
     evaluation_string = system_evaluation.model_dump_json(indent=2)

@@ -20,7 +20,8 @@ RUN curl -fsSL https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --d
 
 WORKDIR /app
 
-RUN git clone https://github.com/ggml-org/llama.cpp.git .
+RUN git clone https://github.com/ggml-org/llama.cpp.git . && \
+    git checkout b10290
 
 # Compile llama.cpp with Kepler-specific flags
 RUN cmake -B build \
