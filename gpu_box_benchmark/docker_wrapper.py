@@ -402,15 +402,28 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
     benchmark_name: str,
 ) -> ReportFileNumerical:
     """
-    TODO: The issue here is that some workloads may never fit on an individual GPU and will only
-    fit on multiple GPUs.
-    :param gpus:
-    :param create_runtime_env_vars:
-    :param outputs_to_result:
-    :param multi_gpu_native:
-    :param downloads_directory_path:
-    :param benchmark_name: Consumed in logging.
-    :return:
+    The run sequence is as follows:
+
+    0. The image is built and environment prepped.
+    1. A container is run sequentially on _one_ of each type of GPUs passed in. So if there are four
+    M10 cores and a P100, it is run on one of the M10 cores and the P100.
+    2. A container is run on all the input GPUs in parallel.
+
+    This strategy helps us understand the cost of parallelizing.
+
+    :param client: Docker interface from environment.
+    :param image: Image to run.
+    :param gpus: Set of GPUs to run on.
+    :param create_runtime_env_vars: Function that returns runtime environment variables passed to
+    the container.
+    :param outputs_to_result: Function to extract the output for numerical.
+    :param multi_gpu_native: If the given test is multi GPU native or not. If True, the image is
+    run at the end of the sequence with all gpus input.
+    :param downloads_directory_path: Fixture passed to each container, a place for the containers
+    to download reusable assets.
+    :param benchmark_name: Benchmark being run as a string, consumed here generating exceptions
+    only.
+    :return: Numerical results.
     """
 
     # If there's only a single GPU attached we can skip a lot of work.

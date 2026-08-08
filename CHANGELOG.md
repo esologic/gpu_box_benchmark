@@ -4,7 +4,7 @@
 
 Tracks changes of the codebase. 
 
-### 0.8.0 - (2026-07-XX)
+### 0.8.0 - (2026-08-XX)
 
 * Added invocation of a few benchmarks as unit tests.
 * All docker containers now optionally have a "downloads" directory for saving assets outside the 

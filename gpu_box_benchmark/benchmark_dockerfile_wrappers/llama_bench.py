@@ -34,7 +34,7 @@ The benchmarks related to Tok/S throughput.
 
 # Version History
 
-## 0.4.0 - (2026-07-22)
+## 0.4.0 - (2026-08-XX)
 * Updated runner script to optionally run multiple models to enable the max parameters benchmark.
 * Touched a bunch of code to decrease redundancy between the two testing modalities.
 * Added tests for a set of new models, quants, and context lengths per feedback from first release.
@@ -57,7 +57,7 @@ The benchmarks related to seeing the largest model that can fit in the GPU.
 
 # Version History
 
-## 0.1.0 - (2026-07-21)
+## 0.1.0 - (2026-08-XX)
 * First version 
 """
 
