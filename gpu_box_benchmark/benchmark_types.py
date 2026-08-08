@@ -7,7 +7,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Protocol, Tuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from gpu_box_benchmark.locate_describe_hardware import CPUIdentity, GPUIdentity
 
@@ -42,167 +42,167 @@ class BenchmarkName(str, Enum):
     resnet50_infer_batch_256 = "resnet50_infer_batch_256"
 
     llama_bench_qwen_2_5_1_5b_instruct_prompt = "llama_bench_qwen_2_5_1_5b_instruct_prompt"
-    llama_bench_qwen_2_5_1_5b_instruct_gen = "llama_bench_qwen_2_5_1_5b_instruct_gen"
+    llama_bench_qwen_2_5_1_5b_instruct_generation = "llama_bench_qwen_2_5_1_5b_instruct_generation"
 
     llama_bench_meta_llama_3_8b_instruct_prompt = "llama_bench_meta_llama_3_8b_instruct_prompt"
-    llama_bench_meta_llama_3_8b_instruct_gen = "llama_bench_meta_llama_3_8b_instruct_gen"
+    llama_bench_meta_llama_3_8b_instruct_generation = "llama_bench_meta_llama_3_8b_instruct_generation"
 
     llama_bench_qwen_1_5_moe_chat_prompt = "llama_bench_qwen_1_5_moe_chat_prompt"
-    llama_bench_qwen_1_5_moe_chat_gen = "llama_bench_qwen_1_5_moe_chat_gen"
+    llama_bench_qwen_1_5_moe_chat_generation = "llama_bench_qwen_1_5_moe_chat_generation"
 
     # Qwen 2.5 3B Instruct
-    llama_bench_qwen_2_5_3b_instruct_q4_4k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_q4_4k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_q4_32k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_q4_32k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_q4_64k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_q4_64k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_q4_128k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_q4_128k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_q8_4k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_q8_4k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_q8_32k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_q8_32k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_q8_64k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_q8_64k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_q8_128k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_q8_128k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_f16_4k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_f16_4k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_f16_32k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_f16_32k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_f16_64k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_f16_64k_ctx_gen"
-    llama_bench_qwen_2_5_3b_instruct_f16_128k_ctx_gen = "llama_bench_qwen_2_5_3b_instruct_f16_128k_ctx_gen"
+    llama_bench_qwen_2_5_3b_instruct_q4_4k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_q4_4k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_q4_32k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_q4_32k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_q4_64k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_q4_64k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_q4_128k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_q4_128k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_q8_4k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_q8_4k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_q8_32k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_q8_32k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_q8_64k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_q8_64k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_q8_128k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_q8_128k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_f16_4k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_f16_4k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_f16_32k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_f16_32k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_f16_64k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_f16_64k_ctx_generation"
+    llama_bench_qwen_2_5_3b_instruct_f16_128k_ctx_generation = "llama_bench_qwen_2_5_3b_instruct_f16_128k_ctx_generation"
 
     # Qwen 2.5 14B Instruct
-    llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_q4_64k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_q4_64k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_q4_128k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_q4_128k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_q8_4k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_q8_4k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_q8_32k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_q8_32k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_q8_64k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_q8_64k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_q8_128k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_q8_128k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_f16_4k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_f16_4k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_f16_32k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_f16_32k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_f16_64k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_f16_64k_ctx_gen"
-    llama_bench_qwen_2_5_14b_instruct_f16_128k_ctx_gen = "llama_bench_qwen_2_5_14b_instruct_f16_128k_ctx_gen"
+    llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_q4_64k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_q4_64k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_q4_128k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_q4_128k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_q8_4k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_q8_4k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_q8_32k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_q8_32k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_q8_64k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_q8_64k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_q8_128k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_q8_128k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_f16_4k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_f16_4k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_f16_32k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_f16_32k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_f16_64k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_f16_64k_ctx_generation"
+    llama_bench_qwen_2_5_14b_instruct_f16_128k_ctx_generation = "llama_bench_qwen_2_5_14b_instruct_f16_128k_ctx_generation"
 
     # Qwen 2.5 32B Instruct
-    llama_bench_qwen_2_5_32b_instruct_q4_4k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_q4_4k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_q4_32k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_q4_32k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_q4_64k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_q4_64k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_q4_128k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_q4_128k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_q8_4k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_q8_4k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_q8_32k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_q8_32k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_q8_64k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_q8_64k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_q8_128k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_q8_128k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_f16_4k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_f16_4k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_f16_32k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_f16_32k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_f16_64k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_f16_64k_ctx_gen"
-    llama_bench_qwen_2_5_32b_instruct_f16_128k_ctx_gen = "llama_bench_qwen_2_5_32b_instruct_f16_128k_ctx_gen"
+    llama_bench_qwen_2_5_32b_instruct_q4_4k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_q4_4k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_q4_32k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_q4_32k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_q4_64k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_q4_64k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_q4_128k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_q4_128k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_q8_4k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_q8_4k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_q8_32k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_q8_32k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_q8_64k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_q8_64k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_q8_128k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_q8_128k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_f16_4k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_f16_4k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_f16_32k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_f16_32k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_f16_64k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_f16_64k_ctx_generation"
+    llama_bench_qwen_2_5_32b_instruct_f16_128k_ctx_generation = "llama_bench_qwen_2_5_32b_instruct_f16_128k_ctx_generation"
 
     # Qwen 2.5 72B Instruct
-    llama_bench_qwen_2_5_72b_instruct_q4_4k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_q4_4k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_q4_32k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_q4_32k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_q4_64k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_q4_64k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_q4_128k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_q4_128k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_q8_4k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_q8_4k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_q8_32k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_q8_32k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_q8_64k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_q8_64k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_q8_128k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_q8_128k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_f16_4k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_f16_4k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_f16_32k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_f16_32k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_f16_64k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_f16_64k_ctx_gen"
-    llama_bench_qwen_2_5_72b_instruct_f16_128k_ctx_gen = "llama_bench_qwen_2_5_72b_instruct_f16_128k_ctx_gen"
+    llama_bench_qwen_2_5_72b_instruct_q4_4k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_q4_4k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_q4_32k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_q4_32k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_q4_64k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_q4_64k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_q4_128k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_q4_128k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_q8_4k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_q8_4k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_q8_32k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_q8_32k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_q8_64k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_q8_64k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_q8_128k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_q8_128k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_f16_4k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_f16_4k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_f16_32k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_f16_32k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_f16_64k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_f16_64k_ctx_generation"
+    llama_bench_qwen_2_5_72b_instruct_f16_128k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_f16_128k_ctx_generation"
 
     # Deepseek Coder V2 Lite
-    llama_bench_deepseek_coder_v2_lite_q4_4k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_q4_4k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_q4_32k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_q4_32k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_q4_64k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_q4_64k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_q4_128k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_q4_128k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_q8_4k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_q8_4k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_f16_4k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_f16_4k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_f16_32k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_f16_32k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_f16_64k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_f16_64k_ctx_gen"
-    llama_bench_deepseek_coder_v2_lite_f16_128k_ctx_gen = "llama_bench_deepseek_coder_v2_lite_f16_128k_ctx_gen"
+    llama_bench_deepseek_coder_v2_lite_q4_4k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q4_4k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_q4_32k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q4_32k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_q4_64k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q4_64k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_q4_128k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q4_128k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_q8_4k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q8_4k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_f16_4k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_f16_4k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_f16_32k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_f16_32k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_f16_64k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_f16_64k_ctx_generation"
+    llama_bench_deepseek_coder_v2_lite_f16_128k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_f16_128k_ctx_generation"
 
     # Gemma 4 8B
-    llama_bench_gemma_4_8b_q4_4k_ctx_gen = "llama_bench_gemma_4_8b_q4_4k_ctx_gen"
-    llama_bench_gemma_4_8b_q4_32k_ctx_gen = "llama_bench_gemma_4_8b_q4_32k_ctx_gen"
-    llama_bench_gemma_4_8b_q4_64k_ctx_gen = "llama_bench_gemma_4_8b_q4_64k_ctx_gen"
-    llama_bench_gemma_4_8b_q4_128k_ctx_gen = "llama_bench_gemma_4_8b_q4_128k_ctx_gen"
-    llama_bench_gemma_4_8b_q8_4k_ctx_gen = "llama_bench_gemma_4_8b_q8_4k_ctx_gen"
-    llama_bench_gemma_4_8b_q8_32k_ctx_gen = "llama_bench_gemma_4_8b_q8_32k_ctx_gen"
-    llama_bench_gemma_4_8b_q8_64k_ctx_gen = "llama_bench_gemma_4_8b_q8_64k_ctx_gen"
-    llama_bench_gemma_4_8b_q8_128k_ctx_gen = "llama_bench_gemma_4_8b_q8_128k_ctx_gen"
-    llama_bench_gemma_4_8b_f16_4k_ctx_gen = "llama_bench_gemma_4_8b_f16_4k_ctx_gen"
-    llama_bench_gemma_4_8b_f16_32k_ctx_gen = "llama_bench_gemma_4_8b_f16_32k_ctx_gen"
-    llama_bench_gemma_4_8b_f16_64k_ctx_gen = "llama_bench_gemma_4_8b_f16_64k_ctx_gen"
-    llama_bench_gemma_4_8b_f16_128k_ctx_gen = "llama_bench_gemma_4_8b_f16_128k_ctx_gen"
+    llama_bench_gemma_4_8b_q4_4k_ctx_generation = "llama_bench_gemma_4_8b_q4_4k_ctx_generation"
+    llama_bench_gemma_4_8b_q4_32k_ctx_generation = "llama_bench_gemma_4_8b_q4_32k_ctx_generation"
+    llama_bench_gemma_4_8b_q4_64k_ctx_generation = "llama_bench_gemma_4_8b_q4_64k_ctx_generation"
+    llama_bench_gemma_4_8b_q4_128k_ctx_generation = "llama_bench_gemma_4_8b_q4_128k_ctx_generation"
+    llama_bench_gemma_4_8b_q8_4k_ctx_generation = "llama_bench_gemma_4_8b_q8_4k_ctx_generation"
+    llama_bench_gemma_4_8b_q8_32k_ctx_generation = "llama_bench_gemma_4_8b_q8_32k_ctx_generation"
+    llama_bench_gemma_4_8b_q8_64k_ctx_generation = "llama_bench_gemma_4_8b_q8_64k_ctx_generation"
+    llama_bench_gemma_4_8b_q8_128k_ctx_generation = "llama_bench_gemma_4_8b_q8_128k_ctx_generation"
+    llama_bench_gemma_4_8b_f16_4k_ctx_generation = "llama_bench_gemma_4_8b_f16_4k_ctx_generation"
+    llama_bench_gemma_4_8b_f16_32k_ctx_generation = "llama_bench_gemma_4_8b_f16_32k_ctx_generation"
+    llama_bench_gemma_4_8b_f16_64k_ctx_generation = "llama_bench_gemma_4_8b_f16_64k_ctx_generation"
+    llama_bench_gemma_4_8b_f16_128k_ctx_generation = "llama_bench_gemma_4_8b_f16_128k_ctx_generation"
 
     # Gemma 4 12B
-    llama_bench_gemma_4_12b_q4_4k_ctx_gen = "llama_bench_gemma_4_12b_q4_4k_ctx_gen"
-    llama_bench_gemma_4_12b_q4_32k_ctx_gen = "llama_bench_gemma_4_12b_q4_32k_ctx_gen"
-    llama_bench_gemma_4_12b_q4_64k_ctx_gen = "llama_bench_gemma_4_12b_q4_64k_ctx_gen"
-    llama_bench_gemma_4_12b_q4_128k_ctx_gen = "llama_bench_gemma_4_12b_q4_128k_ctx_gen"
-    llama_bench_gemma_4_12b_q8_4k_ctx_gen = "llama_bench_gemma_4_12b_q8_4k_ctx_gen"
-    llama_bench_gemma_4_12b_q8_32k_ctx_gen = "llama_bench_gemma_4_12b_q8_32k_ctx_gen"
-    llama_bench_gemma_4_12b_q8_64k_ctx_gen = "llama_bench_gemma_4_12b_q8_64k_ctx_gen"
-    llama_bench_gemma_4_12b_q8_128k_ctx_gen = "llama_bench_gemma_4_12b_q8_128k_ctx_gen"
-    llama_bench_gemma_4_12b_f16_4k_ctx_gen = "llama_bench_gemma_4_12b_f16_4k_ctx_gen"
-    llama_bench_gemma_4_12b_f16_32k_ctx_gen = "llama_bench_gemma_4_12b_f16_32k_ctx_gen"
-    llama_bench_gemma_4_12b_f16_64k_ctx_gen = "llama_bench_gemma_4_12b_f16_64k_ctx_gen"
-    llama_bench_gemma_4_12b_f16_128k_ctx_gen = "llama_bench_gemma_4_12b_f16_128k_ctx_gen"
+    llama_bench_gemma_4_12b_q4_4k_ctx_generation = "llama_bench_gemma_4_12b_q4_4k_ctx_generation"
+    llama_bench_gemma_4_12b_q4_32k_ctx_generation = "llama_bench_gemma_4_12b_q4_32k_ctx_generation"
+    llama_bench_gemma_4_12b_q4_64k_ctx_generation = "llama_bench_gemma_4_12b_q4_64k_ctx_generation"
+    llama_bench_gemma_4_12b_q4_128k_ctx_generation = "llama_bench_gemma_4_12b_q4_128k_ctx_generation"
+    llama_bench_gemma_4_12b_q8_4k_ctx_generation = "llama_bench_gemma_4_12b_q8_4k_ctx_generation"
+    llama_bench_gemma_4_12b_q8_32k_ctx_generation = "llama_bench_gemma_4_12b_q8_32k_ctx_generation"
+    llama_bench_gemma_4_12b_q8_64k_ctx_generation = "llama_bench_gemma_4_12b_q8_64k_ctx_generation"
+    llama_bench_gemma_4_12b_q8_128k_ctx_generation = "llama_bench_gemma_4_12b_q8_128k_ctx_generation"
+    llama_bench_gemma_4_12b_f16_4k_ctx_generation = "llama_bench_gemma_4_12b_f16_4k_ctx_generation"
+    llama_bench_gemma_4_12b_f16_32k_ctx_generation = "llama_bench_gemma_4_12b_f16_32k_ctx_generation"
+    llama_bench_gemma_4_12b_f16_64k_ctx_generation = "llama_bench_gemma_4_12b_f16_64k_ctx_generation"
+    llama_bench_gemma_4_12b_f16_128k_ctx_generation = "llama_bench_gemma_4_12b_f16_128k_ctx_generation"
 
     # Gemma 4 26B
-    llama_bench_gemma_4_26b_q4_4k_ctx_gen = "llama_bench_gemma_4_26b_q4_4k_ctx_gen"
-    llama_bench_gemma_4_26b_q4_32k_ctx_gen = "llama_bench_gemma_4_26b_q4_32k_ctx_gen"
-    llama_bench_gemma_4_26b_q4_64k_ctx_gen = "llama_bench_gemma_4_26b_q4_64k_ctx_gen"
-    llama_bench_gemma_4_26b_q4_128k_ctx_gen = "llama_bench_gemma_4_26b_q4_128k_ctx_gen"
-    llama_bench_gemma_4_26b_q8_4k_ctx_gen = "llama_bench_gemma_4_26b_q8_4k_ctx_gen"
-    llama_bench_gemma_4_26b_q8_32k_ctx_gen = "llama_bench_gemma_4_26b_q8_32k_ctx_gen"
-    llama_bench_gemma_4_26b_q8_64k_ctx_gen = "llama_bench_gemma_4_26b_q8_64k_ctx_gen"
-    llama_bench_gemma_4_26b_q8_128k_ctx_gen = "llama_bench_gemma_4_26b_q8_128k_ctx_gen"
-    llama_bench_gemma_4_26b_f16_4k_ctx_gen = "llama_bench_gemma_4_26b_f16_4k_ctx_gen"
-    llama_bench_gemma_4_26b_f16_32k_ctx_gen = "llama_bench_gemma_4_26b_f16_32k_ctx_gen"
-    llama_bench_gemma_4_26b_f16_64k_ctx_gen = "llama_bench_gemma_4_26b_f16_64k_ctx_gen"
-    llama_bench_gemma_4_26b_f16_128k_ctx_gen = "llama_bench_gemma_4_26b_f16_128k_ctx_gen"
+    llama_bench_gemma_4_26b_q4_4k_ctx_generation = "llama_bench_gemma_4_26b_q4_4k_ctx_generation"
+    llama_bench_gemma_4_26b_q4_32k_ctx_generation = "llama_bench_gemma_4_26b_q4_32k_ctx_generation"
+    llama_bench_gemma_4_26b_q4_64k_ctx_generation = "llama_bench_gemma_4_26b_q4_64k_ctx_generation"
+    llama_bench_gemma_4_26b_q4_128k_ctx_generation = "llama_bench_gemma_4_26b_q4_128k_ctx_generation"
+    llama_bench_gemma_4_26b_q8_4k_ctx_generation = "llama_bench_gemma_4_26b_q8_4k_ctx_generation"
+    llama_bench_gemma_4_26b_q8_32k_ctx_generation = "llama_bench_gemma_4_26b_q8_32k_ctx_generation"
+    llama_bench_gemma_4_26b_q8_64k_ctx_generation = "llama_bench_gemma_4_26b_q8_64k_ctx_generation"
+    llama_bench_gemma_4_26b_q8_128k_ctx_generation = "llama_bench_gemma_4_26b_q8_128k_ctx_generation"
+    llama_bench_gemma_4_26b_f16_4k_ctx_generation = "llama_bench_gemma_4_26b_f16_4k_ctx_generation"
+    llama_bench_gemma_4_26b_f16_32k_ctx_generation = "llama_bench_gemma_4_26b_f16_32k_ctx_generation"
+    llama_bench_gemma_4_26b_f16_64k_ctx_generation = "llama_bench_gemma_4_26b_f16_64k_ctx_generation"
+    llama_bench_gemma_4_26b_f16_128k_ctx_generation = "llama_bench_gemma_4_26b_f16_128k_ctx_generation"
 
     # Gemma 4 31B
-    llama_bench_gemma_4_31b_q4_4k_ctx_gen = "llama_bench_gemma_4_31b_q4_4k_ctx_gen"
-    llama_bench_gemma_4_31b_q4_32k_ctx_gen = "llama_bench_gemma_4_31b_q4_32k_ctx_gen"
-    llama_bench_gemma_4_31b_q4_64k_ctx_gen = "llama_bench_gemma_4_31b_q4_64k_ctx_gen"
-    llama_bench_gemma_4_31b_q4_128k_ctx_gen = "llama_bench_gemma_4_31b_q4_128k_ctx_gen"
-    llama_bench_gemma_4_31b_q8_4k_ctx_gen = "llama_bench_gemma_4_31b_q8_4k_ctx_gen"
-    llama_bench_gemma_4_31b_q8_32k_ctx_gen = "llama_bench_gemma_4_31b_q8_32k_ctx_gen"
-    llama_bench_gemma_4_31b_q8_64k_ctx_gen = "llama_bench_gemma_4_31b_q8_64k_ctx_gen"
-    llama_bench_gemma_4_31b_q8_128k_ctx_gen = "llama_bench_gemma_4_31b_q8_128k_ctx_gen"
-    llama_bench_gemma_4_31b_f16_4k_ctx_gen = "llama_bench_gemma_4_31b_f16_4k_ctx_gen"
-    llama_bench_gemma_4_31b_f16_32k_ctx_gen = "llama_bench_gemma_4_31b_f16_32k_ctx_gen"
-    llama_bench_gemma_4_31b_f16_64k_ctx_gen = "llama_bench_gemma_4_31b_f16_64k_ctx_gen"
-    llama_bench_gemma_4_31b_f16_128k_ctx_gen = "llama_bench_gemma_4_31b_f16_128k_ctx_gen"
+    llama_bench_gemma_4_31b_q4_4k_ctx_generation = "llama_bench_gemma_4_31b_q4_4k_ctx_generation"
+    llama_bench_gemma_4_31b_q4_32k_ctx_generation = "llama_bench_gemma_4_31b_q4_32k_ctx_generation"
+    llama_bench_gemma_4_31b_q4_64k_ctx_generation = "llama_bench_gemma_4_31b_q4_64k_ctx_generation"
+    llama_bench_gemma_4_31b_q4_128k_ctx_generation = "llama_bench_gemma_4_31b_q4_128k_ctx_generation"
+    llama_bench_gemma_4_31b_q8_4k_ctx_generation = "llama_bench_gemma_4_31b_q8_4k_ctx_generation"
+    llama_bench_gemma_4_31b_q8_32k_ctx_generation = "llama_bench_gemma_4_31b_q8_32k_ctx_generation"
+    llama_bench_gemma_4_31b_q8_64k_ctx_generation = "llama_bench_gemma_4_31b_q8_64k_ctx_generation"
+    llama_bench_gemma_4_31b_q8_128k_ctx_generation = "llama_bench_gemma_4_31b_q8_128k_ctx_generation"
+    llama_bench_gemma_4_31b_f16_4k_ctx_generation = "llama_bench_gemma_4_31b_f16_4k_ctx_generation"
+    llama_bench_gemma_4_31b_f16_32k_ctx_generation = "llama_bench_gemma_4_31b_f16_32k_ctx_generation"
+    llama_bench_gemma_4_31b_f16_64k_ctx_generation = "llama_bench_gemma_4_31b_f16_64k_ctx_generation"
+    llama_bench_gemma_4_31b_f16_128k_ctx_generation = "llama_bench_gemma_4_31b_f16_128k_ctx_generation"
 
     # Qwen 3.6 27B
-    llama_bench_qwen_3_6_27b_q4_4k_ctx_gen = "llama_bench_qwen_3_6_27b_q4_4k_ctx_gen"
-    llama_bench_qwen_3_6_27b_q4_32k_ctx_gen = "llama_bench_qwen_3_6_27b_q4_32k_ctx_gen"
-    llama_bench_qwen_3_6_27b_q4_64k_ctx_gen = "llama_bench_qwen_3_6_27b_q4_64k_ctx_gen"
-    llama_bench_qwen_3_6_27b_q4_128k_ctx_gen = "llama_bench_qwen_3_6_27b_q4_128k_ctx_gen"
-    llama_bench_qwen_3_6_27b_q8_4k_ctx_gen = "llama_bench_qwen_3_6_27b_q8_4k_ctx_gen"
-    llama_bench_qwen_3_6_27b_q8_32k_ctx_gen = "llama_bench_qwen_3_6_27b_q8_32k_ctx_gen"
-    llama_bench_qwen_3_6_27b_q8_64k_ctx_gen = "llama_bench_qwen_3_6_27b_q8_64k_ctx_gen"
-    llama_bench_qwen_3_6_27b_q8_128k_ctx_gen = "llama_bench_qwen_3_6_27b_q8_128k_ctx_gen"
-    llama_bench_qwen_3_6_27b_f16_4k_ctx_gen = "llama_bench_qwen_3_6_27b_f16_4k_ctx_gen"
-    llama_bench_qwen_3_6_27b_f16_32k_ctx_gen = "llama_bench_qwen_3_6_27b_f16_32k_ctx_gen"
-    llama_bench_qwen_3_6_27b_f16_64k_ctx_gen = "llama_bench_qwen_3_6_27b_f16_64k_ctx_gen"
-    llama_bench_qwen_3_6_27b_f16_128k_ctx_gen = "llama_bench_qwen_3_6_27b_f16_128k_ctx_gen"
+    llama_bench_qwen_3_6_27b_q4_4k_ctx_generation = "llama_bench_qwen_3_6_27b_q4_4k_ctx_generation"
+    llama_bench_qwen_3_6_27b_q4_32k_ctx_generation = "llama_bench_qwen_3_6_27b_q4_32k_ctx_generation"
+    llama_bench_qwen_3_6_27b_q4_64k_ctx_generation = "llama_bench_qwen_3_6_27b_q4_64k_ctx_generation"
+    llama_bench_qwen_3_6_27b_q4_128k_ctx_generation = "llama_bench_qwen_3_6_27b_q4_128k_ctx_generation"
+    llama_bench_qwen_3_6_27b_q8_4k_ctx_generation = "llama_bench_qwen_3_6_27b_q8_4k_ctx_generation"
+    llama_bench_qwen_3_6_27b_q8_32k_ctx_generation = "llama_bench_qwen_3_6_27b_q8_32k_ctx_generation"
+    llama_bench_qwen_3_6_27b_q8_64k_ctx_generation = "llama_bench_qwen_3_6_27b_q8_64k_ctx_generation"
+    llama_bench_qwen_3_6_27b_q8_128k_ctx_generation = "llama_bench_qwen_3_6_27b_q8_128k_ctx_generation"
+    llama_bench_qwen_3_6_27b_f16_4k_ctx_generation = "llama_bench_qwen_3_6_27b_f16_4k_ctx_generation"
+    llama_bench_qwen_3_6_27b_f16_32k_ctx_generation = "llama_bench_qwen_3_6_27b_f16_32k_ctx_generation"
+    llama_bench_qwen_3_6_27b_f16_64k_ctx_generation = "llama_bench_qwen_3_6_27b_f16_64k_ctx_generation"
+    llama_bench_qwen_3_6_27b_f16_128k_ctx_generation = "llama_bench_qwen_3_6_27b_f16_128k_ctx_generation"
 
     # Qwen 3.6 35B
-    llama_bench_qwen_3_6_35b_q4_4k_ctx_gen = "llama_bench_qwen_3_6_35b_q4_4k_ctx_gen"
-    llama_bench_qwen_3_6_35b_q4_32k_ctx_gen = "llama_bench_qwen_3_6_35b_q4_32k_ctx_gen"
-    llama_bench_qwen_3_6_35b_q4_64k_ctx_gen = "llama_bench_qwen_3_6_35b_q4_64k_ctx_gen"
-    llama_bench_qwen_3_6_35b_q4_128k_ctx_gen = "llama_bench_qwen_3_6_35b_q4_128k_ctx_gen"
-    llama_bench_qwen_3_6_35b_q8_4k_ctx_gen = "llama_bench_qwen_3_6_35b_q8_4k_ctx_gen"
-    llama_bench_qwen_3_6_35b_q8_32k_ctx_gen = "llama_bench_qwen_3_6_35b_q8_32k_ctx_gen"
-    llama_bench_qwen_3_6_35b_q8_64k_ctx_gen = "llama_bench_qwen_3_6_35b_q8_64k_ctx_gen"
-    llama_bench_qwen_3_6_35b_q8_128k_ctx_gen = "llama_bench_qwen_3_6_35b_q8_128k_ctx_gen"
-    llama_bench_qwen_3_6_35b_f16_4k_ctx_gen = "llama_bench_qwen_3_6_35b_f16_4k_ctx_gen"
-    llama_bench_qwen_3_6_35b_f16_32k_ctx_gen = "llama_bench_qwen_3_6_35b_f16_32k_ctx_gen"
-    llama_bench_qwen_3_6_35b_f16_64k_ctx_gen = "llama_bench_qwen_3_6_35b_f16_64k_ctx_gen"
-    llama_bench_qwen_3_6_35b_f16_128k_ctx_gen = "llama_bench_qwen_3_6_35b_f16_128k_ctx_gen"
+    llama_bench_qwen_3_6_35b_q4_4k_ctx_generation = "llama_bench_qwen_3_6_35b_q4_4k_ctx_generation"
+    llama_bench_qwen_3_6_35b_q4_32k_ctx_generation = "llama_bench_qwen_3_6_35b_q4_32k_ctx_generation"
+    llama_bench_qwen_3_6_35b_q4_64k_ctx_generation = "llama_bench_qwen_3_6_35b_q4_64k_ctx_generation"
+    llama_bench_qwen_3_6_35b_q4_128k_ctx_generation = "llama_bench_qwen_3_6_35b_q4_128k_ctx_generation"
+    llama_bench_qwen_3_6_35b_q8_4k_ctx_generation = "llama_bench_qwen_3_6_35b_q8_4k_ctx_generation"
+    llama_bench_qwen_3_6_35b_q8_32k_ctx_generation = "llama_bench_qwen_3_6_35b_q8_32k_ctx_generation"
+    llama_bench_qwen_3_6_35b_q8_64k_ctx_generation = "llama_bench_qwen_3_6_35b_q8_64k_ctx_generation"
+    llama_bench_qwen_3_6_35b_q8_128k_ctx_generation = "llama_bench_qwen_3_6_35b_q8_128k_ctx_generation"
+    llama_bench_qwen_3_6_35b_f16_4k_ctx_generation = "llama_bench_qwen_3_6_35b_f16_4k_ctx_generation"
+    llama_bench_qwen_3_6_35b_f16_32k_ctx_generation = "llama_bench_qwen_3_6_35b_f16_32k_ctx_generation"
+    llama_bench_qwen_3_6_35b_f16_64k_ctx_generation = "llama_bench_qwen_3_6_35b_f16_64k_ctx_generation"
+    llama_bench_qwen_3_6_35b_f16_128k_ctx_generation = "llama_bench_qwen_3_6_35b_f16_128k_ctx_generation"
 
     llama_bench_max_model_parameters_q4_4k_ctx = "llama_bench_max_model_parameters_q4_4k_ctx"
     llama_bench_max_model_parameters_q4_32k_ctx = "llama_bench_max_model_parameters_q4_32k_ctx"
@@ -239,169 +239,169 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
 
     # Qwen 2.5 1.5B
     BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt: "llama.cpp Qwen2.5 1.5B Prompt",
-    BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_gen: "llama.cpp Qwen2.5 1.5B Generation",
+    BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: "llama.cpp Qwen2.5 1.5B Generation",
 
     # Llama 3 8B
     BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: "llama.cpp Llama 3 8B Prompt",
-    BenchmarkName.llama_bench_meta_llama_3_8b_instruct_gen: "llama.cpp Llama 3 8B Generation",
+    BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: "llama.cpp Llama 3 8B Generation",
 
     # Qwen 1.5 MoE
     BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: "llama.cpp Qwen1.5 MoE Prompt",
-    BenchmarkName.llama_bench_qwen_1_5_moe_chat_gen: "llama.cpp Qwen1.5 MoE Generation",
+    BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: "llama.cpp Qwen1.5 MoE Generation",
 
     # Qwen 2.5 3B Instruct
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q4_4k_ctx_gen: "llama.cpp Qwen2.5 3B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q4_32k_ctx_gen: "llama.cpp Qwen2.5 3B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q4_64k_ctx_gen: "llama.cpp Qwen2.5 3B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q4_128k_ctx_gen: "llama.cpp Qwen2.5 3B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q8_4k_ctx_gen: "llama.cpp Qwen2.5 3B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q8_32k_ctx_gen: "llama.cpp Qwen2.5 3B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q8_64k_ctx_gen: "llama.cpp Qwen2.5 3B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q8_128k_ctx_gen: "llama.cpp Qwen2.5 3B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_f16_4k_ctx_gen: "llama.cpp Qwen2.5 3B F16 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_f16_32k_ctx_gen: "llama.cpp Qwen2.5 3B F16 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_f16_64k_ctx_gen: "llama.cpp Qwen2.5 3B F16 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_f16_128k_ctx_gen: "llama.cpp Qwen2.5 3B F16 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q4_4k_ctx_generation: "llama.cpp Qwen2.5 3B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q4_32k_ctx_generation: "llama.cpp Qwen2.5 3B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q4_64k_ctx_generation: "llama.cpp Qwen2.5 3B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q4_128k_ctx_generation: "llama.cpp Qwen2.5 3B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q8_4k_ctx_generation: "llama.cpp Qwen2.5 3B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q8_32k_ctx_generation: "llama.cpp Qwen2.5 3B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q8_64k_ctx_generation: "llama.cpp Qwen2.5 3B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_q8_128k_ctx_generation: "llama.cpp Qwen2.5 3B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_f16_4k_ctx_generation: "llama.cpp Qwen2.5 3B F16 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_f16_32k_ctx_generation: "llama.cpp Qwen2.5 3B F16 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_f16_64k_ctx_generation: "llama.cpp Qwen2.5 3B F16 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_3b_instruct_f16_128k_ctx_generation: "llama.cpp Qwen2.5 3B F16 Generation (128K)",
 
     # Qwen 2.5 14B Instruct
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_gen: "llama.cpp Qwen2.5 14B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_gen: "llama.cpp Qwen2.5 14B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_64k_ctx_gen: "llama.cpp Qwen2.5 14B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_128k_ctx_gen: "llama.cpp Qwen2.5 14B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q8_4k_ctx_gen: "llama.cpp Qwen2.5 14B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q8_32k_ctx_gen: "llama.cpp Qwen2.5 14B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q8_64k_ctx_gen: "llama.cpp Qwen2.5 14B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q8_128k_ctx_gen: "llama.cpp Qwen2.5 14B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_f16_4k_ctx_gen: "llama.cpp Qwen2.5 14B F16 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_f16_32k_ctx_gen: "llama.cpp Qwen2.5 14B F16 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_f16_64k_ctx_gen: "llama.cpp Qwen2.5 14B F16 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_f16_128k_ctx_gen: "llama.cpp Qwen2.5 14B F16 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_generation: "llama.cpp Qwen2.5 14B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_generation: "llama.cpp Qwen2.5 14B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_64k_ctx_generation: "llama.cpp Qwen2.5 14B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_128k_ctx_generation: "llama.cpp Qwen2.5 14B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q8_4k_ctx_generation: "llama.cpp Qwen2.5 14B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q8_32k_ctx_generation: "llama.cpp Qwen2.5 14B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q8_64k_ctx_generation: "llama.cpp Qwen2.5 14B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q8_128k_ctx_generation: "llama.cpp Qwen2.5 14B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_f16_4k_ctx_generation: "llama.cpp Qwen2.5 14B F16 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_f16_32k_ctx_generation: "llama.cpp Qwen2.5 14B F16 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_f16_64k_ctx_generation: "llama.cpp Qwen2.5 14B F16 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_f16_128k_ctx_generation: "llama.cpp Qwen2.5 14B F16 Generation (128K)",
 
     # Qwen 2.5 32B Instruct
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q4_4k_ctx_gen: "llama.cpp Qwen2.5 32B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q4_32k_ctx_gen: "llama.cpp Qwen2.5 32B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q4_64k_ctx_gen: "llama.cpp Qwen2.5 32B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q4_128k_ctx_gen: "llama.cpp Qwen2.5 32B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q8_4k_ctx_gen: "llama.cpp Qwen2.5 32B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q8_32k_ctx_gen: "llama.cpp Qwen2.5 32B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q8_64k_ctx_gen: "llama.cpp Qwen2.5 32B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q8_128k_ctx_gen: "llama.cpp Qwen2.5 32B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_f16_4k_ctx_gen: "llama.cpp Qwen2.5 32B F16 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_f16_32k_ctx_gen: "llama.cpp Qwen2.5 32B F16 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_f16_64k_ctx_gen: "llama.cpp Qwen2.5 32B F16 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_f16_128k_ctx_gen: "llama.cpp Qwen2.5 32B F16 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q4_4k_ctx_generation: "llama.cpp Qwen2.5 32B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q4_32k_ctx_generation: "llama.cpp Qwen2.5 32B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q4_64k_ctx_generation: "llama.cpp Qwen2.5 32B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q4_128k_ctx_generation: "llama.cpp Qwen2.5 32B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q8_4k_ctx_generation: "llama.cpp Qwen2.5 32B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q8_32k_ctx_generation: "llama.cpp Qwen2.5 32B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q8_64k_ctx_generation: "llama.cpp Qwen2.5 32B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_q8_128k_ctx_generation: "llama.cpp Qwen2.5 32B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_f16_4k_ctx_generation: "llama.cpp Qwen2.5 32B F16 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_f16_32k_ctx_generation: "llama.cpp Qwen2.5 32B F16 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_f16_64k_ctx_generation: "llama.cpp Qwen2.5 32B F16 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_32b_instruct_f16_128k_ctx_generation: "llama.cpp Qwen2.5 32B F16 Generation (128K)",
 
     # Qwen 2.5 72B Instruct
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q4_4k_ctx_gen: "llama.cpp Qwen2.5 72B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q4_32k_ctx_gen: "llama.cpp Qwen2.5 72B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q4_64k_ctx_gen: "llama.cpp Qwen2.5 72B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q4_128k_ctx_gen: "llama.cpp Qwen2.5 72B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q8_4k_ctx_gen: "llama.cpp Qwen2.5 72B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q8_32k_ctx_gen: "llama.cpp Qwen2.5 72B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q8_64k_ctx_gen: "llama.cpp Qwen2.5 72B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q8_128k_ctx_gen: "llama.cpp Qwen2.5 72B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_4k_ctx_gen: "llama.cpp Qwen2.5 72B F16 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_32k_ctx_gen: "llama.cpp Qwen2.5 72B F16 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_64k_ctx_gen: "llama.cpp Qwen2.5 72B F16 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_128k_ctx_gen: "llama.cpp Qwen2.5 72B F16 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q4_4k_ctx_generation: "llama.cpp Qwen2.5 72B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q4_32k_ctx_generation: "llama.cpp Qwen2.5 72B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q4_64k_ctx_generation: "llama.cpp Qwen2.5 72B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q4_128k_ctx_generation: "llama.cpp Qwen2.5 72B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q8_4k_ctx_generation: "llama.cpp Qwen2.5 72B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q8_32k_ctx_generation: "llama.cpp Qwen2.5 72B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q8_64k_ctx_generation: "llama.cpp Qwen2.5 72B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_q8_128k_ctx_generation: "llama.cpp Qwen2.5 72B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_4k_ctx_generation: "llama.cpp Qwen2.5 72B F16 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_32k_ctx_generation: "llama.cpp Qwen2.5 72B F16 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_64k_ctx_generation: "llama.cpp Qwen2.5 72B F16 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_128k_ctx_generation: "llama.cpp Qwen2.5 72B F16 Generation (128K)",
 
     # DeepSeek Coder V2 Lite
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_4k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_32k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_64k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_128k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_4k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (4K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (32K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (64K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (128K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_4k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (4K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_32k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (32K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_64k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (64K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_128k_ctx_gen: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (128K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_4k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_32k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_64k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_128k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_4k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (4K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (32K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (64K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (128K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_4k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (4K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_32k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (32K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_64k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (64K)",
+    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_128k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (128K)",
 
     # Gemma 4 8B
-    BenchmarkName.llama_bench_gemma_4_8b_q4_4k_ctx_gen: "llama.cpp Gemma 4 8B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_8b_q4_32k_ctx_gen: "llama.cpp Gemma 4 8B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_8b_q4_64k_ctx_gen: "llama.cpp Gemma 4 8B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_8b_q4_128k_ctx_gen: "llama.cpp Gemma 4 8B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_gemma_4_8b_q8_4k_ctx_gen: "llama.cpp Gemma 4 8B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_8b_q8_32k_ctx_gen: "llama.cpp Gemma 4 8B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_8b_q8_64k_ctx_gen: "llama.cpp Gemma 4 8B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_8b_q8_128k_ctx_gen: "llama.cpp Gemma 4 8B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_gemma_4_8b_f16_4k_ctx_gen: "llama.cpp Gemma 4 8B F16 Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_8b_f16_32k_ctx_gen: "llama.cpp Gemma 4 8B F16 Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_8b_f16_64k_ctx_gen: "llama.cpp Gemma 4 8B F16 Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_8b_f16_128k_ctx_gen: "llama.cpp Gemma 4 8B F16 Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_8b_q4_4k_ctx_generation: "llama.cpp Gemma 4 8B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_8b_q4_32k_ctx_generation: "llama.cpp Gemma 4 8B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_8b_q4_64k_ctx_generation: "llama.cpp Gemma 4 8B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_8b_q4_128k_ctx_generation: "llama.cpp Gemma 4 8B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_8b_q8_4k_ctx_generation: "llama.cpp Gemma 4 8B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_8b_q8_32k_ctx_generation: "llama.cpp Gemma 4 8B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_8b_q8_64k_ctx_generation: "llama.cpp Gemma 4 8B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_8b_q8_128k_ctx_generation: "llama.cpp Gemma 4 8B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_8b_f16_4k_ctx_generation: "llama.cpp Gemma 4 8B F16 Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_8b_f16_32k_ctx_generation: "llama.cpp Gemma 4 8B F16 Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_8b_f16_64k_ctx_generation: "llama.cpp Gemma 4 8B F16 Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_8b_f16_128k_ctx_generation: "llama.cpp Gemma 4 8B F16 Generation (128K)",
 
     # Gemma 4 12B
-    BenchmarkName.llama_bench_gemma_4_12b_q4_4k_ctx_gen: "llama.cpp Gemma 4 12B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_12b_q4_32k_ctx_gen: "llama.cpp Gemma 4 12B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_12b_q4_64k_ctx_gen: "llama.cpp Gemma 4 12B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_12b_q4_128k_ctx_gen: "llama.cpp Gemma 4 12B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_gemma_4_12b_q8_4k_ctx_gen: "llama.cpp Gemma 4 12B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_12b_q8_32k_ctx_gen: "llama.cpp Gemma 4 12B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_12b_q8_64k_ctx_gen: "llama.cpp Gemma 4 12B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_12b_q8_128k_ctx_gen: "llama.cpp Gemma 4 12B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_gemma_4_12b_f16_4k_ctx_gen: "llama.cpp Gemma 4 12B F16 Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_12b_f16_32k_ctx_gen: "llama.cpp Gemma 4 12B F16 Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_12b_f16_64k_ctx_gen: "llama.cpp Gemma 4 12B F16 Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_12b_f16_128k_ctx_gen: "llama.cpp Gemma 4 12B F16 Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_12b_q4_4k_ctx_generation: "llama.cpp Gemma 4 12B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_12b_q4_32k_ctx_generation: "llama.cpp Gemma 4 12B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_12b_q4_64k_ctx_generation: "llama.cpp Gemma 4 12B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_12b_q4_128k_ctx_generation: "llama.cpp Gemma 4 12B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_12b_q8_4k_ctx_generation: "llama.cpp Gemma 4 12B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_12b_q8_32k_ctx_generation: "llama.cpp Gemma 4 12B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_12b_q8_64k_ctx_generation: "llama.cpp Gemma 4 12B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_12b_q8_128k_ctx_generation: "llama.cpp Gemma 4 12B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_12b_f16_4k_ctx_generation: "llama.cpp Gemma 4 12B F16 Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_12b_f16_32k_ctx_generation: "llama.cpp Gemma 4 12B F16 Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_12b_f16_64k_ctx_generation: "llama.cpp Gemma 4 12B F16 Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_12b_f16_128k_ctx_generation: "llama.cpp Gemma 4 12B F16 Generation (128K)",
 
     # Gemma 4 26B
-    BenchmarkName.llama_bench_gemma_4_26b_q4_4k_ctx_gen: "llama.cpp Gemma 4 26B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_26b_q4_32k_ctx_gen: "llama.cpp Gemma 4 26B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_26b_q4_64k_ctx_gen: "llama.cpp Gemma 4 26B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_26b_q4_128k_ctx_gen: "llama.cpp Gemma 4 26B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_gemma_4_26b_q8_4k_ctx_gen: "llama.cpp Gemma 4 26B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_26b_q8_32k_ctx_gen: "llama.cpp Gemma 4 26B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_26b_q8_64k_ctx_gen: "llama.cpp Gemma 4 26B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_26b_q8_128k_ctx_gen: "llama.cpp Gemma 4 26B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_gemma_4_26b_f16_4k_ctx_gen: "llama.cpp Gemma 4 26B F16 Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_26b_f16_32k_ctx_gen: "llama.cpp Gemma 4 26B F16 Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_26b_f16_64k_ctx_gen: "llama.cpp Gemma 4 26B F16 Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_26b_f16_128k_ctx_gen: "llama.cpp Gemma 4 26B F16 Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_26b_q4_4k_ctx_generation: "llama.cpp Gemma 4 26B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_26b_q4_32k_ctx_generation: "llama.cpp Gemma 4 26B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_26b_q4_64k_ctx_generation: "llama.cpp Gemma 4 26B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_26b_q4_128k_ctx_generation: "llama.cpp Gemma 4 26B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_26b_q8_4k_ctx_generation: "llama.cpp Gemma 4 26B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_26b_q8_32k_ctx_generation: "llama.cpp Gemma 4 26B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_26b_q8_64k_ctx_generation: "llama.cpp Gemma 4 26B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_26b_q8_128k_ctx_generation: "llama.cpp Gemma 4 26B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_26b_f16_4k_ctx_generation: "llama.cpp Gemma 4 26B F16 Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_26b_f16_32k_ctx_generation: "llama.cpp Gemma 4 26B F16 Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_26b_f16_64k_ctx_generation: "llama.cpp Gemma 4 26B F16 Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_26b_f16_128k_ctx_generation: "llama.cpp Gemma 4 26B F16 Generation (128K)",
 
     # Gemma 4 31B
-    BenchmarkName.llama_bench_gemma_4_31b_q4_4k_ctx_gen: "llama.cpp Gemma 4 31B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_31b_q4_32k_ctx_gen: "llama.cpp Gemma 4 31B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_31b_q4_64k_ctx_gen: "llama.cpp Gemma 4 31B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_31b_q4_128k_ctx_gen: "llama.cpp Gemma 4 31B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_gemma_4_31b_q8_4k_ctx_gen: "llama.cpp Gemma 4 31B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_31b_q8_32k_ctx_gen: "llama.cpp Gemma 4 31B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_31b_q8_64k_ctx_gen: "llama.cpp Gemma 4 31B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_31b_q8_128k_ctx_gen: "llama.cpp Gemma 4 31B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_gemma_4_31b_f16_4k_ctx_gen: "llama.cpp Gemma 4 31B F16 Generation (4K)",
-    BenchmarkName.llama_bench_gemma_4_31b_f16_32k_ctx_gen: "llama.cpp Gemma 4 31B F16 Generation (32K)",
-    BenchmarkName.llama_bench_gemma_4_31b_f16_64k_ctx_gen: "llama.cpp Gemma 4 31B F16 Generation (64K)",
-    BenchmarkName.llama_bench_gemma_4_31b_f16_128k_ctx_gen: "llama.cpp Gemma 4 31B F16 Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_31b_q4_4k_ctx_generation: "llama.cpp Gemma 4 31B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_31b_q4_32k_ctx_generation: "llama.cpp Gemma 4 31B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_31b_q4_64k_ctx_generation: "llama.cpp Gemma 4 31B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_31b_q4_128k_ctx_generation: "llama.cpp Gemma 4 31B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_31b_q8_4k_ctx_generation: "llama.cpp Gemma 4 31B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_31b_q8_32k_ctx_generation: "llama.cpp Gemma 4 31B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_31b_q8_64k_ctx_generation: "llama.cpp Gemma 4 31B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_31b_q8_128k_ctx_generation: "llama.cpp Gemma 4 31B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_gemma_4_31b_f16_4k_ctx_generation: "llama.cpp Gemma 4 31B F16 Generation (4K)",
+    BenchmarkName.llama_bench_gemma_4_31b_f16_32k_ctx_generation: "llama.cpp Gemma 4 31B F16 Generation (32K)",
+    BenchmarkName.llama_bench_gemma_4_31b_f16_64k_ctx_generation: "llama.cpp Gemma 4 31B F16 Generation (64K)",
+    BenchmarkName.llama_bench_gemma_4_31b_f16_128k_ctx_generation: "llama.cpp Gemma 4 31B F16 Generation (128K)",
 
     # Qwen 3.6 27B
-    BenchmarkName.llama_bench_qwen_3_6_27b_q4_4k_ctx_gen: "llama.cpp Qwen3.6 27B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_q4_32k_ctx_gen: "llama.cpp Qwen3.6 27B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_q4_64k_ctx_gen: "llama.cpp Qwen3.6 27B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_q4_128k_ctx_gen: "llama.cpp Qwen3.6 27B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_q8_4k_ctx_gen: "llama.cpp Qwen3.6 27B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_q8_32k_ctx_gen: "llama.cpp Qwen3.6 27B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_q8_64k_ctx_gen: "llama.cpp Qwen3.6 27B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_q8_128k_ctx_gen: "llama.cpp Qwen3.6 27B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_f16_4k_ctx_gen: "llama.cpp Qwen3.6 27B F16 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_f16_32k_ctx_gen: "llama.cpp Qwen3.6 27B F16 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_f16_64k_ctx_gen: "llama.cpp Qwen3.6 27B F16 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_3_6_27b_f16_128k_ctx_gen: "llama.cpp Qwen3.6 27B F16 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_q4_4k_ctx_generation: "llama.cpp Qwen3.6 27B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_q4_32k_ctx_generation: "llama.cpp Qwen3.6 27B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_q4_64k_ctx_generation: "llama.cpp Qwen3.6 27B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_q4_128k_ctx_generation: "llama.cpp Qwen3.6 27B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_q8_4k_ctx_generation: "llama.cpp Qwen3.6 27B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_q8_32k_ctx_generation: "llama.cpp Qwen3.6 27B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_q8_64k_ctx_generation: "llama.cpp Qwen3.6 27B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_q8_128k_ctx_generation: "llama.cpp Qwen3.6 27B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_4k_ctx_generation: "llama.cpp Qwen3.6 27B F16 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_32k_ctx_generation: "llama.cpp Qwen3.6 27B F16 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_64k_ctx_generation: "llama.cpp Qwen3.6 27B F16 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_3_6_27b_f16_128k_ctx_generation: "llama.cpp Qwen3.6 27B F16 Generation (128K)",
 
     # Qwen 3.6 35B
-    BenchmarkName.llama_bench_qwen_3_6_35b_q4_4k_ctx_gen: "llama.cpp Qwen3.6 35B Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_q4_32k_ctx_gen: "llama.cpp Qwen3.6 35B Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_q4_64k_ctx_gen: "llama.cpp Qwen3.6 35B Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_q4_128k_ctx_gen: "llama.cpp Qwen3.6 35B Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_q8_4k_ctx_gen: "llama.cpp Qwen3.6 35B Q8 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_q8_32k_ctx_gen: "llama.cpp Qwen3.6 35B Q8 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_q8_64k_ctx_gen: "llama.cpp Qwen3.6 35B Q8 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_q8_128k_ctx_gen: "llama.cpp Qwen3.6 35B Q8 Generation (128K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_f16_4k_ctx_gen: "llama.cpp Qwen3.6 35B F16 Generation (4K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_f16_32k_ctx_gen: "llama.cpp Qwen3.6 35B F16 Generation (32K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_f16_64k_ctx_gen: "llama.cpp Qwen3.6 35B F16 Generation (64K)",
-    BenchmarkName.llama_bench_qwen_3_6_35b_f16_128k_ctx_gen: "llama.cpp Qwen3.6 35B F16 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_q4_4k_ctx_generation: "llama.cpp Qwen3.6 35B Q4_K_M Generation (4K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_q4_32k_ctx_generation: "llama.cpp Qwen3.6 35B Q4_K_M Generation (32K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_q4_64k_ctx_generation: "llama.cpp Qwen3.6 35B Q4_K_M Generation (64K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_q4_128k_ctx_generation: "llama.cpp Qwen3.6 35B Q4_K_M Generation (128K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_q8_4k_ctx_generation: "llama.cpp Qwen3.6 35B Q8 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_q8_32k_ctx_generation: "llama.cpp Qwen3.6 35B Q8 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_q8_64k_ctx_generation: "llama.cpp Qwen3.6 35B Q8 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_q8_128k_ctx_generation: "llama.cpp Qwen3.6 35B Q8 Generation (128K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_f16_4k_ctx_generation: "llama.cpp Qwen3.6 35B F16 Generation (4K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_f16_32k_ctx_generation: "llama.cpp Qwen3.6 35B F16 Generation (32K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_f16_64k_ctx_generation: "llama.cpp Qwen3.6 35B F16 Generation (64K)",
+    BenchmarkName.llama_bench_qwen_3_6_35b_f16_128k_ctx_generation: "llama.cpp Qwen3.6 35B F16 Generation (128K)",
 
     # Maximum Model Size
     BenchmarkName.llama_bench_max_model_parameters_q4_4k_ctx: "llama.cpp Max Model Parameters (Q4_K_M) + 4K Context",
@@ -661,7 +661,7 @@ class SystemEvaluation(BaseModel):
 
     results: List[BenchmarkResult]
 
-    failed_tests: List[BenchmarkName]
+    failed_tests: List[BenchmarkName] = Field(default_factory=list)
     """
     A list of the names of evaluations that were run but unable to produce a result.
     """

@@ -611,7 +611,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
         ),
-        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_gen: _LlamaBenchParams(
+        BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: _LlamaBenchParams(
             model_specs=[_QWEN_2_5_1_5B_MODEL],
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
@@ -626,7 +626,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
         ),
-        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_gen: _LlamaBenchParams(
+        BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: _LlamaBenchParams(
             model_specs=[_META_LLAMA_3_8B_MODEL],
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
@@ -641,7 +641,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
         ),
-        BenchmarkName.llama_bench_qwen_1_5_moe_chat_gen: _LlamaBenchParams(
+        BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: _LlamaBenchParams(
             model_specs=[_QWEN_1_5_MOE_MODEL],
             prompt_tokens=0,
             generation_tokens=_NUM_TEST_TOKENS,
@@ -680,7 +680,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             for ctx_name, ctx_depth in contexts.items():
                 benchmark = getattr(
                     BenchmarkName,
-                    f"llama_bench_{model_name}_{quant}_{ctx_name}_ctx_gen",
+                    f"llama_bench_{model_name}_{quant}_{ctx_name}_ctx_generation",
                 )
 
                 name_to_parameters[benchmark] = _LlamaBenchParams(
