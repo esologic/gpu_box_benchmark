@@ -77,6 +77,8 @@ while IFS=$'\t' read -r repo download entrypoint; do
         --n-prompt "${NUM_PROMPT_TOKENS}" \
         --n-gen "${NUM_GENERATION_TOKENS}" \
         --n-gpu-layers -1 \
+        --no-host \
+        --no-kv-offload=false \
         --flash-attn 1 \
         --n-cpu-moe 0 \
         > "${TEMP_OUT}" \

@@ -37,7 +37,8 @@ The benchmarks related to Tok/S throughput.
 ## 0.4.0 - (2026-07-22)
 * Updated runner script to optionally run multiple models to enable the max parameters benchmark.
 * Touched a bunch of code to decrease redundancy between the two testing modalities.
-* Added tests for a set of new models, quants, and context lengths per feedback from first release. 
+* Added tests for a set of new models, quants, and context lengths per feedback from first release.
+* Added --no-host and --no-kv-offload=false to force usage of GPU resources over system CPU/RAM. 
 
 ## 0.3.0 - (2026-05-07)
 * Added CUDA architecture 75 to support Tesla T40.

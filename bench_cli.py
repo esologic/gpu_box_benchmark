@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import textwrap
 from datetime import datetime
 from pathlib import Path
@@ -234,15 +235,19 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     results: List[BenchmarkResult] = []
     failed_tests: List[BenchmarkName] = []
 
-    for named_executor in render_named_executors(
-        benchmarks=test,
-        gpu=gpu,
-        docker_cleanup=docker_cleanup,
-        force_rebuild=force_rebuild,
-        downloads_directory_path=downloads,
+    for index, named_executor in enumerate(
+        render_named_executors(
+            benchmarks=test,
+            gpu=gpu,
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+            downloads_directory_path=downloads,
+        )
     ):
         if named_executor is not None:
-            LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
+            LOGGER.info(
+                f"Executing benchmark {index}/{len(test)}: {named_executor.benchmark_name} ..."
+            )
             try:
                 result = named_executor.executor()
                 results.append(result)
@@ -250,9 +255,10 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
                     getattr(result.numerical_results, result.critical_result_key), 2
                 )
                 LOGGER.info(f"Result: {result_number} {result.unit}")
-            except Exception as _e:  # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
                 failed_tests.append(named_executor.benchmark_name)
-                LOGGER.info("Failed!")
+                pretty_exception = re.sub(r"\s+", " ", str(e))[:30]
+                LOGGER.info(f"Failed! Err: {pretty_exception}")
 
     # Tests are complete, write the output.
 
