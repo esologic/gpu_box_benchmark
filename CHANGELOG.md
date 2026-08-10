@@ -11,6 +11,8 @@ Tracks changes of the codebase.
 container. CLI arg for this as well.
 * Underlying script for llama bench `run_llama_bench.sh` updated to add more models, and updated
 running mechanism to run multiple models in a sequence.
+* Added a ton of new model generation benchmarks. New models, new sizes, new quants, new context
+windows.
 * Added new benchmark, `llama_bench_max_model_parameters_q4_k_m` to see the largest number of LLM
 parameters that can be loaded into the attached GPUs using real models.
 * New flagging code to force rebuilding docker images.
