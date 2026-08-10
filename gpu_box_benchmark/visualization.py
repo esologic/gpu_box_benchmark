@@ -107,6 +107,26 @@ class EvaluationsBase(NamedTuple):
     x_label_base: XLabelBase
 
 
+def benchmark_names_from_evaluations(
+    evaluations: Iterable[SystemEvaluation],
+    labeled_evaluations: Iterable[Tuple[SystemEvaluation, str]],
+) -> Set[BenchmarkName]:
+    """
+    Library function for reading out the benchmark names from different evaluation sources.
+    :param evaluations: Flat list.
+    :param labeled_evaluations: Nexted list, the input Tuple is a standard format.
+    :return: Set of benchmark names.
+    """
+
+    return set().union(
+        *[_names_in_evaluation(evaluation=evaluation) for evaluation in evaluations],
+        *[
+            _names_in_evaluation(evaluation=evaluation)
+            for evaluation, _label in labeled_evaluations
+        ],
+    )
+
+
 def _system_evaluations_to_dataframe(
     evaluations_and_base: EvaluationsBase,
     labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
@@ -127,12 +147,9 @@ def _system_evaluations_to_dataframe(
         - Dict mapping column name -> representative BenchmarkResult (spec)
     """
 
-    benchmarks_in_evaluations: Set[BenchmarkName] = set().union(
-        *[
-            _names_in_evaluation(evaluation=evaluation)
-            for evaluation in evaluations_and_base.evaluations
-        ]
-        + [_names_in_evaluation(evaluation) for evaluation, _label in labeled_evaluations]
+    benchmarks_in_evaluations: Set[BenchmarkName] = benchmark_names_from_evaluations(
+        evaluations=evaluations_and_base.evaluations,
+        labeled_evaluations=labeled_evaluations,
     )
 
     if any(only_render_tests) and (

@@ -172,8 +172,13 @@ def test_create_comparison_visualization_exhaustive(  # pylint: disable=too-many
 
         return output_path
 
-    if any(evaluations_and_base.evaluations) or any(
-        (evaluations for evaluations, _labels in labeled_evaluations)
+    tests_in_input: Set[BenchmarkName] = visualization.benchmark_names_from_evaluations(
+        evaluations=evaluations_and_base.evaluations,
+        labeled_evaluations=labeled_evaluations,
+    )
+
+    if any(tests_in_input) and any(
+        requested_test in tests_in_input for requested_test in only_render_tests
     ):
         assert create_viz().exists()
     else:
