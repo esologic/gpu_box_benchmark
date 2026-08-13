@@ -551,6 +551,63 @@ class ReportFileNumerical(BaseModel):
     """
 
 
+class ReportFileGPUPowerUsage(BaseModel):
+    """
+    Aggregate GPU energy consumption for the different execution phases of a benchmark.
+
+    Energy is measured independently for each GPU during each execution, then aggregated here
+    to keep report files compact.
+
+    GPU energy is only accumulated while a given GPU has non-zero utilization,
+    preventing per-test setup time from skewing results.
+    """
+
+    # Serial execution
+    min_serial_energy_joules: float
+    """
+    Minimum energy consumed by a single GPU during the serial benchmark execution.
+
+    In the serial phase, the benchmark is run once for one GPU of each GPU type attached to the
+    system. This is therefore the lowest energy consumption observed among the GPU types tested.
+    """
+
+    max_serial_energy_joules: float
+    """
+    Maximum energy consumed by a single GPU during the serial benchmark execution.
+
+    In the serial phase, the benchmark is run once for one GPU of each GPU type attached to the
+    system. This is therefore the highest energy consumption observed among the GPU types tested.
+    """
+
+    mean_serial_energy_joules: float
+    """
+    Mean energy consumed by a single GPU during the serial benchmark execution.
+
+    This is the arithmetic mean of the energy consumed by the individual GPU runs in the serial
+    phase.
+    """
+
+    # Forced parallel execution
+    forced_parallel_total_energy_joules: float
+    """
+    Total energy consumed by all GPUs during the forced-parallel benchmark execution.
+
+    One benchmark container is run per GPU, with all containers started in parallel. This value
+    is the sum of the energy consumed by those GPU executions.
+    """
+
+    # Native multi-GPU execution
+    native_multi_gpu_total_energy_joules: Optional[float]
+    """
+    Total energy consumed by all GPUs during the native multi-GPU benchmark execution.
+
+    This is the total energy consumed when the benchmark is run once using all attached GPUs
+    simultaneously.
+
+    None when the benchmark does not support native multi-GPU execution.
+    """
+
+
 class BenchmarkResult(BaseModel):
     """
     Describes an individual benchmark result. This should be the output of a single test.
@@ -590,6 +647,11 @@ class BenchmarkResult(BaseModel):
     """
 
     numerical_results: ReportFileNumerical
+
+    gpu_power_usage: Optional[ReportFileGPUPowerUsage] = None
+    """
+    Introduced in version 0.3.0, records the energy consumption per GPU during a test. 
+    """
 
 
 class BenchmarkExecutor(Protocol):

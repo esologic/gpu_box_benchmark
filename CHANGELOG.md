@@ -83,12 +83,14 @@ simultaneously using docker.
 
 Tracks changes of the main output file. There are per-test version histories in the python wrappers.
 
-### 0.3.0 - (2026-07-28)
+### 0.3.0 - (2026-08-XX)
 
 * Introduced new idiom to `ReportFileNumerical`. If a benchmark fails on ANY individual GPU but is 
 able to finish in the multi GPU case, `min_by_gpu_type`, `max_by_gpu_type`, `mean_by_gpu_type`, 
 `theoretical_multi_gpu_mean`, `theoretical_multi_gpu_sum`, `forced_multi_gpu_numerical_mean` will
 all be set to None. 
+* Added a new field `gpu_power_usage` (and type `ReportFileGPUPowerUsage`) to `BenchmarkResult`
+that records GPU energy consumption for a given benchmark.
 
 
 ### 0.2.0 - (2026-05-07)

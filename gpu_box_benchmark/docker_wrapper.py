@@ -182,7 +182,8 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     output_file_path: Path,
     downloads_directory_path: Optional[Path],
     memory_limit: int,
-) -> ContainerOutputs:
+    outputs_to_result: OutputsToResult,
+) -> float:
     """
     Creates a container, starts it, and waits for its completion on a set of GPUs. This blocks
     on waiting for the container to exit.
@@ -212,13 +213,15 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
 
     container.start()
 
-    # This removes the container.
-    outputs: Optional[str] = _wait_get_logs(container=container)
+    # Internally calls `container.wait()` and removes the container after completion.
+    logs: Optional[str] = _wait_get_logs(container=container)
 
-    return ContainerOutputs(
-        logs=outputs,
+    container_outputs = ContainerOutputs(
+        logs=logs,
         file=output_file_path,
     )
+
+    return outputs_to_result(container_outputs=container_outputs)
 
 
 def _build_image(
@@ -405,9 +408,11 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
     The run sequence is as follows:
 
     0. The image is built and environment prepped.
-    1. A container is run sequentially on _one_ of each type of GPUs passed in. So if there are four
-    M10 cores and a P100, it is run on one of the M10 cores and the P100.
-    2. A container is run on all the input GPUs in parallel.
+    1. Serial: A container is run sequentially on _one_ of each type of GPUs passed in. So if there
+    are four M10 cores and a P100, it is run on one of the M10 cores and the P100.
+    2. Forced Parallel: A benchmark container is run for each of the input GPUs at the same time.
+    3. Multi GPU Native: If the test supports it, a single container with each all input GPUs
+    exposed is run.
 
     This strategy helps us understand the cost of parallelizing.
 
@@ -461,16 +466,15 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
             :return: Forwarded from `outputs_to_result`, or `None` if the exception occurs.
             """
             try:
-                return outputs_to_result(
-                    _run_image_on_gpus(
-                        client=client,
-                        image=image,
-                        gpus=(gpu,),
-                        env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
-                        output_file_path=new_output_file(),
-                        downloads_directory_path=downloads_directory_path,
-                        memory_limit=memory_limit,
-                    )
+                return _run_image_on_gpus(
+                    client=client,
+                    image=image,
+                    gpus=(gpu,),
+                    env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
+                    output_file_path=new_output_file(),
+                    downloads_directory_path=downloads_directory_path,
+                    memory_limit=memory_limit,
+                    outputs_to_result=outputs_to_result,
                 )
             except RuntimeError:
                 return None
@@ -507,23 +511,15 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
         if multi_gpu_native:
 
             if multiple_gpus_to_test:
-
-                multi_gpu_file = new_output_file()
-                multi_gpu_container = _create_gpu_container(
+                native_multi_gpu_result = _run_image_on_gpus(
                     client=client,
                     image=image,
                     gpus=gpus,
                     env_vars=create_runtime_env_vars(runtime_gpus=gpus),
-                    output_file_path=multi_gpu_file,
+                    output_file_path=new_output_file(),
                     downloads_directory_path=downloads_directory_path,
                     memory_limit=memory_limit,
-                )
-                multi_gpu_container.start()
-
-                complete_logs = _wait_get_logs(container=multi_gpu_container)
-
-                native_multi_gpu_result = outputs_to_result(
-                    ContainerOutputs(logs=complete_logs, file=multi_gpu_file)
+                    outputs_to_result=outputs_to_result,
                 )
             else:
                 native_multi_gpu_result = single_gpu_result
@@ -569,14 +565,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
     downloads_directory_path: Optional[Path],
 ) -> ReportFileNumerical:
     """
-    Benchmarks a given dockerfile. The run sequence is as follows:
-
-    0. The image is built and environment prepped.
-    1. A container is run sequentially on _one_ of each type of GPUs passed in. So if there are four
-    M10 cores and a P100, it is run on one of the M10 cores and the P100.
-    2. A container is run on all the input GPUs in parallel.
-
-    This strategy helps us understand the cost of parallelizing.
+    Benchmarks a given dockerfile.
 
     Because all of these images and containers and images can become massive on disk, steps have
     been taken to prune and remove artifacts between tests. This makes the overall runtime slower.
