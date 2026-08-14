@@ -3,6 +3,7 @@ Convince wrappers around the docker python API.
 """
 
 import contextlib
+import itertools
 import logging
 import tempfile
 import uuid
@@ -17,7 +18,11 @@ from docker.errors import APIError, BuildError
 from docker.models.containers import Container
 from docker.models.images import Image
 
-from gpu_box_benchmark.benchmark_types import BenchmarkData, ReportFileNumerical
+from gpu_box_benchmark.benchmark_types import (
+    BenchmarkData,
+    ReportFileGPUPowerUsage,
+    ReportFileNumerical,
+)
 from gpu_box_benchmark.gpu_power_measurement import GPUPowerMeasurement
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 
@@ -351,17 +356,25 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments,too-ma
         for container, gpu, _output_file_path in container_gpu_file:
             container.start()
 
-        parallel_results: List[_RunOutputs] = [
-            _RunOutputs(
-                benchmark_result=outputs_to_result(
+        parallel_results_gpus: List[Tuple[float, GPUIdentity]] = [
+            (
+                outputs_to_result(
                     ContainerOutputs(logs=_wait_get_logs(container=container), file=file)
                 ),
-                uuid_to_joules={gpu.uuid: power_measurement.energy_joules[gpu.uuid]},
+                gpu,
             )
             for (container, gpu, file) in container_gpu_file
         ]
 
-    return parallel_results
+    output: List[_RunOutputs] = [
+        _RunOutputs(
+            benchmark_result=result,
+            uuid_to_joules={gpu.uuid: power_measurement.energy_joules[gpu.uuid]},
+        )
+        for result, gpu in parallel_results_gpus
+    ]
+
+    return output
 
 
 def _list_prunable_images(client: docker.DockerClient) -> List[Image]:
@@ -574,14 +587,36 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                 (numerical_parallel_sum / len(gpus)) if no_failures else None
             ),
             forced_multi_gpu_sum=numerical_parallel_sum if no_failures else None,
-            native_multi_gpu_result=native_multi_gpu_output.benchmark_result,
+            native_multi_gpu_result=(
+                native_multi_gpu_output.benchmark_result
+                if native_multi_gpu_output is not None
+                else None
+            ),
         )
 
         if not any(report_file_numerical.model_dump().values()):
             raise ValueError(f"Benchmarking for {benchmark_name} produced no data")
 
+        serialized_joules: List[float] = list(
+            itertools.chain.from_iterable(
+                run_output.uuid_to_joules.values() for run_output in serialized_outputs.values()
+            )
+        )
+
         return BenchmarkData(
-            report_file_numerical=report_file_numerical, report_file_gpu_power_usage=None
+            report_file_numerical=report_file_numerical,
+            report_file_gpu_power_usage=ReportFileGPUPowerUsage(
+                min_serial_energy_joules=min(serialized_joules),
+                max_serial_energy_joules=max(serialized_joules),
+                mean_serial_energy_joules=mean(serialized_joules),
+                forced_multi_gpu_total_energy_joules=sum(
+                    sum(run_output.uuid_to_joules.values())
+                    for run_output in forced_parallel_outputs
+                ),
+                native_multi_gpu_total_energy_joules=sum(
+                    native_multi_gpu_output.uuid_to_joules.values()
+                ),
+            ),
         )
 
 

@@ -46,6 +46,7 @@ def assets_directory() -> Iterator[Path]:
 @pytest.mark.parametrize(
     "benchmarks",
     [
+        (BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation,),
         (BenchmarkName.hashcat_sha256,),
         (BenchmarkName.llama_bench_max_model_parameters_q4_32k_ctx,),
         (BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_prompt,),

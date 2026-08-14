@@ -588,7 +588,7 @@ class ReportFileGPUPowerUsage(BaseModel):
     """
 
     # Forced parallel execution
-    forced_parallel_total_energy_joules: float
+    forced_multi_gpu_total_energy_joules: float
     """
     Total energy consumed by all GPUs during the forced-parallel benchmark execution.
 
