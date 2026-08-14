@@ -259,13 +259,13 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
                 result_log = f"Result: {result_number} {result.unit}"
 
                 if result.gpu_power_usage is not None:
-                    critical_power_value = getattr(
-                        result.gpu_power_usage, result.critical_gpu_power_usage_key
+                    critical_power_value: float = round(
+                        getattr(result.gpu_power_usage, result.critical_gpu_power_usage_key), 2
                     )
-                    result_log = ". ".join(
+                    result_log = ", ".join(
                         [
                             result_log,
-                            f"Energy: {critical_power_value} Joules",
+                            f"{critical_power_value} Joules",
                         ]
                     )
 
