@@ -551,6 +551,18 @@ class ReportFileNumerical(BaseModel):
     """
 
 
+class GPUPowerUsageKey(str, Enum):
+    """
+    For programmatically looking up values in ReportFileGPUPowerUsage.
+    """
+
+    min_serial_energy_joules = "min_serial_energy_joules"
+    max_serial_energy_joules = "max_serial_energy_joules"
+    mean_serial_energy_joules = "mean_serial_energy_joules"
+    forced_multi_gpu_total_energy_joules = "forced_multi_gpu_total_energy_joules"
+    native_multi_gpu_total_energy_joules = "native_multi_gpu_total_energy_joules"
+
+
 class ReportFileGPUPowerUsage(BaseModel):
     """
     Aggregate GPU energy consumption for the different execution phases of a benchmark.
@@ -649,6 +661,13 @@ class BenchmarkResult(BaseModel):
     numerical_results: ReportFileNumerical
     """
     Contains the main benchmarking results. The values of the scores from the underlying test.
+    """
+
+    critical_gpu_power_usage_key: Optional[GPUPowerUsageKey] = None
+    """
+    Introduced in version 0.3.0, points to a field in `gpu_power_usage` that is the most interesting
+    for the associated test. Like `critical_result_key` this is a convience thing to make reading
+    the JSON by eye easier.
     """
 
     gpu_power_usage: Optional[ReportFileGPUPowerUsage] = None

@@ -13,6 +13,7 @@ from gpu_box_benchmark.benchmark_types import (
     BenchmarkExecutor,
     BenchmarkName,
     BenchmarkResult,
+    GPUPowerUsageKey,
     NumericalResultKey,
 )
 from gpu_box_benchmark.docker_wrapper import ContainerOutputs
@@ -122,6 +123,7 @@ def create_gdsio_executor(  # pylin
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
             numerical_results=numerical_results.report_file_numerical,
+            critical_gpu_power_usage_key=GPUPowerUsageKey.forced_multi_gpu_total_energy_joules,
             gpu_power_usage=numerical_results.report_file_gpu_power_usage,
         )
 

@@ -613,8 +613,10 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                     sum(run_output.uuid_to_joules.values())
                     for run_output in forced_parallel_outputs
                 ),
-                native_multi_gpu_total_energy_joules=sum(
-                    native_multi_gpu_output.uuid_to_joules.values()
+                native_multi_gpu_total_energy_joules=(
+                    sum(native_multi_gpu_output.uuid_to_joules.values())
+                    if native_multi_gpu_output is not None
+                    else None
                 ),
             ),
         )

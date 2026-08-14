@@ -259,8 +259,15 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
                 result_log = f"Result: {result_number} {result.unit}"
 
                 if result.gpu_power_usage is not None:
-                    max_energy = round(max(result.gpu_power_usage.model_dump().values()), 2)
-                    result_log = ", ".join([result_log, f"Max energy: {max_energy} Joules"])
+                    critical_power_value = getattr(
+                        result.gpu_power_usage, result.critical_gpu_power_usage_key
+                    )
+                    result_log = ". ".join(
+                        [
+                            result_log,
+                            f"Energy: {critical_power_value} Joules",
+                        ]
+                    )
 
                 LOGGER.info(result_log)
 
