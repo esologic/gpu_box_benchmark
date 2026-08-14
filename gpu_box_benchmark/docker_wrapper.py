@@ -18,6 +18,7 @@ from docker.models.containers import Container
 from docker.models.images import Image
 
 from gpu_box_benchmark.benchmark_types import BenchmarkData, ReportFileNumerical
+from gpu_box_benchmark.gpu_power_measurement import GPUPowerMeasurement
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 
 LOGGER = logging.getLogger(__name__)
@@ -77,6 +78,62 @@ class OutputsToResult(Protocol):
         intermediate file which MAY OR MAY NOT have been used.
         :return: Numerical result as a float.
         """
+
+
+def _build_image(
+    client: DockerClient, dockerfile_path: Path, tag: str, force_rebuild: bool
+) -> Image:
+    """
+    Canonical wrapper to build images.
+
+    :param client: For interacting with docker.
+    :param dockerfile_path: Path to the dockerfile to build. The build context will be the parent
+    of this file.
+    :param tag: Tag for the image.
+    :param force_rebuild: If True, ignore Docker's build cache and rebuild the image from scratch.
+    If False, Docker will automatically reuse cached layers where possible while still detecting
+    changes to the Dockerfile and build context.
+    :return: The built image.
+    """
+
+    LOGGER.debug("Building Image")
+
+    build_directory = dockerfile_path.parent
+
+    try:
+        image, build_logs = client.images.build(
+            path=str(build_directory),
+            dockerfile=str(dockerfile_path.relative_to(build_directory)),
+            tag=tag,
+            nocache=force_rebuild,
+            pull=False,
+            rm=True,
+            forcerm=True,
+        )
+
+        LOGGER.debug(
+            "Image Built. Complete "
+            f"Logs: {''.join(entry['stream'] for entry in build_logs if 'stream' in entry)}"
+        )
+
+        return image
+
+    except BuildError as e:
+        LOGGER.error("Docker build failed!\n")
+
+        for entry in e.build_log:
+            # entries are dicts with keys like 'stream', 'error', 'status'
+            if "stream" in entry:
+                LOGGER.error(entry["stream"])
+            elif "error" in entry:
+                LOGGER.error(entry["error"])
+
+        raise  # re-raise if you want the failure to propagate
+
+    except APIError:
+        # Docker daemon / API-level failure
+        LOGGER.error("Docker API error", exc_info=True)
+        raise
 
 
 def _create_gpu_container(  # pylint: disable=too-many-positional-arguments
@@ -180,6 +237,7 @@ class _RunOutputs(NamedTuple):
     """
 
     benchmark_result: float
+    uuid_to_joules: Dict[str, float]
 
 
 def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
@@ -197,7 +255,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     on waiting for the container to exit.
 
     :param client: For interacting with docker.
-    :param image: To run.
+    :param image: To run the container.
     :param gpus: GPUs to run the container on.
     :param env_vars: Passed as environment.
     :param output_file_path: Passed into container for optional usage.
@@ -219,76 +277,24 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
         memory_limit=memory_limit,
     )
 
-    container.start()
+    with GPUPowerMeasurement(gpus=gpus) as power_measurement:
+        container.start()
 
-    # Internally calls `container.wait()` and removes the container after completion.
-    logs: Optional[str] = _wait_get_logs(container=container)
+        # Internally calls `container.wait()` and removes the container after completion.
+        logs: Optional[str] = _wait_get_logs(container=container)
 
     container_outputs = ContainerOutputs(
         logs=logs,
         file=output_file_path,
     )
 
-    return _RunOutputs(benchmark_result=outputs_to_result(container_outputs=container_outputs))
+    return _RunOutputs(
+        benchmark_result=outputs_to_result(container_outputs=container_outputs),
+        uuid_to_joules=power_measurement.energy_joules,
+    )
 
 
-def _build_image(
-    client: DockerClient, dockerfile_path: Path, tag: str, force_rebuild: bool
-) -> Image:
-    """
-    Canonical wrapper to build images.
-
-    :param client: For interacting with docker.
-    :param dockerfile_path: Path to the dockerfile to build. The build context will be the parent
-    of this file.
-    :param tag: Tag for the image.
-    :param force_rebuild: If True, ignore Docker's build cache and rebuild the image from scratch.
-    If False, Docker will automatically reuse cached layers where possible while still detecting
-    changes to the Dockerfile and build context.
-    :return: The built image.
-    """
-
-    LOGGER.debug("Building Image")
-
-    build_directory = dockerfile_path.parent
-
-    try:
-        image, build_logs = client.images.build(
-            path=str(build_directory),
-            dockerfile=str(dockerfile_path.relative_to(build_directory)),
-            tag=tag,
-            nocache=force_rebuild,
-            pull=False,
-            rm=True,
-            forcerm=True,
-        )
-
-        LOGGER.debug(
-            "Image Built. Complete "
-            f"Logs: {''.join(entry['stream'] for entry in build_logs if 'stream' in entry)}"
-        )
-
-        return image
-
-    except BuildError as e:
-        LOGGER.error("Docker build failed!\n")
-
-        for entry in e.build_log:
-            # entries are dicts with keys like 'stream', 'error', 'status'
-            if "stream" in entry:
-                LOGGER.error(entry["stream"])
-            elif "error" in entry:
-                LOGGER.error(entry["error"])
-
-        raise  # re-raise if you want the failure to propagate
-
-    except APIError:
-        # Docker daemon / API-level failure
-        LOGGER.error("Docker API error", exc_info=True)
-        raise
-
-
-def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
+def _force_parallel_run(  # pylint: disable=too-many-positional-arguments,too-many-locals
     client: DockerClient,
     image: Image,
     new_output_file: Callable[[], Path],
@@ -322,7 +328,7 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
 
     memory_per_container = total_memory_limit // len(gpus)
 
-    container_file: List[Tuple[Container, Path]] = [
+    container_gpu_file: List[Tuple[Container, GPUIdentity, Path]] = [
         (
             _create_gpu_container(
                 client=client,
@@ -333,23 +339,27 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
                 downloads_directory_path=downloads_directory_path,
                 memory_limit=memory_per_container,
             ),
+            gpu,
             file,
         )
         for (gpu, file) in gpu_file
     ]
 
-    # Start all containers at around the same time
-    for container, _output_file_path in container_file:
-        container.start()
+    with GPUPowerMeasurement(gpus=gpus) as power_measurement:
 
-    parallel_results: List[_RunOutputs] = [
-        _RunOutputs(
-            benchmark_result=outputs_to_result(
-                ContainerOutputs(logs=_wait_get_logs(container=container), file=file)
+        # Start all containers at around the same time
+        for container, gpu, _output_file_path in container_gpu_file:
+            container.start()
+
+        parallel_results: List[_RunOutputs] = [
+            _RunOutputs(
+                benchmark_result=outputs_to_result(
+                    ContainerOutputs(logs=_wait_get_logs(container=container), file=file)
+                ),
+                uuid_to_joules={gpu.uuid: power_measurement.energy_joules[gpu.uuid]},
             )
-        )
-        for (container, file) in container_file
-    ]
+            for (container, gpu, file) in container_gpu_file
+        ]
 
     return parallel_results
 
@@ -631,7 +641,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
         force_rebuild=force_rebuild,
     )
 
-    numerical_result = _run_benchmarking_image_sequence(
+    benchmark_data = _run_benchmarking_image_sequence(
         client=client,
         image=image,
         gpus=gpus,
@@ -649,4 +659,4 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
             keep_images=existed_before_run,
         )
 
-    return numerical_result
+    return benchmark_data
