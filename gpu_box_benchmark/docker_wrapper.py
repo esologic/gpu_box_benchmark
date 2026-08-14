@@ -294,7 +294,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     )
 
     return _RunOutputs(
-        benchmark_result=outputs_to_result(container_outputs=container_outputs),
+        benchmark_result=outputs_to_result(container_outputs),
         uuid_to_joules=power_measurement.energy_joules,
     )
 

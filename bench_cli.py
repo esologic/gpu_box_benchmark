@@ -242,7 +242,8 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
             docker_cleanup=docker_cleanup,
             force_rebuild=force_rebuild,
             downloads_directory_path=downloads,
-        )
+        ),
+        start=1,
     ):
         if named_executor is not None:
             LOGGER.info(
@@ -254,10 +255,18 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
                 result_number: float = round(
                     getattr(result.numerical_results, result.critical_result_key), 2
                 )
-                LOGGER.info(f"Result: {result_number} {result.unit}")
+
+                result_log = f"Result: {result_number} {result.unit}"
+
+                if result.gpu_power_usage is not None:
+                    max_energy = round(max(result.gpu_power_usage.model_dump().values()), 2)
+                    result_log = ", ".join([result_log, f"Max energy: {max_energy} Joules"])
+
+                LOGGER.info(result_log)
+
             except Exception as e:  # pylint: disable=broad-except
                 failed_tests.append(named_executor.benchmark_name)
-                pretty_exception = re.sub(r"\s+", " ", str(e))[:30]
+                pretty_exception = re.sub(r"\s+", " ", str(e))[:100] + "..."
                 LOGGER.info(f"Failed! Err: {pretty_exception}")
 
     # Tests are complete, write the output.
