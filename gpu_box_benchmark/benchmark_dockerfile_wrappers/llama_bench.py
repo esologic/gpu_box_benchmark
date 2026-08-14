@@ -540,6 +540,32 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
 
         multi_gpu_native = True
 
+        benchmark_data = docker_wrapper.benchmark_dockerfile(
+            dockerfile_path=LLAMA_BENCH_DOCKERFILE,
+            benchmark_name=benchmark_name.value,
+            benchmark_version=version,
+            gpus=gpus,
+            create_runtime_env_vars=lambda runtime_gpus: [
+                (
+                    "MODEL_SPECS",
+                    str(
+                        json.dumps(
+                            [spec.model_dump() for spec in llama_bench_parameters.model_specs]
+                        )
+                    ),
+                ),
+                ("NUM_PROMPT_TOKENS", str(llama_bench_parameters.prompt_tokens)),
+                ("NUM_GENERATION_TOKENS", str(llama_bench_parameters.generation_tokens)),
+                ("NUM_REPETITIONS", str(llama_bench_parameters.repetitions)),
+                ("CONTEXT_DEPTH", str(llama_bench_parameters.context_depth)),
+            ],
+            multi_gpu_native=multi_gpu_native,
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+            downloads_directory_path=downloads_directory_path,
+            outputs_to_result=outputs_to_results,
+        )
+
         return BenchmarkResult(
             name=benchmark_name,
             benchmark_version=version,
@@ -549,31 +575,8 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
             unit=unit,
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.native_multi_gpu_result,
-            numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=LLAMA_BENCH_DOCKERFILE,
-                benchmark_name=benchmark_name.value,
-                benchmark_version=version,
-                gpus=gpus,
-                create_runtime_env_vars=lambda runtime_gpus: [
-                    (
-                        "MODEL_SPECS",
-                        str(
-                            json.dumps(
-                                [spec.model_dump() for spec in llama_bench_parameters.model_specs]
-                            )
-                        ),
-                    ),
-                    ("NUM_PROMPT_TOKENS", str(llama_bench_parameters.prompt_tokens)),
-                    ("NUM_GENERATION_TOKENS", str(llama_bench_parameters.generation_tokens)),
-                    ("NUM_REPETITIONS", str(llama_bench_parameters.repetitions)),
-                    ("CONTEXT_DEPTH", str(llama_bench_parameters.context_depth)),
-                ],
-                multi_gpu_native=multi_gpu_native,
-                outputs_to_result=outputs_to_results,
-                docker_cleanup=docker_cleanup,
-                force_rebuild=force_rebuild,
-                downloads_directory_path=downloads_directory_path,
-            ),
+            numerical_results=benchmark_data.report_file_numerical,
+            gpu_power_usage=benchmark_data.report_file_gpu_power_usage,
         )
 
     return run_llama_bench_docker

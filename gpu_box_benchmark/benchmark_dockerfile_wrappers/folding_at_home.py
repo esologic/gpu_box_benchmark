@@ -91,6 +91,19 @@ def create_fah_bench_executor(  # pylin
 
         multi_gpu_native = False
 
+        numerical_results = docker_wrapper.benchmark_dockerfile(
+            dockerfile_path=FAHBENCH_BENCHMARK_DOCKERFILE,
+            benchmark_name=benchmark_name.value,
+            benchmark_version=_FAH_BENCHMARK_VERSION,
+            gpus=gpus,
+            create_runtime_env_vars=lambda runtime_gpus: envs,
+            force_rebuild=force_rebuild,
+            downloads_directory_path=downloads_directory_path,
+            multi_gpu_native=multi_gpu_native,
+            outputs_to_result=_parse_final_score,
+            docker_cleanup=docker_cleanup,
+        )
+
         return BenchmarkResult(
             name=benchmark_name,
             benchmark_version=_FAH_BENCHMARK_VERSION,
@@ -100,18 +113,8 @@ def create_fah_bench_executor(  # pylin
             unit="ns/day",
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
-            numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=FAHBENCH_BENCHMARK_DOCKERFILE,
-                benchmark_name=benchmark_name.value,
-                benchmark_version=_FAH_BENCHMARK_VERSION,
-                gpus=gpus,
-                create_runtime_env_vars=lambda runtime_gpus: envs,
-                multi_gpu_native=multi_gpu_native,
-                outputs_to_result=_parse_final_score,
-                docker_cleanup=docker_cleanup,
-                force_rebuild=force_rebuild,
-                downloads_directory_path=downloads_directory_path,
-            ),
+            numerical_results=numerical_results.report_file_numerical,
+            gpu_power_usage=numerical_results.report_file_gpu_power_usage,
         )
 
     return run_fah_bench_docker

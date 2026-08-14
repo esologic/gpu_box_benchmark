@@ -163,6 +163,19 @@ def create_blender_benchmark_executor(  # pylin
         else:
             raise ValueError(f"Bad benchmark type for blender benchmark: {benchmark_name}")
 
+        benchmark_data = docker_wrapper.benchmark_dockerfile(
+            downloads_directory_path=downloads_directory_path,
+            dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
+            benchmark_name=benchmark_name.value,
+            benchmark_version=_BLENDER_BENCHMARK_VERSION,
+            gpus=gpus_for_test,
+            create_runtime_env_vars=create_runtime_env_vars,
+            multi_gpu_native=multi_gpu_native,
+            outputs_to_result=_parse_samples_per_minute,
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+        )
+
         return BenchmarkResult(
             name=benchmark_name,
             benchmark_version=_BLENDER_BENCHMARK_VERSION,
@@ -172,18 +185,8 @@ def create_blender_benchmark_executor(  # pylin
             unit="s/min",
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
-            numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=BLENDER_BENCHMARK_DOCKERFILE,
-                benchmark_name=benchmark_name.value,
-                benchmark_version=_BLENDER_BENCHMARK_VERSION,
-                gpus=gpus_for_test,
-                create_runtime_env_vars=create_runtime_env_vars,
-                multi_gpu_native=multi_gpu_native,
-                outputs_to_result=_parse_samples_per_minute,
-                docker_cleanup=docker_cleanup,
-                force_rebuild=force_rebuild,
-                downloads_directory_path=downloads_directory_path,
-            ),
+            numerical_results=benchmark_data.report_file_numerical,
+            gpu_power_usage=benchmark_data.report_file_gpu_power_usage,
         )
 
     return run_blender_benchmark_docker

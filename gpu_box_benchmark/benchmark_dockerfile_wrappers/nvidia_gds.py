@@ -99,6 +99,19 @@ def create_gdsio_executor(  # pylin
 
         multi_gpu_native = False
 
+        numerical_results = docker_wrapper.benchmark_dockerfile(
+            dockerfile_path=NVIDIA_GDS_DOCKERFILE,
+            benchmark_name=benchmark_name.value,
+            benchmark_version=_GDSIO_BENCHMARK_VERSION,
+            create_runtime_env_vars=lambda runtime_gpus: run_env_vars,
+            multi_gpu_native=multi_gpu_native,
+            outputs_to_result=_parse_throughput,
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+            downloads_directory_path=downloads_directory_path,
+            gpus=gpus,
+        )
+
         return BenchmarkResult(
             name=benchmark_name,
             benchmark_version=_GDSIO_BENCHMARK_VERSION,
@@ -108,18 +121,8 @@ def create_gdsio_executor(  # pylin
             unit="GiB/s",
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
-            numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=NVIDIA_GDS_DOCKERFILE,
-                benchmark_name=benchmark_name.value,
-                benchmark_version=_GDSIO_BENCHMARK_VERSION,
-                gpus=gpus,
-                create_runtime_env_vars=lambda runtime_gpus: run_env_vars,
-                multi_gpu_native=multi_gpu_native,
-                outputs_to_result=_parse_throughput,
-                docker_cleanup=docker_cleanup,
-                force_rebuild=force_rebuild,
-                downloads_directory_path=downloads_directory_path,
-            ),
+            numerical_results=numerical_results.report_file_numerical,
+            gpu_power_usage=numerical_results.report_file_gpu_power_usage,
         )
 
     return run_gdsio_docker

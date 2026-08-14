@@ -44,5 +44,5 @@ def test_benchmark_dockerfile_small() -> None:
             forced_multi_gpu_sum=1.0 * len(gpus),
             native_multi_gpu_result=None,
         )
-        == result
+        == result.report_file_numerical
     )

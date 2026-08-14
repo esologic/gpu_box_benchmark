@@ -77,6 +77,19 @@ def create_ai_benchmark_executor(  # pylin
 
         multi_gpu_native = False
 
+        benchmark_data = docker_wrapper.benchmark_dockerfile(
+            outputs_to_result=_parse_ai_score,
+            dockerfile_path=AI_BENCHMARK_DOCKERFILE,
+            benchmark_name=benchmark_name.value,
+            benchmark_version=_AI_BENCHMARK_VERSION,
+            gpus=gpus,
+            create_runtime_env_vars=lambda runtime_gpus: [],
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+            downloads_directory_path=downloads_directory_path,
+            multi_gpu_native=multi_gpu_native,
+        )
+
         return BenchmarkResult(
             name=benchmark_name,
             benchmark_version=_AI_BENCHMARK_VERSION,
@@ -86,18 +99,8 @@ def create_ai_benchmark_executor(  # pylin
             unit="pts",
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
-            numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=AI_BENCHMARK_DOCKERFILE,
-                benchmark_name=benchmark_name.value,
-                benchmark_version=_AI_BENCHMARK_VERSION,
-                gpus=gpus,
-                create_runtime_env_vars=lambda runtime_gpus: [],
-                multi_gpu_native=multi_gpu_native,
-                outputs_to_result=_parse_ai_score,
-                docker_cleanup=docker_cleanup,
-                force_rebuild=force_rebuild,
-                downloads_directory_path=downloads_directory_path,
-            ),
+            numerical_results=benchmark_data.report_file_numerical,
+            gpu_power_usage=benchmark_data.report_file_gpu_power_usage,
         )
 
     return run_ai_benchmark_docker

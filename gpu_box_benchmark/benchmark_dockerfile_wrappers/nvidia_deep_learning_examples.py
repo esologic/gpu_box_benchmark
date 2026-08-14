@@ -119,6 +119,23 @@ def create_resnet50_executor(
 
         multi_gpu_native = True
 
+        benchmark_data = docker_wrapper.benchmark_dockerfile(
+            dockerfile_path=RESNET50_DOCKERFILE,
+            benchmark_name=benchmark_name.value,
+            benchmark_version=_RESNET50_BENCHMARK_VERSION,
+            gpus=gpus,
+            create_runtime_env_vars=lambda runtime_gpus: [
+                ("BATCH_SIZE", str(resnet_parameters.batch_size)),
+                ("MODE_TRAINING", str(int(resnet_parameters.mode_training))),
+                ("NUM_GPUS", str(len(runtime_gpus))),
+            ],
+            multi_gpu_native=multi_gpu_native,
+            outputs_to_result=partial(_parse_report_file, resnet_parameters.mode_training),
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+            downloads_directory_path=downloads_directory_path,
+        )
+
         return BenchmarkResult(
             name=benchmark_name,
             benchmark_version=_RESNET50_BENCHMARK_VERSION,
@@ -128,22 +145,8 @@ def create_resnet50_executor(
             unit="i/s",
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.native_multi_gpu_result,
-            numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=RESNET50_DOCKERFILE,
-                benchmark_name=benchmark_name.value,
-                benchmark_version=_RESNET50_BENCHMARK_VERSION,
-                gpus=gpus,
-                create_runtime_env_vars=lambda runtime_gpus: [
-                    ("BATCH_SIZE", str(resnet_parameters.batch_size)),
-                    ("MODE_TRAINING", str(int(resnet_parameters.mode_training))),
-                    ("NUM_GPUS", str(len(runtime_gpus))),
-                ],
-                multi_gpu_native=multi_gpu_native,
-                outputs_to_result=partial(_parse_report_file, resnet_parameters.mode_training),
-                docker_cleanup=docker_cleanup,
-                force_rebuild=force_rebuild,
-                downloads_directory_path=downloads_directory_path,
-            ),
+            numerical_results=benchmark_data.report_file_numerical,
+            gpu_power_usage=benchmark_data.report_file_gpu_power_usage,
         )
 
     return run_resnet50_docker

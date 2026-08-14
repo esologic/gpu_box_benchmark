@@ -647,6 +647,9 @@ class BenchmarkResult(BaseModel):
     """
 
     numerical_results: ReportFileNumerical
+    """
+    Contains the main benchmarking results. The values of the scores from the underlying test.
+    """
 
     gpu_power_usage: Optional[ReportFileGPUPowerUsage] = None
     """
@@ -747,3 +750,12 @@ class NamedExecutor(NamedTuple):
 
     benchmark_name: BenchmarkName
     executor: BenchmarkExecutor
+
+
+class BenchmarkData(NamedTuple):
+    """
+    Data from the benchmarking process. This is the sequence output.
+    """
+
+    report_file_numerical: ReportFileNumerical
+    report_file_gpu_power_usage: Optional[ReportFileGPUPowerUsage]

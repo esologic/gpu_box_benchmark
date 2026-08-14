@@ -86,6 +86,19 @@ def create_content_aware_timelapse_executor(  # pylin
 
         multi_gpu_native = True
 
+        benchmark_data = docker_wrapper.benchmark_dockerfile(
+            create_runtime_env_vars=lambda runtime_gpus: envs,
+            dockerfile_path=CONTENT_AWARE_TIMELAPSE_DOCKERFILE,
+            benchmark_name=benchmark_name.value,
+            benchmark_version=_CONTENT_AWARE_TIMELAPSE_BENCHMARK_VERSION,
+            gpus=gpus,
+            downloads_directory_path=downloads_directory_path,
+            multi_gpu_native=multi_gpu_native,
+            outputs_to_result=_parse_fps,
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+        )
+
         return BenchmarkResult(
             name=benchmark_name,
             benchmark_version=_CONTENT_AWARE_TIMELAPSE_BENCHMARK_VERSION,
@@ -95,18 +108,8 @@ def create_content_aware_timelapse_executor(  # pylin
             unit="f/s",
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.native_multi_gpu_result,
-            numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=CONTENT_AWARE_TIMELAPSE_DOCKERFILE,
-                benchmark_name=benchmark_name.value,
-                benchmark_version=_CONTENT_AWARE_TIMELAPSE_BENCHMARK_VERSION,
-                gpus=gpus,
-                create_runtime_env_vars=lambda runtime_gpus: envs,
-                multi_gpu_native=multi_gpu_native,
-                outputs_to_result=_parse_fps,
-                docker_cleanup=docker_cleanup,
-                force_rebuild=force_rebuild,
-                downloads_directory_path=downloads_directory_path,
-            ),
+            numerical_results=benchmark_data.report_file_numerical,
+            gpu_power_usage=benchmark_data.report_file_gpu_power_usage,
         )
 
     return run_content_aware_timelapse_docker

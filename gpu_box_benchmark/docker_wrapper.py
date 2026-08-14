@@ -17,7 +17,7 @@ from docker.errors import APIError, BuildError
 from docker.models.containers import Container
 from docker.models.images import Image
 
-from gpu_box_benchmark.benchmark_types import ReportFileNumerical
+from gpu_box_benchmark.benchmark_types import BenchmarkData, ReportFileNumerical
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 
 LOGGER = logging.getLogger(__name__)
@@ -174,6 +174,14 @@ def _wait_get_logs(container: Container) -> Optional[str]:
     return logs
 
 
+class _RunOutputs(NamedTuple):
+    """
+    Links the different outputs from a given container run.
+    """
+
+    benchmark_result: float
+
+
 def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     client: DockerClient,
     image: Image,
@@ -183,7 +191,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
     downloads_directory_path: Optional[Path],
     memory_limit: int,
     outputs_to_result: OutputsToResult,
-) -> float:
+) -> _RunOutputs:
     """
     Creates a container, starts it, and waits for its completion on a set of GPUs. This blocks
     on waiting for the container to exit.
@@ -221,7 +229,7 @@ def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
         file=output_file_path,
     )
 
-    return outputs_to_result(container_outputs=container_outputs)
+    return _RunOutputs(benchmark_result=outputs_to_result(container_outputs=container_outputs))
 
 
 def _build_image(
@@ -289,7 +297,7 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     outputs_to_result: OutputsToResult,
     downloads_directory_path: Optional[Path],
     total_memory_limit: int,
-) -> List[float]:
+) -> List[_RunOutputs]:
     """
     Creates one docker container per GPU then starts each GPU at the same time. This is a simulation
     of the workload being multi-gpu capable but obviously there's no memory sharing on the GPUs
@@ -331,11 +339,15 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     ]
 
     # Start all containers at around the same time
-    for container, _ in container_file:
+    for container, _output_file_path in container_file:
         container.start()
 
-    parallel_results: List[float] = [
-        outputs_to_result(ContainerOutputs(logs=_wait_get_logs(container=container), file=file))
+    parallel_results: List[_RunOutputs] = [
+        _RunOutputs(
+            benchmark_result=outputs_to_result(
+                ContainerOutputs(logs=_wait_get_logs(container=container), file=file)
+            )
+        )
         for (container, file) in container_file
     ]
 
@@ -403,7 +415,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
     multi_gpu_native: bool,
     downloads_directory_path: Optional[Path],
     benchmark_name: str,
-) -> ReportFileNumerical:
+) -> BenchmarkData:
     """
     The run sequence is as follows:
 
@@ -459,7 +471,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
 
         LOGGER.debug(f"Setting memory limit on containers to: {memory_limit}")
 
-        def exception_to_none(gpu: GPUIdentity) -> Optional[float]:
+        def exception_to_none(gpu: GPUIdentity) -> Optional[_RunOutputs]:
             """
             Wrapper to fall through on known exceptions.
             :param gpu: Passed into the run.
@@ -482,18 +494,18 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
         # A single datapoint per type of GPU attached to the system.
         # When the benchmark is run on all attached GPUs at the same time this lets us understand
         # how much overhead is added.
-        name_to_serial_result: Dict[str, Optional[float]] = {
+        serialized_outputs: Dict[str, Optional[_RunOutputs]] = {
             gpu.name: exception_to_none(gpu) for gpu in serial_gpus
         }
 
         # Only consumed in the single attached GPU case.
-        single_gpu_result: float = next(iter(name_to_serial_result.values()))
+        first_output: _RunOutputs = next(iter(serialized_outputs.values()))
 
         if multiple_gpus_to_test:
             # Creates a docker container per GPU for every input GPU, then
             # starts them at the same time. Results are returned.
             with contextlib.suppress(RuntimeError):
-                force_parallel_results: Optional[List[float]] = _force_parallel_run(
+                forced_parallel_outputs: Optional[List[_RunOutputs]] = _force_parallel_run(
                     client=client,
                     image=image,
                     new_output_file=new_output_file,
@@ -504,14 +516,14 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                     total_memory_limit=memory_limit,
                 )
         else:
-            force_parallel_results = [single_gpu_result]
+            forced_parallel_outputs = [first_output]
 
-        native_multi_gpu_result: Optional[float] = None
+        native_multi_gpu_output: Optional[_RunOutputs] = None
 
         if multi_gpu_native:
 
             if multiple_gpus_to_test:
-                native_multi_gpu_result = _run_image_on_gpus(
+                native_multi_gpu_output = _run_image_on_gpus(
                     client=client,
                     image=image,
                     gpus=gpus,
@@ -522,34 +534,45 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                     outputs_to_result=outputs_to_result,
                 )
             else:
-                native_multi_gpu_result = single_gpu_result
+                native_multi_gpu_output = first_output
+
+        name_to_serial_result: Dict[str, float] = {
+            key: value.benchmark_result for key, value in serialized_outputs.items()
+        }
 
         no_failures = None not in name_to_serial_result.values()
 
-        theoretical_multi_gpu_sum = (
+        theoretical_multi_gpu_sum: float = (
             sum((name_to_serial_result[gpu.name] for gpu in gpus)) if no_failures else None
         )
+
         theoretical_multi_gpu_mean = (
             (theoretical_multi_gpu_sum / len(gpus)) if no_failures else None
         )
 
-        output = ReportFileNumerical(
+        numerical_parallel_sum: float = sum(
+            result.benchmark_result for result in forced_parallel_outputs
+        )
+
+        report_file_numerical = ReportFileNumerical(
             min_by_gpu_type=min(name_to_serial_result.values()) if no_failures else None,
             max_by_gpu_type=max(name_to_serial_result.values()) if no_failures else None,
             mean_by_gpu_type=mean(name_to_serial_result.values()) if no_failures else None,
             theoretical_multi_gpu_mean=theoretical_multi_gpu_mean,
             theoretical_multi_gpu_sum=theoretical_multi_gpu_sum,
             forced_multi_gpu_numerical_mean=(
-                (sum(force_parallel_results) / len(gpus)) if no_failures else None
+                (numerical_parallel_sum / len(gpus)) if no_failures else None
             ),
-            forced_multi_gpu_sum=sum(force_parallel_results) if no_failures else None,
-            native_multi_gpu_result=native_multi_gpu_result,
+            forced_multi_gpu_sum=numerical_parallel_sum if no_failures else None,
+            native_multi_gpu_result=native_multi_gpu_output.benchmark_result,
         )
 
-        if not any(output.model_dump().values()):
+        if not any(report_file_numerical.model_dump().values()):
             raise ValueError(f"Benchmarking for {benchmark_name} produced no data")
 
-        return output
+        return BenchmarkData(
+            report_file_numerical=report_file_numerical, report_file_gpu_power_usage=None
+        )
 
 
 def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
@@ -563,7 +586,7 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
     docker_cleanup: bool,
     force_rebuild: bool,
     downloads_directory_path: Optional[Path],
-) -> ReportFileNumerical:
+) -> BenchmarkData:
     """
     Benchmarks a given dockerfile.
 
