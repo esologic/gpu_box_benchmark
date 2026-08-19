@@ -650,7 +650,18 @@ class BenchmarkResult(BaseModel):
     multi_gpu_native: bool
 
     verbose_unit: str
+    """
+    Complete unit of the numerical results.
+    Ex: Megahashes / Second 
+    Not related to power consumption, that is always Joules and is baked into the type.
+    """
+
     unit: str
+    """
+    Short version of the unit of the numerical results.
+    Ex: MH/s
+    Not related to power consumption, that is always Joules and is baked into the type.
+    """
 
     critical_result_key: NumericalResultKey
     """
@@ -666,7 +677,7 @@ class BenchmarkResult(BaseModel):
     critical_gpu_power_usage_key: Optional[GPUPowerUsageKey] = None
     """
     Introduced in version 0.3.0, points to a field in `gpu_power_usage` that is the most interesting
-    for the associated test. Like `critical_result_key` this is a convience thing to make reading
+    for the associated test. Like `critical_result_key` this is a convenience thing to make reading
     the JSON by eye easier.
     """
 
