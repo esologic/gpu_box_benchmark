@@ -575,7 +575,7 @@ class ReportFileGPUPowerUsage(BaseModel):
     """
 
     # Serial execution
-    min_serial_energy_joules: float
+    min_serial_energy_joules: Optional[float]
     """
     Minimum energy consumed by a single GPU during the serial benchmark execution.
 
@@ -583,7 +583,7 @@ class ReportFileGPUPowerUsage(BaseModel):
     system. This is therefore the lowest energy consumption observed among the GPU types tested.
     """
 
-    max_serial_energy_joules: float
+    max_serial_energy_joules: Optional[float]
     """
     Maximum energy consumed by a single GPU during the serial benchmark execution.
 
@@ -591,7 +591,7 @@ class ReportFileGPUPowerUsage(BaseModel):
     system. This is therefore the highest energy consumption observed among the GPU types tested.
     """
 
-    mean_serial_energy_joules: float
+    mean_serial_energy_joules: Optional[float]
     """
     Mean energy consumed by a single GPU during the serial benchmark execution.
 
@@ -600,7 +600,7 @@ class ReportFileGPUPowerUsage(BaseModel):
     """
 
     # Forced parallel execution
-    forced_multi_gpu_total_energy_joules: float
+    forced_multi_gpu_total_energy_joules: Optional[float]
     """
     Total energy consumed by all GPUs during the forced-parallel benchmark execution.
 

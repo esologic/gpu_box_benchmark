@@ -566,6 +566,12 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
 
         no_failures: bool = None not in name_to_serial_result.values()
 
+        native_multi_gpu_result = (
+            native_multi_gpu_output.benchmark_result
+            if native_multi_gpu_output is not None
+            else None
+        )
+
         if no_failures:
 
             theoretical_multi_gpu_sum: float = sum(
@@ -586,11 +592,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                 theoretical_multi_gpu_sum=theoretical_multi_gpu_sum,
                 forced_multi_gpu_numerical_mean=(forced_multi_gpu_sum / len(gpus)),
                 forced_multi_gpu_sum=forced_multi_gpu_sum,
-                native_multi_gpu_result=(
-                    native_multi_gpu_output.benchmark_result
-                    if native_multi_gpu_output is not None
-                    else None
-                ),
+                native_multi_gpu_result=native_multi_gpu_result,
             )
 
         else:
@@ -602,11 +604,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                 theoretical_multi_gpu_sum=None,
                 forced_multi_gpu_numerical_mean=None,
                 forced_multi_gpu_sum=None,
-                native_multi_gpu_result=(
-                    native_multi_gpu_output.benchmark_result
-                    if native_multi_gpu_output is not None
-                    else None
-                ),
+                native_multi_gpu_result=native_multi_gpu_result,
             )
 
         if not any(report_file_numerical.model_dump().values()):
@@ -614,19 +612,25 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
 
         serialized_joules: List[float] = list(
             itertools.chain.from_iterable(
-                run_output.uuid_to_joules.values() for run_output in serialized_outputs.values()
+                run_output.uuid_to_joules.values()
+                for run_output in serialized_outputs.values()
+                if run_output is not None
             )
         )
 
         return BenchmarkData(
             report_file_numerical=report_file_numerical,
             report_file_gpu_power_usage=ReportFileGPUPowerUsage(
-                min_serial_energy_joules=min(serialized_joules),
-                max_serial_energy_joules=max(serialized_joules),
-                mean_serial_energy_joules=mean(serialized_joules),
-                forced_multi_gpu_total_energy_joules=sum(
-                    sum(run_output.uuid_to_joules.values())
-                    for run_output in forced_parallel_outputs
+                min_serial_energy_joules=min(serialized_joules) if serialized_joules else None,
+                max_serial_energy_joules=max(serialized_joules) if serialized_joules else None,
+                mean_serial_energy_joules=mean(serialized_joules) if serialized_joules else None,
+                forced_multi_gpu_total_energy_joules=(
+                    sum(
+                        sum(run_output.uuid_to_joules.values())
+                        for run_output in forced_parallel_outputs
+                    )
+                    if serialized_joules
+                    else None
                 ),
                 native_multi_gpu_total_energy_joules=(
                     sum(native_multi_gpu_output.uuid_to_joules.values())
