@@ -522,7 +522,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
         }
 
         # Only consumed in the single attached GPU case.
-        first_output: _RunOutputs = next(iter(serialized_outputs.values()))
+        first_output: Optional[_RunOutputs] = next(iter(serialized_outputs.values()))
 
         if multiple_gpus_to_test:
             # Creates a docker container per GPU for every input GPU, then
@@ -559,40 +559,55 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
             else:
                 native_multi_gpu_output = first_output
 
-        name_to_serial_result: Dict[str, float] = {
-            key: value.benchmark_result for key, value in serialized_outputs.items()
+        name_to_serial_result: Dict[str, Optional[float]] = {
+            key: value.benchmark_result if value is not None else None
+            for key, value in serialized_outputs.items()
         }
 
-        no_failures = None not in name_to_serial_result.values()
+        no_failures: bool = None not in name_to_serial_result.values()
 
-        theoretical_multi_gpu_sum: float = (
-            sum((name_to_serial_result[gpu.name] for gpu in gpus)) if no_failures else None
-        )
+        if no_failures:
 
-        theoretical_multi_gpu_mean = (
-            (theoretical_multi_gpu_sum / len(gpus)) if no_failures else None
-        )
+            theoretical_multi_gpu_sum: float = sum(
+                (name_to_serial_result[gpu.name] for gpu in gpus)
+            )
 
-        numerical_parallel_sum: float = sum(
-            result.benchmark_result for result in forced_parallel_outputs
-        )
+            theoretical_multi_gpu_mean = theoretical_multi_gpu_sum / len(gpus)
 
-        report_file_numerical = ReportFileNumerical(
-            min_by_gpu_type=min(name_to_serial_result.values()) if no_failures else None,
-            max_by_gpu_type=max(name_to_serial_result.values()) if no_failures else None,
-            mean_by_gpu_type=mean(name_to_serial_result.values()) if no_failures else None,
-            theoretical_multi_gpu_mean=theoretical_multi_gpu_mean,
-            theoretical_multi_gpu_sum=theoretical_multi_gpu_sum,
-            forced_multi_gpu_numerical_mean=(
-                (numerical_parallel_sum / len(gpus)) if no_failures else None
-            ),
-            forced_multi_gpu_sum=numerical_parallel_sum if no_failures else None,
-            native_multi_gpu_result=(
-                native_multi_gpu_output.benchmark_result
-                if native_multi_gpu_output is not None
-                else None
-            ),
-        )
+            forced_multi_gpu_sum: float = sum(
+                result.benchmark_result for result in forced_parallel_outputs
+            )
+
+            report_file_numerical = ReportFileNumerical(
+                min_by_gpu_type=min(name_to_serial_result.values()),
+                max_by_gpu_type=max(name_to_serial_result.values()),
+                mean_by_gpu_type=mean(name_to_serial_result.values()),
+                theoretical_multi_gpu_mean=theoretical_multi_gpu_mean,
+                theoretical_multi_gpu_sum=theoretical_multi_gpu_sum,
+                forced_multi_gpu_numerical_mean=(forced_multi_gpu_sum / len(gpus)),
+                forced_multi_gpu_sum=forced_multi_gpu_sum,
+                native_multi_gpu_result=(
+                    native_multi_gpu_output.benchmark_result
+                    if native_multi_gpu_output is not None
+                    else None
+                ),
+            )
+
+        else:
+            report_file_numerical = ReportFileNumerical(
+                min_by_gpu_type=None,
+                max_by_gpu_type=None,
+                mean_by_gpu_type=None,
+                theoretical_multi_gpu_mean=None,
+                theoretical_multi_gpu_sum=None,
+                forced_multi_gpu_numerical_mean=None,
+                forced_multi_gpu_sum=None,
+                native_multi_gpu_result=(
+                    native_multi_gpu_output.benchmark_result
+                    if native_multi_gpu_output is not None
+                    else None
+                ),
+            )
 
         if not any(report_file_numerical.model_dump().values()):
             raise ValueError(f"Benchmarking for {benchmark_name} produced no data")
