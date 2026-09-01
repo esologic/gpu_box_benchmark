@@ -4,7 +4,7 @@
 
 Tracks changes of the codebase. 
 
-### 0.8.0 - (2026-08-XX)
+### 0.8.0 - (2026-09-XX)
 
 * Added invocation of a few benchmarks as unit tests.
 * All docker containers now optionally have a "downloads" directory for saving assets outside the 
@@ -16,6 +16,8 @@ windows.
 * Added new benchmark, `llama_bench_max_model_parameters_q4_k_m` to see the largest number of LLM
 parameters that can be loaded into the attached GPUs using real models.
 * New flagging code to force rebuilding docker images.
+* Added a new field `gpu_power_usage` (and type `ReportFileGPUPowerUsage`) to `BenchmarkResult`
+that records GPU energy consumption for a given benchmark.
 
 ### 0.7.0 - (2026-07-11)
 
@@ -83,7 +85,7 @@ simultaneously using docker.
 
 Tracks changes of the main output file. There are per-test version histories in the python wrappers.
 
-### 0.3.0 - (2026-08-XX)
+### 0.3.0 - (2026-09-XX)
 
 * Introduced new idiom to `ReportFileNumerical`. If a benchmark fails on ANY individual GPU but is 
 able to finish in the multi GPU case, `min_by_gpu_type`, `max_by_gpu_type`, `mean_by_gpu_type`, 

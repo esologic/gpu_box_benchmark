@@ -40,7 +40,7 @@ def assets_directory() -> Iterator[Path]:
     :return: Context manager with the directory.
     """
 
-    nas_path = Path("/mnt/network_storage/Devon Bray/Active Projects/models")
+    nas_path = Path("/mnt/network_storage/Devon Bray/Active Projects/gpu_box_benchmark_assets")
 
     if nas_path.exists():
         yield nas_path

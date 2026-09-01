@@ -274,7 +274,6 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
             except Exception as e:  # pylint: disable=broad-except
                 failed_tests.append(named_executor.benchmark_name)
                 pretty_exception = re.sub(r"\s+", " ", str(e))[:100] + "..."
-                LOGGER.exception(f"Ran into a problem: {e}")
                 LOGGER.info(f"Failed! Err: {pretty_exception}")
 
     # Tests are complete, write the output.
