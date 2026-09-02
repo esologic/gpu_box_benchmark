@@ -11,10 +11,12 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
     content_aware_timelapse,
     folding_at_home,
     hashcat,
-    llama_bench,
     nvidia_deep_learning_examples,
     nvidia_gds,
     whisper,
+)
+from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
+    llama_bench_dockerfile_wrapper,
 )
 from gpu_box_benchmark.benchmark_types import (
     BenchmarkExecutor,
@@ -49,8 +51,8 @@ def render_named_executors(
 
     creation_functions: List[CreateBenchmarkExecutor] = [
         nvidia_deep_learning_examples.create_resnet50_executor,
-        llama_bench.create_llama_bench_throughput_executor,
-        llama_bench.create_llama_bench_max_model_parameters_executor,
+        llama_bench_dockerfile_wrapper.create_llama_bench_throughput_executor,
+        llama_bench_dockerfile_wrapper.create_llama_bench_max_model_parameters_executor,
         blender_benchmark.create_blender_benchmark_executor,
         folding_at_home.create_fah_bench_executor,
         ai_benchmark.create_ai_benchmark_executor,
