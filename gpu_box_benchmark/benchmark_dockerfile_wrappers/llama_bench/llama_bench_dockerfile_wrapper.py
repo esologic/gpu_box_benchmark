@@ -233,7 +233,9 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
     return run_llama_bench_docker
 
 
-_SUPPORTED_CONTEXTS: Dict[str, int] = {
+SUPPORTED_QUANTS: Tuple[str, str, str] = ("q4", "q8", "f16")
+
+SUPPORTED_CONTEXTS: Dict[str, int] = {
     "4k": CONTEXT_DEPTH_4K,
     "32k": CONTEXT_DEPTH_32K,
     "64k": CONTEXT_DEPTH_32K * 2,
@@ -287,8 +289,6 @@ _SUPPORTED_MODELS: Dict[LLMName, Tuple[str, ModelQuantization]] = {
     ),
 }
 
-_SUPPORTED_QUANTS: Tuple[str, str, str] = ("q4", "q8", "f16")
-
 _LLM_BENCHMARK_DEFINITIONS: Tuple[LlamaBenchmarkDefinition, ...] = tuple(
     LlamaBenchmarkDefinition(
         benchmark_name=getattr(
@@ -301,8 +301,8 @@ _LLM_BENCHMARK_DEFINITIONS: Tuple[LlamaBenchmarkDefinition, ...] = tuple(
         model_spec=getattr(model_spec, quantization),
     )
     for model, (model_name, model_spec) in _SUPPORTED_MODELS.items()
-    for quantization in _SUPPORTED_QUANTS
-    for context_name, context_depth in _SUPPORTED_CONTEXTS.items()
+    for quantization in SUPPORTED_QUANTS
+    for context_name, context_depth in SUPPORTED_CONTEXTS.items()
 )
 
 _LLM_BENCHMARK_DEFINITIONS_BY_NAME: Dict[BenchmarkName, LlamaBenchmarkDefinition] = {
@@ -412,24 +412,25 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
 
 def read_throughput_results(
     complete_results: List[BenchmarkResult],
+    failed_tests: List[BenchmarkName],
     label: str,
 ) -> List[LLMThroughputResult]:
     """
     Reads out the different
     :param complete_results:
+    :param failed_tests:
     :param label:
     :return:
     """
 
     parsed_results: List[LLMThroughputResult] = []
 
+    # Process successful numerical results
     for benchmark_result in complete_results:
+        name = benchmark_result.name
 
-        definition: LlamaBenchmarkDefinition = _LLM_BENCHMARK_DEFINITIONS_BY_NAME.get(
-            benchmark_result.name
-        )
-
-        if definition is None:
+        success_definition: LlamaBenchmarkDefinition = _LLM_BENCHMARK_DEFINITIONS_BY_NAME.get(name)
+        if success_definition is None:
             continue
 
         tokens_per_second = getattr(
@@ -437,16 +438,38 @@ def read_throughput_results(
             benchmark_result.critical_result_key.value,
         )
 
-        if tokens_per_second is None:
-            continue
-
         parsed_results.append(
             LLMThroughputResult(
                 label=label,
-                model=definition.model,
-                quantization=definition.quantization,
-                context_depth=definition.context_depth,
+                model=success_definition.model,
+                quantization=success_definition.quantization,
+                context_depth=success_definition.context_depth,
                 tokens_per_second=tokens_per_second,
+            )
+        )
+
+    # Process failed tests (The "missing" plots)
+    # We iterate the known failures and emit a row so they appear in the data for plotting.
+    seen_failed_names = set()
+    for name in set(failed_tests):
+
+        if name in seen_failed_names:
+            continue
+
+        seen_failed_names.add(name)
+
+        failed_definition: LlamaBenchmarkDefinition = _LLM_BENCHMARK_DEFINITIONS_BY_NAME.get(name)
+        if failed_definition is None:
+            continue
+
+        # Emit a row with coordinates but no metric
+        parsed_results.append(
+            LLMThroughputResult(
+                label=label,
+                model=failed_definition.model,
+                quantization=failed_definition.quantization,
+                context_depth=failed_definition.context_depth,
+                tokens_per_second=None,  # None here translates to -> the test failed.
             )
         )
 

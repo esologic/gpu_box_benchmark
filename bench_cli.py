@@ -19,10 +19,7 @@ from gpu_box_benchmark import visualization
 from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
     llama_bench_dockerfile_wrapper,
 )
-from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import (
-    LLMName,
-    LLMThroughputResult,
-)
+from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import LLMName
 from gpu_box_benchmark.benchmark_types import (
     BENCHMARK_TO_PRETTY,
     EXTENDED_BENCHMARK_DOCUMENTS,
@@ -550,207 +547,23 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     )
 
 
-def plot_llm_throughput(  # pylint: disable=too-many-locals
-    results: Tuple[LLMThroughputResult, ...],
-    model: LLMName,
-    output_path: Path,
-    title: str,
-    watermark: Optional[str],
-) -> None:
-    """
-    :param results:
-    :param model:
-    :param output_path:
-    :param title:
-    :param watermark:
-    :return:
-    """
-
-    model_results = tuple(result for result in results if result.model == model)
-
-    if not model_results:
-        raise ValueError(f"No benchmark data available for {model.value}")
-
-    quants = tuple(dict.fromkeys(result.quantization for result in model_results))
-
-    context_depths = tuple(dict.fromkeys(result.context_depth for result in model_results))
-
-    labels = tuple(dict.fromkeys(result.label for result in model_results))
-
-    fig, axes = plt.subplots(
-        nrows=len(context_depths),
-        ncols=len(quants),
-        figsize=(3 * len(quants), 2.5 * len(context_depths)),
-        sharex=True,
-    )
-
-    axes = [axes] if isinstance(axes, plt.Axes) else axes.flatten()
-
-    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
-    system_colors = {label: color_cycle[i % len(color_cycle)] for i, label in enumerate(labels)}
-
-    subplot_title_text_size = "medium"
-
-    max_tokens_per_second = max(result.tokens_per_second for result in model_results)
-    x_axis_max = max_tokens_per_second * 1.15
-
-    for context_index, context_depth in enumerate(context_depths):
-        for quantization_index, quantization in enumerate(quants):
-            ax = axes[context_index * len(quants) + quantization_index]
-
-            ax.set_xlim(0, x_axis_max)
-
-            for label_index, label in enumerate(labels):
-                result = next(
-                    (
-                        result
-                        for result in model_results
-                        if result.label == label
-                        and result.context_depth == context_depth
-                        and result.quantization == quantization
-                    ),
-                    None,
-                )
-
-                if result is not None:
-                    ax.barh(
-                        label_index,
-                        result.tokens_per_second,
-                        color=system_colors[label],
-                    )
-
-                    ax.text(
-                        result.tokens_per_second + x_axis_max * 0.01,
-                        label_index,
-                        f"{result.tokens_per_second:.1f}",
-                        ha="left",
-                        va="center",
-                        fontsize="x-small",
-                    )
-                else:
-                    ax.barh(
-                        label_index,
-                        x_axis_max,
-                        color="white",
-                        edgecolor=system_colors[label],
-                        hatch="///",
-                    )
-
-                    ax.text(
-                        x_axis_max / 2,
-                        label_index,
-                        "FAILED",
-                        ha="center",
-                        va="center",
-                        fontsize="small",
-                        fontweight="bold",
-                        color="black",
-                        bbox={
-                            "facecolor": "white",
-                            "edgecolor": "none",
-                            "boxstyle": "round,pad=0.2",
-                        },
-                    )
-
-            ax.set_yticks([])
-            ax.set_title(
-                quantization,
-                fontsize=subplot_title_text_size,
-            )
-            ax.grid(axis="x", linestyle=":", alpha=0.8)
-
-            if quantization_index == 0:
-                ax.text(
-                    -0.08,
-                    0.5,
-                    f"{context_depth // 1024}k",
-                    transform=ax.transAxes,
-                    ha="right",
-                    va="center",
-                    fontsize=subplot_title_text_size,
-                )
-
-            if context_index == len(context_depths) - 1:
-                ax.set_xlabel(
-                    "Tokens / Second",
-                    fontsize=subplot_title_text_size,
-                )
-
-    fig.supylabel("Context Depth")
-
-    fig.suptitle(
-        f"{title} — {model.value}",
-        fontsize="large",
-    )
-
-    legend_handles = [
-        plt.Rectangle((0, 0), 0.5, 1, color=color) for color in system_colors.values()
-    ]
-
-    legend_labels = list(system_colors.keys())
-
-    longest_label_length = max(
-        (len(label) for label in legend_labels),
-        default=0,
-    )
-
-    num_legend_columns = 1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3)
-
-    resulting_legend = fig.legend(
-        legend_handles,
-        legend_labels,
-        loc="outside lower center",
-        ncol=num_legend_columns,
-        frameon=True,
-        facecolor="#f5f5f5",
-        edgecolor="lightgrey",
-        fontsize="small",
-    )
-
-    legend_bbox = resulting_legend.get_window_extent(
-        fig.canvas.get_renderer()  # type: ignore[attr-defined]
-    )
-
-    legend_bbox_fig = legend_bbox.transformed(fig.transFigure.inverted())
-
-    tight_layout_bottom = legend_bbox_fig.y1
-
-    if watermark:
-        fig.text(
-            0.995,
-            0.5,
-            watermark,
-            fontsize="small",
-            color="gray",
-            alpha=0.6,
-            ha="right",
-            va="center",
-            rotation="vertical",
-        )
-
-    fig.tight_layout(
-        pad=1.5,
-        w_pad=2,
-        rect=(0, tight_layout_bottom, 0.96, 1),
-    )
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300)
-    plt.close(fig)
-
-
 @cli.command(
     name="compare-llms",
     short_help="Draw graphs comparing LLM context depth, Quantization and System Performance.",
 )
 @INPUT_OPTION
 @X_LABEL_OPTION
-@LABELED_INPUT_OPTION
 @OUTPUT_OPTION
 @TITLE_OPTION
 @WATERMARK_OPTION
 @FONT_FAMILY_OPTION
+@options.create_enum_option(
+    "--llm",
+    help_message="Decides which benchmark to run.",
+    input_enum=LLMName,
+    default=LLMName.qwen_2_5_14b_instruct,
+    multiple=False,
+)
 def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
     x_label: XLabelBase,
@@ -758,6 +571,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     title: str,
     watermark: Optional[str],
     font_family: Optional[str],
+    llm: LLMName,
 ) -> None:
     """
     Draws a matplotlib visualization comparing the results of the different input benchmarks.
@@ -770,6 +584,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     :param title: See click help for docs!
     :param watermark: See click help for docs!
     :param font_family: See click help for docs!
+    :param llm: See click help for docs!
     :return: None
     """
 
@@ -785,16 +600,18 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
         itertools.chain.from_iterable(
             [
                 llama_bench_dockerfile_wrapper.read_throughput_results(
-                    complete_results=evaluation.results, label=evaluation.title
+                    complete_results=evaluation.results,
+                    failed_tests=evaluation.failed_tests,
+                    label=evaluation.title,
                 )
                 for evaluation in evaluations_and_base.evaluations
             ]
         )
     )
 
-    plot_llm_throughput(
+    visualization.create_llm_throughput_visualization(
         results=results,
-        model=LLMName.deepseek_coder_v2_lite,
+        model=llm,
         output_path=output_path,
         title=title,
         watermark=watermark,

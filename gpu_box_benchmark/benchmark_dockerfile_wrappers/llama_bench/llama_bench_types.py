@@ -4,7 +4,7 @@ Type code specific to working with LLMs
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 
 from pydantic import BaseModel
 
@@ -121,9 +121,9 @@ class LLMThroughputResult:
     Context depth used for the benchmark, measured in tokens.
     """
 
-    tokens_per_second: float
+    tokens_per_second: Optional[float] = None
     """
-    Measured generation throughput, in tokens per second.
+    Measured generation throughput. None if the test failed or produced no result.
     """
 
 
