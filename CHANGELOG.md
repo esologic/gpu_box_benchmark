@@ -18,6 +18,8 @@ parameters that can be loaded into the attached GPUs using real models.
 * New flagging code to force rebuilding docker images.
 * Added a new field `gpu_power_usage` (and type `ReportFileGPUPowerUsage`) to `BenchmarkResult`
 that records GPU energy consumption for a given benchmark.
+* Added a new visualization mode `compare-llms` specifically to look at LLM performance when varying
+quantization, context depth, model and system build. 
 
 ### 0.7.0 - (2026-07-11)
 
