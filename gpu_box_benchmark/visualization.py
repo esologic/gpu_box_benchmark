@@ -6,7 +6,7 @@ import math
 from collections import Counter
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, NamedTuple, Optional, Set, Tuple, cast
+from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, cast
 
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -132,6 +132,103 @@ def benchmark_names_from_evaluations(
             for evaluation, _label in labeled_evaluations
         ],
     )
+
+
+def _create_grid(
+    n_rows: int, n_cols: int, sharex: bool = False
+) -> Tuple[plt.Figure, List[plt.Axes]]:
+    """
+    Creates a standard sized subplot grid and returns the axes as a flattened list.
+    Handles single-subplot cases where plt.subplots doesn't return an array.
+    :param n_rows:
+    :param n_cols:
+    :param sharex:
+    :return:
+    """
+
+    fig, axes = plt.subplots(
+        nrows=n_rows,
+        ncols=n_cols,
+        figsize=(3 * n_cols, 2.5 * n_rows),
+        sharex=sharex,
+    )
+
+    if isinstance(axes, plt.Axes):
+        # Single subplot case returns an Axes object directly
+        axes = [axes]
+    else:
+        axes = axes.flatten()
+
+    return fig, axes
+
+
+def _apply_legend_and_save(
+    fig: plt.Figure,
+    system_colors: Dict[str, str],
+    title: str,
+    watermark: Optional[str],
+    output_path: Path,
+) -> None:
+    """
+    Consolidated logic for calculating layout, adding the legend, applying the
+    watermark, and saving the figure.
+    :param fig:
+    :param system_colors:
+    :param title:
+    :param watermark:
+    :param output_path:
+    :return:
+    """
+
+    # Legend Calculation
+    legend_handles = [
+        plt.Rectangle((0, 0), 0.5, 1, color=color) for color in system_colors.values()
+    ]
+    legend_labels = list(system_colors.keys())
+
+    longest_label_length = max((len(label) for label in legend_labels), default=0)
+    num_legend_columns = 1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3)
+
+    resulting_legend = fig.legend(
+        legend_handles,
+        legend_labels,
+        loc="outside lower center",
+        ncol=num_legend_columns,
+        frameon=True,
+        facecolor="#f5f5f5",
+        edgecolor="lightgrey",
+        fontsize="small",
+    )
+
+    # Layout Calculation (Positioning tight_layout based on legend height)
+    legend_bbox = resulting_legend.get_window_extent(
+        fig.canvas.get_renderer()  # type: ignore[attr-defined]
+    )
+
+    legend_bbox_fig = legend_bbox.transformed(fig.transFigure.inverted())
+    tight_layout_bottom = max(legend_bbox_fig.y1, 0)
+
+    if watermark:
+        fig.text(
+            0.995,  # Standardized x-position (pinned to right edge with slight padding)
+            0.5,
+            watermark,
+            fontsize="small",
+            color="gray",
+            alpha=0.6,
+            ha="right",
+            va="center",
+            rotation="vertical",
+        )
+
+    # Apply Suptitle and Layout
+    fig.suptitle(title, fontsize="large")
+    # Using 0.96 on the right to prevent layout overlap issues with watermark/text
+    fig.tight_layout(pad=1.5, w_pad=2, rect=(0, tight_layout_bottom, 0.96, 1))
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
 
 
 def _system_evaluations_to_dataframe(
@@ -263,14 +360,8 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     n_plots = len(df_specs.df.columns)
     n_rows = math.ceil(n_plots / n_cols)
 
-    fig, axes = plt.subplots(
-        nrows=n_rows,
-        ncols=n_cols,
-        figsize=(3 * n_cols, 2.5 * n_rows),
-        sharex=False,
-    )
-
-    axes = [axes] if isinstance(axes, plt.Axes) else axes.flatten()
+    # Use helper for figure and grid creation (sharex=False for vertical bar charts)
+    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False)
 
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
@@ -320,60 +411,107 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
 
         ax.grid(axis="y", linestyle=":", alpha=0.8)
 
+    # Hide empty plots if we generated more grid slots than we have data
     for ax in axes[n_plots:]:
         ax.set_visible(False)
 
-    fig.suptitle(title, fontsize="large")
-
-    legend_handles = [
-        plt.Rectangle((0, 0), 0.5, 1, color=color) for color in system_colors.values()
-    ]
-
-    legend_labels = list(system_colors.keys())
-    longest_label_length: int = max((len(label) for label in legend_labels), default=0)
-    num_legend_columns: int = (
-        1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3)
+    # Pass results to the helper for finalizing (legend, watermark, saving)
+    _apply_legend_and_save(
+        fig=fig,
+        system_colors=system_colors,
+        title=title,
+        watermark=watermark,
+        output_path=output_path,
     )
 
-    resulting_legend = fig.legend(
-        legend_handles,
-        legend_labels,
-        loc="outside lower center",
-        ncol=num_legend_columns,
-        frameon=True,
-        facecolor="#f5f5f5",
-        edgecolor="lightgrey",
-        fontsize="small",
+
+def _find_result(
+    model_results: Tuple[LLMThroughputResult, ...],
+    label: str,
+    context_depth: int,
+    quantization: str,
+) -> Optional[LLMThroughputResult]:
+    """
+    Helper to find the relevant result for a specific cell.
+    :param model_results: Search space.
+    :param label: Needs to match output.
+    :param context_depth: Needs to match output.
+    :param quantization: Needs to match output.
+    :return: Result if found, None if otherwise.
+    """
+
+    return next(
+        (
+            r
+            for r in model_results
+            if r.label == label
+            and r.context_depth == context_depth
+            and r.quantization == quantization
+        ),
+        None,
     )
 
-    # Figure out where the top of the legend is.
-    legend_bbox = resulting_legend.get_window_extent(
-        fig.canvas.get_renderer()  # type: ignore[attr-defined]
-    )
-    legend_bbox_fig = legend_bbox.transformed(fig.transFigure.inverted())
-    tight_layout_bottom = legend_bbox_fig.y1
 
-    if watermark:
-        fig.text(
-            0.99,  # x-position: pinned to right edge
-            0.5,  # y-position: vertically centered
-            watermark,
+def _draw_bar(
+    x_axis_max: float,
+    ax: plt.Axes,
+    label_index: int,
+    color: str,
+    result: Optional[LLMThroughputResult],
+) -> None:
+    """
+    Helper to draw the specific visualization state.
+    :param x_axis_max: Used to locate the text on the bar.
+    :param ax: Axis to draw on.
+    :param label_index: Index to draw the bar to within the subplot.
+    :param color: Bar color.
+    :param result: To plot.
+    :return: None
+    """
+
+    if result is not None:
+        if result.tokens_per_second is not None:
+            # Successful Execution
+            ax.barh(label_index, result.tokens_per_second, color=color)
+            ax.text(
+                result.tokens_per_second + x_axis_max * 0.01,
+                label_index,
+                f"{result.tokens_per_second:.1f}",
+                ha="left",
+                va="center",
+                fontsize="x-small",
+            )
+        else:
+            # Failed Execution (Marked by white bar + hatching)
+            ax.barh(label_index, x_axis_max, color="white", edgecolor=color, hatch="///")
+            ax.text(
+                x_axis_max / 2,
+                label_index,
+                "FAILED",
+                ha="center",
+                va="center",
+                fontsize="small",
+                fontweight="bold",
+                color="black",
+                bbox={"facecolor": "white", "edgecolor": "none", "boxstyle": "round,pad=0.2"},
+            )
+    else:
+        # No Data (Marked by white bar + hatching)
+        ax.barh(label_index, x_axis_max, color="white", edgecolor=color, hatch="///")
+        ax.text(
+            x_axis_max / 2,
+            label_index,
+            "NO DATA",
+            ha="center",
+            va="center",
             fontsize="small",
-            color="gray",
-            alpha=0.6,
-            ha="right",  # horizontal alignment: right side of text is at x
-            va="center",  # vertical alignment: center of text is at y
-            rotation="vertical",  # rotate text 90 degrees counter-clockwise
+            fontweight="bold",
+            color="black",
+            bbox={"facecolor": "white", "edgecolor": "none", "boxstyle": "round,pad=0.2"},
         )
 
-    fig.tight_layout(pad=1.5, w_pad=2, rect=(0, tight_layout_bottom, 1, 1))
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300)
-    plt.close(fig)
-
-
-def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-many-nested-blocks,too-many-statements
+def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-many-nested-blocks
     results: Tuple[LLMThroughputResult, ...],
     model: LLMName,
     output_path: Path,
@@ -412,14 +550,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
 
     labels = tuple(dict.fromkeys(result.label for result in model_results))
 
-    fig, axes = plt.subplots(
-        nrows=len(context_depths),
-        ncols=len(quants),
-        figsize=(3 * len(quants), 2.5 * len(context_depths)),
-        sharex=True,
-    )
-
-    axes = [axes] if isinstance(axes, plt.Axes) else axes.flatten()
+    fig, axes = _create_grid(n_rows=len(context_depths), n_cols=len(quants), sharex=True)
 
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
@@ -439,95 +570,31 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
 
     x_axis_max = max(1.0, max_tokens_per_second * 1.15)
 
+    # Main Grid Loop
     for context_index, context_depth in enumerate(context_depths):
         for quantization_index, quantization in enumerate(quants):
             ax = axes[context_index * len(quants) + quantization_index]
-
             ax.set_xlim(0, x_axis_max)
 
-            # Iterate through every system label to draw the bars/failures
+            # Iterate through systems and delegate drawing to the closure
             for label_index, label in enumerate(labels):
 
-                # Try to find the specific data point for this system
-                result = next(
-                    (
-                        result
-                        for result in model_results
-                        if result.label == label
-                        and result.context_depth == context_depth
-                        and result.quantization == quantization
-                    ),
-                    None,
+                result: Optional[LLMThroughputResult] = _find_result(
+                    model_results=model_results,
+                    label=label,
+                    context_depth=context_depth,
+                    quantization=quantization,
                 )
 
-                if result is not None:
-                    # Data exists for this system at this axis (could be success or failure)
-                    if result.tokens_per_second is None:
-                        ax.barh(
-                            label_index,
-                            x_axis_max,
-                            color="white",
-                            edgecolor=system_colors[label],
-                            hatch="///",
-                        )
+                _draw_bar(
+                    x_axis_max=x_axis_max,
+                    ax=ax,
+                    label_index=label_index,
+                    color=system_colors[label],
+                    result=result,
+                )
 
-                        ax.text(
-                            x_axis_max / 2,
-                            label_index,
-                            "FAILED",
-                            ha="center",
-                            va="center",
-                            fontsize="small",
-                            fontweight="bold",
-                            color="black",
-                            bbox={
-                                "facecolor": "white",
-                                "edgecolor": "none",
-                                "boxstyle": "round,pad=0.2",
-                            },
-                        )
-                    else:
-                        ax.barh(
-                            label_index,
-                            result.tokens_per_second,
-                            color=system_colors[label],
-                        )
-
-                        if result.tokens_per_second is not None:
-                            ax.text(
-                                result.tokens_per_second + x_axis_max * 0.01,
-                                label_index,
-                                f"{result.tokens_per_second:.1f}",
-                                ha="left",
-                                va="center",
-                                fontsize="x-small",
-                            )
-
-                else:
-                    ax.barh(
-                        label_index,
-                        x_axis_max,
-                        color="white",
-                        edgecolor=system_colors[label],
-                        hatch="///",
-                    )
-
-                    ax.text(
-                        x_axis_max / 2,
-                        label_index,
-                        "NO DATA",
-                        ha="center",
-                        va="center",
-                        fontsize="small",
-                        fontweight="bold",
-                        color="black",
-                        bbox={
-                            "facecolor": "white",
-                            "edgecolor": "none",
-                            "boxstyle": "round,pad=0.2",
-                        },
-                    )
-
+            # Axis Styling & Labels
             ax.set_yticks([])
             ax.set_title(quantization, fontsize=subplot_title_text_size)
             ax.grid(axis="x", linestyle=":", alpha=0.8)
@@ -544,69 +611,13 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
                 )
 
             if context_index == len(context_depths) - 1:
-                ax.set_xlabel(
-                    "Tokens / Second",
-                    fontsize=subplot_title_text_size,
-                )
+                ax.set_xlabel("Tokens / Second", fontsize="small")
 
     fig.supylabel("Context Depth")
-
-    fig.suptitle(
-        f"{title} — {model.value}",
-        fontsize="large",
+    _apply_legend_and_save(
+        fig=fig,
+        system_colors=system_colors,
+        title=title,
+        watermark=watermark,
+        output_path=output_path,
     )
-
-    legend_handles = [
-        plt.Rectangle((0, 0), 0.5, 1, color=color) for color in system_colors.values()
-    ]
-
-    legend_labels = list(system_colors.keys())
-
-    longest_label_length = max(
-        (len(label) for label in legend_labels),
-        default=0,
-    )
-
-    num_legend_columns = 1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3)
-
-    resulting_legend = fig.legend(
-        legend_handles,
-        legend_labels,
-        loc="outside lower center",
-        ncol=num_legend_columns,
-        frameon=True,
-        facecolor="#f5f5f5",
-        edgecolor="lightgrey",
-        fontsize="small",
-    )
-
-    legend_bbox = resulting_legend.get_window_extent(
-        fig.canvas.get_renderer()  # type: ignore[attr-defined]
-    )
-
-    legend_bbox_fig = legend_bbox.transformed(fig.transFigure.inverted())
-
-    tight_layout_bottom = max(legend_bbox_fig.y1, 0)
-
-    if watermark:
-        fig.text(
-            0.995,
-            0.5,
-            watermark,
-            fontsize="small",
-            color="gray",
-            alpha=0.6,
-            ha="right",
-            va="center",
-            rotation="vertical",
-        )
-
-    fig.tight_layout(
-        pad=1.5,
-        w_pad=2,
-        rect=(0, tight_layout_bottom, 0.96, 1),
-    )
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300)
-    plt.close(fig)
