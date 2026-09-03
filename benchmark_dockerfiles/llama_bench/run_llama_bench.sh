@@ -22,12 +22,24 @@ HF_CACHE_DIR="${HF_CACHE_DIR:-${MODEL_DIR}/.cache}"
 #   The GGUF file passed to llama-bench --model.
 #   For multipart GGUF models, this must be the first shard
 #   (for example: -00001-of-00012.gguf).
-MODEL_SPECS="${MODEL_SPECS:-[{"repo":"Qwen/Qwen2.5-1.5B-Instruct-GGUF","download":"qwen2.5-1.5b-instruct-q4_k_m*.gguf","entrypoint":"qwen2.5-1.5b-instruct-q4_k_m.gguf"}]}"
+
+DEFAULT_MODEL_SPECS='[{"repo": "unsloth/Qwen3.6-35B-A3B-GGUF", "download": "Qwen3.6-35B-A3B-Q4_K_M*.gguf", "entrypoint": "Qwen3.6-35B-A3B-Q4_K_M.gguf"}]'
+MODEL_SPECS="${MODEL_SPECS:-$DEFAULT_MODEL_SPECS}"
 
 NUM_PROMPT_TOKENS="${NUM_PROMPT_TOKENS:-512}"
 NUM_GENERATION_TOKENS="${NUM_GENERATION_TOKENS:-128}"
 NUM_REPETITIONS="${NUM_REPETITIONS:-10}"
 CONTEXT_DEPTH="${CONTEXT_DEPTH:-0}"
+
+# This catches cases where the env var is empty, corrupted, or invalid JSON.
+if ! echo "${MODEL_SPECS}" | jq empty >/dev/null 2>&1; then
+    echo "Error: MODEL_SPECS contains invalid JSON." >&2
+    echo "Raw content of MODEL_SPECS (full string):" >&2
+    # Logging the full raw content as requested to diagnose injection issues
+    echo "${MODEL_SPECS}" >&2
+    echo "----------------------------------------" >&2
+    exit 1
+fi
 
 mkdir -p "${HF_CACHE_DIR}"
 mkdir -p "${MODEL_DIR}"

@@ -205,13 +205,12 @@ The following quantizations are included for each model:
 
 As well as context lengths: 4K, 32K, 64K, 128K.
 
-The series of models is be:
+The series of models is:
 
 * Qwen 2.5 3B Instruct
 * Qwen 2.5 14B Instruct
 * Qwen 2.5 32B Instruct
 * Qwen 2.5 72B Instruct
-* Deepseek Coder V2 Lite
 * Gemma 4 8B
 * Gemma 4 12B
 * Gemma 4 26B

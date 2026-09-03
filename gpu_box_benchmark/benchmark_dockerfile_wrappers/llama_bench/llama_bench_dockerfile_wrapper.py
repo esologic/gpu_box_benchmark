@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
+from huggingface_hub import HfApi
 
 from benchmark_dockerfiles import LLAMA_BENCH_DOCKERFILE
 from gpu_box_benchmark import docker_wrapper
@@ -134,6 +135,39 @@ def _parse_docker_logs(container_outputs: ContainerOutputs) -> LlamaBenchOutputs
     )
 
 
+def verify_hf_model_specs(model_specs: List[HFModelSpec]) -> None:
+    """
+    Verifies that all model specs actually exist on Hugging Face.
+
+    :param model_specs: To verify.
+    :return: None
+    :raises RuntimeError: If a repo is invalid or an entrypoint file is missing.
+    """
+    api = HfApi()
+
+    for spec in model_specs:
+        # Check if the repository exists and is accessible
+        try:
+            # Fetching files validates access and network connectivity
+            files = api.list_repo_files(repo_id=spec.repo)
+        except Exception as e:
+            raise RuntimeError(f"Failed to verify repository '{spec.repo}': {e}") from e
+
+        # Verify the entrypoint file exists in that repo
+        if spec.entrypoint not in files:
+            # Suggest similar filenames to help debugging
+            potential_matches = [f for f in files if spec.entrypoint in f]
+            msg = (
+                f"Model entrypoint '{spec.entrypoint}' does not exist in "
+                f"repository '{spec.repo}'."
+            )
+            if potential_matches:
+                msg += "\nDid you mean one of the following?\n" + "\n".join(
+                    [f"  - {m}" for m in potential_matches]
+                )
+            raise RuntimeError(msg)
+
+
 def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     benchmark_name: BenchmarkName,
     version: str,
@@ -181,6 +215,9 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
 
     if llama_bench_parameters is None:
         return None
+
+    # Raises an exception if the given model/models don't exist on HF.
+    verify_hf_model_specs(llama_bench_parameters.model_specs)
 
     def run_llama_bench_docker() -> BenchmarkResult:
         """
@@ -258,10 +295,6 @@ _SUPPORTED_MODELS: Dict[LLMName, Tuple[str, ModelQuantization]] = {
     LLMName.qwen_2_5_72b_instruct: (
         "qwen_2_5_72b_instruct",
         hf_models.QWEN_2_5_72B_INSTRUCT,
-    ),
-    LLMName.deepseek_coder_v2_lite: (
-        "deepseek_coder_v2_lite",
-        hf_models.DEEPSEEK_CODER_V2_LITE,
     ),
     LLMName.gemma_4_8b: (
         "gemma_4_8b",
@@ -476,91 +509,6 @@ def read_throughput_results(
     return parsed_results
 
 
-_MODEL_SIZE_Q4_SPECS: List[HFModelSpec] = [
-    HFModelSpec(
-        repo="bartowski/Gigaberg-Mistral-Large-123B-GGUF",
-        download="Gigaberg-Mistral-Large-123B-Q4_K_M*.gguf",
-        entrypoint=(
-            "Gigaberg-Mistral-Large-123B-Q4_K_M/"
-            "Gigaberg-Mistral-Large-123B-Q4_K_M-00001-of-00002.gguf"
-        ),
-    ),
-    hf_models.QWEN_2_5_72B_INSTRUCT.q4,
-    hf_models.QWEN_2_5_32B_INSTRUCT.q4,
-    HFModelSpec(
-        repo="bartowski/gemma-2-27b-it-GGUF",
-        download="gemma-2-27b-it-Q4_K_M*.gguf",
-        entrypoint="gemma-2-27b-it-Q4_K_M.gguf",
-    ),
-    hf_models.QWEN_2_5_14B_INSTRUCT.q4,
-    HFModelSpec(
-        repo="Qwen/Qwen2.5-7B-Instruct-GGUF",
-        download="qwen2.5-7b-instruct-q4_k_m*.gguf",
-        entrypoint="qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
-    ),
-    hf_models.QWEN_2_5_3B_INSTRUCT.q4,
-    HFModelSpec(
-        repo="Qwen/Qwen2.5-1.5B-Instruct-GGUF",
-        download="qwen2.5-1.5b-instruct-q4_k_m*.gguf",
-        entrypoint="qwen2.5-1.5b-instruct-q4_k_m.gguf",
-    ),
-    HFModelSpec(
-        repo="Qwen/Qwen2.5-0.5B-Instruct-GGUF",
-        download="qwen2.5-0.5b-instruct-q4_k_m*.gguf",
-        entrypoint="qwen2.5-0.5b-instruct-q4_k_m.gguf",
-    ),
-]
-
-
-_MODEL_SIZE_Q8_SPECS: List[HFModelSpec] = [
-    HFModelSpec(
-        repo="bartowski/Gigaberg-Mistral-Large-123B-GGUF",
-        download="Gigaberg-Mistral-Large-123B-Q8_0*.gguf",
-        entrypoint=(
-            "Gigaberg-Mistral-Large-123B-Q8_0/"
-            "Gigaberg-Mistral-Large-123B-Q8_0-00001-of-00004.gguf"
-        ),
-    ),
-    hf_models.QWEN_2_5_72B_INSTRUCT.q8,
-    hf_models.QWEN_2_5_32B_INSTRUCT.q8,
-    hf_models.GEMMA_4_31B.q8,
-    HFModelSpec(
-        repo="bartowski/gemma-2-27b-it-GGUF",
-        download="gemma-2-27b-it-Q8_0*.gguf",
-        entrypoint="gemma-2-27b-it-Q8_0.gguf",
-    ),
-    # 16B Parameter Model
-    hf_models.DEEPSEEK_CODER_V2_LITE.q8,
-    hf_models.QWEN_2_5_14B_INSTRUCT.q8,
-    HFModelSpec(
-        repo="Qwen/Qwen2.5-7B-Instruct-GGUF",
-        download="qwen2.5-7b-instruct-q8_0*.gguf",
-        entrypoint="qwen2.5-7b-instruct-q8_0-00001-of-00003.gguf",
-    ),
-    hf_models.QWEN_2_5_3B_INSTRUCT.q8,
-    HFModelSpec(
-        repo="Qwen/Qwen2.5-1.5B-Instruct-GGUF",
-        download="qwen2.5-1.5b-instruct-q8_0*.gguf",
-        entrypoint="qwen2.5-1.5b-instruct-q8_0.gguf",
-    ),
-    HFModelSpec(
-        repo="Qwen/Qwen2.5-0.5B-Instruct-GGUF",
-        download="qwen2.5-0.5b-instruct-q8_0*.gguf",
-        entrypoint="qwen2.5-0.5b-instruct-q8_0.gguf",
-    ),
-]
-
-
-_MODEL_SIZE_F16_SPECS: List[HFModelSpec] = [
-    hf_models.QWEN_3_6_35B.f16,
-    hf_models.GEMMA_4_31B.f16,
-    hf_models.QWEN_3_6_27B.f16,
-    hf_models.QWEN_2_5_14B_INSTRUCT.f16,
-    hf_models.GEMMA_4_E4B_8B.f16,
-    hf_models.GEMMA_4_12B.f16,
-]
-
-
 def create_llama_bench_max_model_parameters_executor(
     benchmark_name: BenchmarkName,
     gpus: Tuple[GPUIdentity, ...],
@@ -604,22 +552,22 @@ def create_llama_bench_max_model_parameters_executor(
         version=_LLAMA_BENCH_MAX_MODEL_PARAMETERS_VERSION,
         name_to_parameters={
             BenchmarkName.llama_bench_max_model_parameters_q4_4k_ctx: make_params(
-                model_specs=_MODEL_SIZE_Q4_SPECS, context_depth=CONTEXT_DEPTH_4K
+                model_specs=hf_models.MODEL_SIZE_Q4_SPECS, context_depth=CONTEXT_DEPTH_4K
             ),
             BenchmarkName.llama_bench_max_model_parameters_q4_32k_ctx: make_params(
-                model_specs=_MODEL_SIZE_Q4_SPECS, context_depth=CONTEXT_DEPTH_32K
+                model_specs=hf_models.MODEL_SIZE_Q4_SPECS, context_depth=CONTEXT_DEPTH_32K
             ),
             BenchmarkName.llama_bench_max_model_parameters_q8_4k_ctx: make_params(
-                model_specs=_MODEL_SIZE_Q8_SPECS, context_depth=CONTEXT_DEPTH_4K
+                model_specs=hf_models.MODEL_SIZE_Q8_SPECS, context_depth=CONTEXT_DEPTH_4K
             ),
             BenchmarkName.llama_bench_max_model_parameters_q8_32k_ctx: make_params(
-                model_specs=_MODEL_SIZE_Q8_SPECS, context_depth=CONTEXT_DEPTH_32K
+                model_specs=hf_models.MODEL_SIZE_Q8_SPECS, context_depth=CONTEXT_DEPTH_32K
             ),
             BenchmarkName.llama_bench_max_model_parameters_f16_4k_ctx: make_params(
-                model_specs=_MODEL_SIZE_F16_SPECS, context_depth=CONTEXT_DEPTH_4K
+                model_specs=hf_models.MODEL_SIZE_F16_SPECS, context_depth=CONTEXT_DEPTH_4K
             ),
             BenchmarkName.llama_bench_max_model_parameters_f16_32k_ctx: make_params(
-                model_specs=_MODEL_SIZE_F16_SPECS, context_depth=CONTEXT_DEPTH_32K
+                model_specs=hf_models.MODEL_SIZE_F16_SPECS, context_depth=CONTEXT_DEPTH_32K
             ),
         },
         verbose_unit="Loaded Parameters",

@@ -72,7 +72,6 @@ class LLMName(str, Enum):
     qwen_2_5_14b_instruct = "Qwen 2.5 14B Instruct"
     qwen_2_5_32b_instruct = "Qwen 2.5 32B Instruct"
     qwen_2_5_72b_instruct = "Qwen 2.5 72B Instruct"
-    deepseek_coder_v2_lite = "DeepSeek Coder V2 Lite"
     gemma_4_8b = "Gemma 4 8B"
     gemma_4_12b = "Gemma 4 12B"
     gemma_4_26b = "Gemma 4 26B"

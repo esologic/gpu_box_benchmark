@@ -106,20 +106,6 @@ class BenchmarkName(str, Enum):
     llama_bench_qwen_2_5_72b_instruct_f16_64k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_f16_64k_ctx_generation"
     llama_bench_qwen_2_5_72b_instruct_f16_128k_ctx_generation = "llama_bench_qwen_2_5_72b_instruct_f16_128k_ctx_generation"
 
-    # Deepseek Coder V2 Lite
-    llama_bench_deepseek_coder_v2_lite_q4_4k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q4_4k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_q4_32k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q4_32k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_q4_64k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q4_64k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_q4_128k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q4_128k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_q8_4k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q8_4k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_f16_4k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_f16_4k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_f16_32k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_f16_32k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_f16_64k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_f16_64k_ctx_generation"
-    llama_bench_deepseek_coder_v2_lite_f16_128k_ctx_generation = "llama_bench_deepseek_coder_v2_lite_f16_128k_ctx_generation"
-
     # Gemma 4 8B
     llama_bench_gemma_4_8b_q4_4k_ctx_generation = "llama_bench_gemma_4_8b_q4_4k_ctx_generation"
     llama_bench_gemma_4_8b_q4_32k_ctx_generation = "llama_bench_gemma_4_8b_q4_32k_ctx_generation"
@@ -304,20 +290,6 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_32k_ctx_generation: "llama.cpp Qwen2.5 72B F16 Generation (32K)",
     BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_64k_ctx_generation: "llama.cpp Qwen2.5 72B F16 Generation (64K)",
     BenchmarkName.llama_bench_qwen_2_5_72b_instruct_f16_128k_ctx_generation: "llama.cpp Qwen2.5 72B F16 Generation (128K)",
-
-    # DeepSeek Coder V2 Lite
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_4k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (4K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_32k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (32K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_64k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (64K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q4_128k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q4_K_M Generation (128K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_4k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (4K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_32k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (32K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_64k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (64K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_q8_128k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite Q8 Generation (128K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_4k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (4K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_32k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (32K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_64k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (64K)",
-    BenchmarkName.llama_bench_deepseek_coder_v2_lite_f16_128k_ctx_generation: "llama.cpp DeepSeek Coder V2 Lite F16 Generation (128K)",
 
     # Gemma 4 8B
     BenchmarkName.llama_bench_gemma_4_8b_q4_4k_ctx_generation: "llama.cpp Gemma 4 8B Q4_K_M Generation (4K)",
