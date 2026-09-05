@@ -22,6 +22,11 @@ that records GPU energy consumption for a given benchmark.
 quantization, context depth, model and system build. The `compare-llm-families` does the same thing
 but creates a viz for all the families in the input files.
 
+TODO: Pre-Post 2
+
+* `compare-system` with power mode. Y axis result, X axis power for each subplot.
+* `llama-bench` paralellization improvement from L1T forum feedback.
+
 ### 0.7.0 - (2026-07-11)
 
 * Added `--x-label` and `--labeled-input` to comparison mode to be able to have more control over
