@@ -26,7 +26,7 @@ from gpu_box_benchmark.benchmark_types import (
 )
 
 
-class XLabelBase(str, Enum):
+class LabelBase(str, Enum):
     """
     Options for the basis of the labels on the x axis of the graphs in the resulting visualizations.
     """
@@ -55,17 +55,17 @@ def _extract_critical_value(result: BenchmarkResult) -> float | None:
     return cast(float | None, getattr(result.numerical_results, key))
 
 
-def _row_title_from_base(index: int, evaluation: SystemEvaluation, x_label_base: XLabelBase) -> str:
+def render_legend_title(index: int, evaluation: SystemEvaluation, label_base: LabelBase) -> str:
     """
     Create a row title for the given evaluation.
     :param index: The index evaluation in the larger batch.
     :param evaluation: To read.
-    :param x_label_base: Selects which field in the evaluation is the basis for the resulting value.
+    :param label_base: Selects which field in the evaluation is the basis for the resulting value.
     :return: Depends on `x_label_base`. For gpu: the count of each GPU and type of GPU sorted by
     quantity as a stwing.
     """
 
-    if x_label_base == XLabelBase.gpu:
+    if label_base == LabelBase.gpu:
         return f"#{index}: " + ",".join(
             [
                 f"{v}X {k}"
@@ -74,14 +74,14 @@ def _row_title_from_base(index: int, evaluation: SystemEvaluation, x_label_base:
                 )
             ]
         )
-    elif x_label_base == XLabelBase.cpu:
+    elif label_base == LabelBase.cpu:
         return (
             f"#{index}: " + f"Phys. {evaluation.cpu.physical_cpus}, "
             f"Logi. {evaluation.cpu.logical_cpus} "
             f"- {evaluation.cpu.name}"
         )
     else:
-        raise ValueError(f"Unsupported x_label_base: {x_label_base}")
+        raise ValueError(f"Unsupported label_base: {label_base}")
 
 
 def _names_in_evaluation(evaluation: SystemEvaluation) -> Set[BenchmarkName]:
@@ -111,7 +111,7 @@ class EvaluationsBase(NamedTuple):
     """
 
     evaluations: Tuple[SystemEvaluation, ...]
-    x_label_base: XLabelBase
+    label_base: LabelBase
 
 
 def benchmark_names_from_evaluations(
@@ -300,10 +300,10 @@ def _system_evaluations_to_dataframe(
 
     for index, unlabeled_evaluation in enumerate(evaluations_and_base.evaluations, start=1):
 
-        row_title = _row_title_from_base(
+        row_title = render_legend_title(
             index=index,
             evaluation=unlabeled_evaluation,
-            x_label_base=evaluations_and_base.x_label_base,
+            label_base=evaluations_and_base.label_base,
         )
 
         rows[row_title] = column_values_dict(evaluation=unlabeled_evaluation)

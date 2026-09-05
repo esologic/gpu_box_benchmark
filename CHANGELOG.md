@@ -19,7 +19,8 @@ parameters that can be loaded into the attached GPUs using real models.
 * Added a new field `gpu_power_usage` (and type `ReportFileGPUPowerUsage`) to `BenchmarkResult`
 that records GPU energy consumption for a given benchmark.
 * Added a new visualization mode `compare-llms` specifically to look at LLM performance when varying
-quantization, context depth, model and system build. 
+quantization, context depth, model and system build. The `compare-llm-families` does the same thing
+but creates a viz for all the families in the input files.
 
 ### 0.7.0 - (2026-07-11)
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from gpu_box_benchmark.benchmark_types import BenchmarkName, SystemEvaluation
 from gpu_box_benchmark import benchmark_types
 from gpu_box_benchmark import visualization
-from gpu_box_benchmark.visualization import EvaluationsBase, XLabelBase
+from gpu_box_benchmark.visualization import EvaluationsBase, LabelBase
 from test import assets
 from _pytest._py.path import LocalPath
 
@@ -31,7 +31,7 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
     visualization.create_comparison_visualization(
         evaluations_and_base=EvaluationsBase(
             evaluations=_SAMPLE_EVALUATIONS,
-            x_label_base=XLabelBase.gpu,
+            label_base=LabelBase.gpu,
         ),
         labeled_evaluations=tuple(),
         output_path=Path(tmpdir) / "sample_output.png",
@@ -83,15 +83,15 @@ def get_benchmark_iterator(
     [
         EvaluationsBase(
             evaluations=_SAMPLE_EVALUATIONS,
-            x_label_base=XLabelBase.gpu,
+            label_base=LabelBase.gpu,
         ),
         EvaluationsBase(
             evaluations=_SAMPLE_EVALUATIONS,
-            x_label_base=XLabelBase.cpu,
+            label_base=LabelBase.cpu,
         ),
         EvaluationsBase(
             evaluations=tuple(),
-            x_label_base=XLabelBase.gpu,
+            label_base=LabelBase.gpu,
         ),
     ],
 )

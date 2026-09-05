@@ -39,6 +39,10 @@ from gpu_box_benchmark.benchmark_types import (
 from gpu_box_benchmark.docker_wrapper import ContainerOutputs, OutputsToResult
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 
+logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 LOGGER = logging.getLogger(__name__)
 
 _LLAMA_BENCH_PERFORMANCE_VERSION = "0.4.0"
@@ -449,11 +453,13 @@ def read_throughput_results(
     label: str,
 ) -> List[LLMThroughputResult]:
     """
-    Reads out the different
-    :param complete_results:
-    :param failed_tests:
-    :param label:
-    :return:
+    Parses out the details from a series of LLM throughput tests into a set of structs ready
+    for visualization.
+    :param complete_results: Contains the LLM benchmark results. Output from a complete results
+    parse.
+    :param failed_tests: Failed tests in the parse.
+    :param label: Used to aid visualization, added to the output.
+    :return: A list of parsed NTs from the input.
     """
 
     parsed_results: List[LLMThroughputResult] = []

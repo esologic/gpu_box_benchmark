@@ -19,7 +19,10 @@ from gpu_box_benchmark import visualization
 from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
     llama_bench_dockerfile_wrapper,
 )
-from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import LLMName
+from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import (
+    LLMName,
+    LLMThroughputResult,
+)
 from gpu_box_benchmark.benchmark_types import (
     BENCHMARK_TO_PRETTY,
     EXTENDED_BENCHMARK_DOCUMENTS,
@@ -42,7 +45,7 @@ from gpu_box_benchmark.locate_describe_hardware import (
     discover_gpus,
 )
 from gpu_box_benchmark.render_systemd import render_systemd_file
-from gpu_box_benchmark.visualization import EvaluationsBase, XLabelBase
+from gpu_box_benchmark.visualization import EvaluationsBase, LabelBase
 
 LOGGER_FORMAT = "[%(asctime)s - %(levelname)s] %(message)s"
 LOGGER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -398,14 +401,14 @@ INPUT_OPTION = click.option(
     multiple=True,
 )
 
-X_LABEL_OPTION = options.create_enum_option(
-    "--x-label",
+LEGEND_LABEL_OPTION = options.create_enum_option(
+    "--legend-label",
     help_message=(
-        "Default basis for the X label. This will be overriden if a label is "
+        "Default basis for the legend label. This will be overriden if a label is "
         "specifically provided for the run."
     ),
-    input_enum=XLabelBase,
-    default=XLabelBase.gpu,
+    input_enum=LabelBase,
+    default=LabelBase.gpu,
 )
 
 LABELED_INPUT_OPTION = click.option(
@@ -436,7 +439,7 @@ OUTPUT_OPTION = click.option(
 
 TITLE_OPTION = click.option(
     "--title",
-    default="Comparison",
+    default=None,
     show_default=True,
     help="Written on the top of the figure.",
     type=click.STRING,
@@ -459,7 +462,7 @@ FONT_FAMILY_OPTION = click.option(
 
 @cli.command(name="compare-systems", short_help="Draw graphs comparing benchmark outputs.")
 @INPUT_OPTION
-@X_LABEL_OPTION
+@LEGEND_LABEL_OPTION
 @LABELED_INPUT_OPTION
 @OUTPUT_OPTION
 @TITLE_OPTION
@@ -494,9 +497,9 @@ FONT_FAMILY_OPTION = click.option(
 def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
     labeled_input: Tuple[Tuple[Path, str], ...],
-    x_label: XLabelBase,
+    legend_label: LabelBase,
     output_path: Path,
-    title: str,
+    title: Optional[str],
     flatten_versions: bool,
     only_test: Tuple[BenchmarkName, ...],
     n_cols: int,
@@ -511,7 +514,7 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
 
     :param input_path: See click help for docs!
     :param labeled_input: See click help for docs!
-    :param x_label: See click help for docs!
+    :param legend_label: See click help for docs!
     :param output_path: See click help for docs!
     :param title: See click help for docs!
     :param flatten_versions: See click help for docs!
@@ -529,7 +532,7 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     visualization.create_comparison_visualization(
         evaluations_and_base=EvaluationsBase(
             evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
-            x_label_base=x_label,
+            label_base=legend_label,
         ),
         labeled_evaluations=tuple(
             (
@@ -539,7 +542,7 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
         ),
         flatten_versions=flatten_versions,
         output_path=output_path,
-        title=title,
+        title=title if title is not None else "Comparison",
         only_render_tests=only_test,
         n_cols=n_cols,
         watermark=watermark,
@@ -547,12 +550,42 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     )
 
 
+def cli_inputs_to_llm_results(
+    input_path: Tuple[Path, ...], legend_label: LabelBase
+) -> Tuple[LLMThroughputResult, ...]:
+    """
+    Helper function to take user input and generate a set of NTs for plotting.
+    :param input_path: List of input evaluations on disk.
+    :param legend_label: Decides how plots are labeled in the legend.
+    :return: NTs for plotting.
+    """
+
+    results: Tuple[LLMThroughputResult, ...] = tuple(
+        itertools.chain.from_iterable(
+            [
+                llama_bench_dockerfile_wrapper.read_throughput_results(
+                    complete_results=evaluation.results,
+                    failed_tests=evaluation.failed_tests,
+                    label=visualization.render_legend_title(
+                        index=label_index, evaluation=evaluation, label_base=legend_label
+                    ),
+                )
+                for label_index, evaluation in enumerate(
+                    map(load_system_evaluation_from_disk, input_path), start=1
+                )
+            ]
+        )
+    )
+
+    return results
+
+
 @cli.command(
     name="compare-llms",
     short_help="Draw graphs comparing LLM context depth, Quantization and System Performance.",
 )
 @INPUT_OPTION
-@X_LABEL_OPTION
+@LEGEND_LABEL_OPTION
 @OUTPUT_OPTION
 @TITLE_OPTION
 @WATERMARK_OPTION
@@ -566,9 +599,9 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
 )
 def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
-    x_label: XLabelBase,
+    legend_label: LabelBase,
     output_path: Path,
-    title: str,
+    title: Optional[str],
     watermark: Optional[str],
     font_family: Optional[str],
     llm: LLMName,
@@ -579,7 +612,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     \f
 
     :param input_path: See click help for docs!
-    :param x_label: See click help for docs!
+    :param legend_label: See click help for docs!
     :param output_path: See click help for docs!
     :param title: See click help for docs!
     :param watermark: See click help for docs!
@@ -591,31 +624,82 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     if font_family is not None:
         plt.rcParams["font.family"] = font_family
 
-    evaluations_and_base = EvaluationsBase(
-        evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
-        x_label_base=x_label,
-    )
-
-    results = tuple(
-        itertools.chain.from_iterable(
-            [
-                llama_bench_dockerfile_wrapper.read_throughput_results(
-                    complete_results=evaluation.results,
-                    failed_tests=evaluation.failed_tests,
-                    label=evaluation.title,
-                )
-                for evaluation in evaluations_and_base.evaluations
-            ]
-        )
+    results: Tuple[LLMThroughputResult, ...] = cli_inputs_to_llm_results(
+        input_path=input_path, legend_label=legend_label
     )
 
     visualization.create_llm_throughput_visualization(
         results=results,
         model=llm,
         output_path=output_path,
-        title=title,
+        title=title if title is not None else llm.value,
         watermark=watermark,
     )
+
+
+@cli.command(
+    name="compare-llm-families",
+    short_help=(
+        "Draw graphs comparing LLM context depth, Quantization and "
+        "System Performance for all models families."
+    ),
+)
+@INPUT_OPTION
+@LEGEND_LABEL_OPTION
+@click.option(
+    "--output-dir",
+    type=click.Path(dir_okay=True, file_okay=False, writable=True, path_type=Path),
+    default=Path().cwd().joinpath("llm_families"),
+    show_default=True,
+    help="Output viz are all written to this directory.",
+)
+@WATERMARK_OPTION
+@FONT_FAMILY_OPTION
+def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    input_path: Tuple[Path, ...],
+    legend_label: LabelBase,
+    output_dir: str,
+    watermark: Optional[str],
+    font_family: Optional[str],
+) -> None:
+    """
+    Iterates through all supported LLMs and generates a comparison visualization for each.
+
+    \f
+
+    :param input_path: See click help for docs!
+    :param legend_label: See click help for docs!
+    :param output_dir: Directory to save the generated images.
+    :param title: See click help for docs!
+    :param watermark: See click help for docs!
+    :param font_family: See click help for docs!
+    :return: None
+    """
+
+    if font_family is not None:
+        plt.rcParams["font.family"] = font_family
+
+    results: Tuple[LLMThroughputResult, ...] = cli_inputs_to_llm_results(
+        input_path=input_path, legend_label=legend_label
+    )
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Iterate over all supported LLMs and generate plots
+    for index, model in enumerate(LLMName):
+
+        model = LLMName(model)
+
+        sanitized_model = model.value.replace(" ", "_").lower()
+        output_path = Path(output_dir) / f"llm_{index}_{sanitized_model}.png"
+
+        visualization.create_llm_throughput_visualization(
+            results=results,
+            model=model,
+            output_path=output_path,
+            title=model.value,
+            watermark=watermark,
+        )
 
 
 if __name__ == "__main__":
