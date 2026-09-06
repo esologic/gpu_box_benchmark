@@ -21,11 +21,12 @@ that records GPU energy consumption for a given benchmark.
 * Added a new visualization mode `compare-llms` specifically to look at LLM performance when varying
 quantization, context depth, model and system build. The `compare-llm-families` does the same thing
 but creates a viz for all the families in the input files.
+* Added several `llama-bench` tests that use `--tensor-split` across attached GPUs per feedback from
+first post.
 
 TODO: Pre-Post 2
 
 * `compare-system` with power mode. Y axis result, X axis power for each subplot.
-* `llama-bench` paralellization improvement from L1T forum feedback.
 
 ### 0.7.0 - (2026-07-11)
 

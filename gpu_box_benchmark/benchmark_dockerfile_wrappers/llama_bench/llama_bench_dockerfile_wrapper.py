@@ -250,9 +250,12 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
                 ("NUM_REPETITIONS", str(llama_bench_parameters.repetitions)),
                 ("CONTEXT_DEPTH", str(llama_bench_parameters.context_depth)),
                 (
-                    # TODO: We can add a few specific test with tensor split enabled
                     "TENSOR_SPLIT",
-                    ",".join(["1"] * len(runtime_gpus) if (len(runtime_gpus) > 1) else "0"),
+                    ",".join(
+                        ["1"] * len(runtime_gpus)
+                        if (len(runtime_gpus) > 1 and llama_bench_parameters.even_tensor_split)
+                        else "0"
+                    ),
                 ),
             ],
             multi_gpu_native=multi_gpu_native,
@@ -383,6 +386,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             generation_tokens=0,
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
+            even_tensor_split=False,
         ),
         BenchmarkName.llama_bench_qwen_2_5_1_5b_instruct_generation: LlamaBenchParams(
             model_specs=[hf_models.QWEN_2_5_1_5B_MODEL],
@@ -390,6 +394,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             generation_tokens=_NUM_TEST_TOKENS,
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
+            even_tensor_split=False,
         ),
         # --- Meta Llama 3 8B (Dense) ---
         BenchmarkName.llama_bench_meta_llama_3_8b_instruct_prompt: LlamaBenchParams(
@@ -398,6 +403,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             generation_tokens=0,
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
+            even_tensor_split=False,
         ),
         BenchmarkName.llama_bench_meta_llama_3_8b_instruct_generation: LlamaBenchParams(
             model_specs=[hf_models.META_LLAMA_3_8B_MODEL],
@@ -405,6 +411,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             generation_tokens=_NUM_TEST_TOKENS,
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
+            even_tensor_split=False,
         ),
         # --- Qwen 1.5 MoE A2.7B (Sparse MoE) ---
         BenchmarkName.llama_bench_qwen_1_5_moe_chat_prompt: LlamaBenchParams(
@@ -413,6 +420,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             generation_tokens=0,
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
+            even_tensor_split=False,
         ),
         BenchmarkName.llama_bench_qwen_1_5_moe_chat_generation: LlamaBenchParams(
             model_specs=[hf_models.QWEN_1_5_MOE_MODEL],
@@ -420,6 +428,15 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
             generation_tokens=_NUM_TEST_TOKENS,
             context_depth=0,
             repetitions=_NUM_REPETITIONS,
+            even_tensor_split=False,
+        ),
+        BenchmarkName.llama_bench_gemma_4_8b_q4_4k_ctx_generation_e_tensor_split: LlamaBenchParams(
+            model_specs=[hf_models.GEMMA_4_E4B_8B.q4],
+            prompt_tokens=0,
+            generation_tokens=_NUM_TEST_TOKENS,
+            context_depth=CONTEXT_DEPTH_4K,
+            repetitions=_NUM_REPETITIONS,
+            even_tensor_split=True,
         ),
     }
 
@@ -431,6 +448,7 @@ def create_llama_bench_throughput_executor(  # pylint: disable=too-many-locals
                 generation_tokens=_NUM_TEST_TOKENS,
                 context_depth=definition.context_depth,
                 repetitions=_NUM_REPETITIONS,
+                even_tensor_split=False,
             )
             for definition in _LLM_BENCHMARK_DEFINITIONS
         }
@@ -556,6 +574,7 @@ def create_llama_bench_max_model_parameters_executor(
             generation_tokens=1,
             context_depth=context_depth,
             repetitions=1,
+            even_tensor_split=False,
         )
 
     return _abstract_llama_bench_executor(

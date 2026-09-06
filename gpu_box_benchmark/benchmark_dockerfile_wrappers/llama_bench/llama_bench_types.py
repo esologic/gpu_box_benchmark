@@ -52,6 +52,7 @@ class LlamaBenchParams(NamedTuple):
     generation_tokens: int
     context_depth: int
     repetitions: int
+    even_tensor_split: bool
 
 
 class LlamaBenchOutputs(NamedTuple):

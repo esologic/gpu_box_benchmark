@@ -36,17 +36,17 @@ class BenchmarkName(str, Enum):
     The different benchmarks the user can choose from.
     """
 
+    # ResNet Benchmarks
     resnet50_train_batch_1 = "resnet50_train_batch_1"
     resnet50_train_batch_64 = "resnet50_train_batch_64"
     resnet50_infer_batch_1 = "resnet50_infer_batch_1"
     resnet50_infer_batch_256 = "resnet50_infer_batch_256"
 
+    # Original LLM Benchmarks
     llama_bench_qwen_2_5_1_5b_instruct_prompt = "llama_bench_qwen_2_5_1_5b_instruct_prompt"
     llama_bench_qwen_2_5_1_5b_instruct_generation = "llama_bench_qwen_2_5_1_5b_instruct_generation"
-
     llama_bench_meta_llama_3_8b_instruct_prompt = "llama_bench_meta_llama_3_8b_instruct_prompt"
     llama_bench_meta_llama_3_8b_instruct_generation = "llama_bench_meta_llama_3_8b_instruct_generation"
-
     llama_bench_qwen_1_5_moe_chat_prompt = "llama_bench_qwen_1_5_moe_chat_prompt"
     llama_bench_qwen_1_5_moe_chat_generation = "llama_bench_qwen_1_5_moe_chat_generation"
 
@@ -190,6 +190,7 @@ class BenchmarkName(str, Enum):
     llama_bench_qwen_3_6_35b_f16_64k_ctx_generation = "llama_bench_qwen_3_6_35b_f16_64k_ctx_generation"
     llama_bench_qwen_3_6_35b_f16_128k_ctx_generation = "llama_bench_qwen_3_6_35b_f16_128k_ctx_generation"
 
+    # Maximum Model Size
     llama_bench_max_model_parameters_q4_4k_ctx = "llama_bench_max_model_parameters_q4_4k_ctx"
     llama_bench_max_model_parameters_q4_32k_ctx = "llama_bench_max_model_parameters_q4_32k_ctx"
     llama_bench_max_model_parameters_q8_4k_ctx = "llama_bench_max_model_parameters_q8_4k_ctx"
@@ -197,22 +198,33 @@ class BenchmarkName(str, Enum):
     llama_bench_max_model_parameters_f16_4k_ctx = "llama_bench_max_model_parameters_f16_4k_ctx"
     llama_bench_max_model_parameters_f16_32k_ctx = "llama_bench_max_model_parameters_f16_32k_ctx"
 
+    # Even Tensor Split loads models into the GPUs differently
+    # TODO: Add more to the series here
+    llama_bench_gemma_4_8b_q4_4k_ctx_generation_e_tensor_split = "llama_bench_gemma_4_8b_q4_4k_ctx_generation_e_tensor_split"
+
+    # More Traditional GPU Usage
     blender_benchmark_monster_cpu = "blender_benchmark_monster_cpu"
     blender_benchmark_monster_gpu = "blender_benchmark_monster_gpu"
 
+    # Folding At Home
     fah_bench_single = "fah_bench_single"
     fah_bench_double = "fah_bench_double"
 
+    # Off-the shelf AI benchmark
     ai_benchmark = "ai_benchmark"
 
+    # Audio Transcription
     whisper_medium_fp16 = "whisper_medium_fp16"
 
+    # Image Processing
     content_aware_timelapse_vit_scores = "content_aware_timelapse_vit_scores"
     content_aware_timelapse_vit_attention = "content_aware_timelapse_vit_attention"
 
+    # Measures how quickly data can get to GPU
     gdsio_type_0 = "gdsio_type_0"
     gdsio_type_2 = "gdsio_type_2"
 
+    # Number hashing
     hashcat_sha256 = "hashcat_sha256"
 
 BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
@@ -382,6 +394,9 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     BenchmarkName.llama_bench_max_model_parameters_q8_32k_ctx: "llama.cpp Max Model Parameters (Q8) + 32K Context",
     BenchmarkName.llama_bench_max_model_parameters_f16_4k_ctx: "llama.cpp Max Model Parameters (F16) + 4K Context",
     BenchmarkName.llama_bench_max_model_parameters_f16_32k_ctx: "llama.cpp Max Model Parameters (F16) + 32K Context",
+
+    # Even Tensor Split
+    BenchmarkName.llama_bench_gemma_4_8b_q4_4k_ctx_generation_e_tensor_split: "llama.cpp Gemma 4 8B Q4_K_M Generation (4K) Tensor Split",
 
     # Hardware & Other Benchmarks
     BenchmarkName.blender_benchmark_monster_cpu: "Blender CPU",
