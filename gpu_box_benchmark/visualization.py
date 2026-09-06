@@ -475,10 +475,8 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     # Use helper for figure and grid creation (sharex=False for vertical bar charts)
     fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False)
 
-    unique_labels = set(df_specs.df.index)
-
     system_colors: Dict[str, str] = dict(
-        zip(unique_labels, _generate_color_palette(len(unique_labels)))
+        zip(df_specs.df.index, _generate_color_palette(len(df_specs.df.index)))
     )
 
     for ax, column in zip(axes, df_specs.df.columns):
