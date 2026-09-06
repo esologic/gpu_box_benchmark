@@ -30,6 +30,7 @@ NUM_PROMPT_TOKENS="${NUM_PROMPT_TOKENS:-512}"
 NUM_GENERATION_TOKENS="${NUM_GENERATION_TOKENS:-128}"
 NUM_REPETITIONS="${NUM_REPETITIONS:-10}"
 CONTEXT_DEPTH="${CONTEXT_DEPTH:-0}"
+TENSOR_SPLIT="${TENSOR_SPLIT:-0}"
 
 # This catches cases where the env var is empty, corrupted, or invalid JSON.
 if ! echo "${MODEL_SPECS}" | jq empty >/dev/null 2>&1; then
@@ -88,11 +89,11 @@ while IFS=$'\t' read -r repo download entrypoint; do
         --n-depth "${CONTEXT_DEPTH}" \
         --n-prompt "${NUM_PROMPT_TOKENS}" \
         --n-gen "${NUM_GENERATION_TOKENS}" \
-        --n-gpu-layers -1 \
         --no-host \
         --no-kv-offload=false \
         --flash-attn 1 \
         --n-cpu-moe 0 \
+        --tensor-split "${TENSOR_SPLIT}" \
         > "${TEMP_OUT}" \
         2> "${TEMP_ERR}"; then
 
@@ -105,9 +106,7 @@ while IFS=$'\t' read -r repo download entrypoint; do
         {
             echo "Error for model: ${current_model}"
             cat "${TEMP_ERR}"
-            echo
             echo "----------------------------------------"
-            echo
         } >> "${ERROR_LOG}"
     fi
 

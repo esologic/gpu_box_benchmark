@@ -8,6 +8,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, cast
 
+import matplotlib.colors as mcolors
 import pandas as pd
 from matplotlib import pyplot as plt
 
@@ -164,7 +165,7 @@ def _create_grid(
 
 def _apply_legend_and_save(
     fig: plt.Figure,
-    system_colors: Dict[str, str],
+    label_to_color: Dict[str, str],
     title: str,
     watermark: Optional[str],
     output_path: Path,
@@ -172,19 +173,20 @@ def _apply_legend_and_save(
     """
     Consolidated logic for calculating layout, adding the legend, applying the
     watermark, and saving the figure.
-    :param fig:
-    :param system_colors:
-    :param title:
-    :param watermark:
-    :param output_path:
-    :return:
+    :param fig: To draw.
+    :param label_to_color: Mapping describing how to draw the legend.
+    :param title: Super title of the figure.
+    :param watermark: Drawn on the right hand side of the output if given.
+    :param output_path: Desired output path.
+    :return: None
     """
 
     # Legend Calculation
     legend_handles = [
-        plt.Rectangle((0, 0), 0.5, 1, color=color) for color in system_colors.values()
+        plt.Rectangle((0, 0), 0.5, 1, color=color) for color in label_to_color.values()
     ]
-    legend_labels = list(system_colors.keys())
+
+    legend_labels: List[str] = list(label_to_color.keys())
 
     longest_label_length = max((len(label) for label in legend_labels), default=0)
     num_legend_columns = 1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3)
@@ -223,6 +225,7 @@ def _apply_legend_and_save(
 
     # Apply Suptitle and Layout
     fig.suptitle(title, fontsize="large")
+
     # Using 0.96 on the right to prevent layout overlap issues with watermark/text
     fig.tight_layout(pad=1.5, w_pad=2, rect=(0, tight_layout_bottom, 0.96, 1))
 
@@ -317,141 +320,6 @@ def _system_evaluations_to_dataframe(
     return _DFSpecs(df=df, specs={col: specs[col] for col in df.columns})
 
 
-def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many-positional-arguments
-    evaluations_and_base: EvaluationsBase,
-    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
-    flatten_versions: bool,
-    output_path: Path,
-    title: str,
-    only_render_tests: Tuple[BenchmarkName, ...],
-    n_cols: int,
-    watermark: Optional[str],
-    y_axis_pad_pct: Optional[float],
-) -> None:
-    """
-    Create a comparison visualization with one subplot per benchmark.
-
-    :param evaluations_and_base: To convert.
-    :param labeled_evaluations: To convert.
-    :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
-    :param output_path: Where to write the resulting image.
-    :param title: Overall figure title.
-    :param only_render_tests: Only benchmarks with these names will be included in the output
-    visualization.
-    :param n_cols: Number of columns to show.
-    to show before truncation.
-    :param watermark: String written along the right center of the image.
-    :param y_axis_pad_pct: If given, The y-axis range of each subplot is restricted to this value
-    multiplied by the min max values in the y range to clearly show the ranking. If not given,
-    auto y-axis settings are used.
-    :return: None
-    """
-
-    df_specs: _DFSpecs = _system_evaluations_to_dataframe(
-        evaluations_and_base=evaluations_and_base,
-        labeled_evaluations=labeled_evaluations,
-        flatten_versions=flatten_versions,
-        only_render_tests=only_render_tests,
-    )
-
-    if df_specs.df.empty:
-        raise ValueError("No benchmark data available to plot")
-
-    n_plots = len(df_specs.df.columns)
-    n_rows = math.ceil(n_plots / n_cols)
-
-    # Use helper for figure and grid creation (sharex=False for vertical bar charts)
-    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False)
-
-    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
-    system_colors = {
-        system: color_cycle[i % len(color_cycle)] for i, system in enumerate(df_specs.df.index)
-    }
-
-    for ax, column in zip(axes, df_specs.df.columns):
-        series = df_specs.df[column].dropna()
-        spec = df_specs.specs[column]
-
-        x_ticks = range(len(series))
-        ax.bar(
-            x_ticks,
-            series.values,
-            color=[system_colors[system] for system in series.index],
-            width=1,
-        )
-
-        ax.set_xticks([])
-
-        subtitle = BENCHMARK_TO_PRETTY[BenchmarkName(spec.name)]
-        if spec.benchmark_version:
-            subtitle = (
-                f"{'↑' if spec.larger_better else '↓'}"
-                + subtitle
-                + ("*" if not spec.multi_gpu_native else "")
-            )
-
-        ax.set_title(subtitle, fontsize="medium")
-        ax.set_ylabel(spec.verbose_unit, fontsize="small")
-
-        value_range = series.max() - series.min()
-
-        if y_axis_pad_pct is not None:
-
-            y_axis_numerical_pad_value: float = (
-                value_range * y_axis_pad_pct
-                if value_range > 0
-                else max(abs(series.max()) * y_axis_pad_pct, 1.0)
-            )
-
-            ax.set_ylim(
-                bottom=series.min() - y_axis_numerical_pad_value,
-                top=series.max() + y_axis_numerical_pad_value,
-            )
-
-        ax.grid(axis="y", linestyle=":", alpha=0.8)
-
-    # Hide empty plots if we generated more grid slots than we have data
-    for ax in axes[n_plots:]:
-        ax.set_visible(False)
-
-    # Pass results to the helper for finalizing (legend, watermark, saving)
-    _apply_legend_and_save(
-        fig=fig,
-        system_colors=system_colors,
-        title=title,
-        watermark=watermark,
-        output_path=output_path,
-    )
-
-
-def _find_result(
-    model_results: Tuple[LLMThroughputResult, ...],
-    label: str,
-    context_depth: int,
-    quantization: str,
-) -> Optional[LLMThroughputResult]:
-    """
-    Helper to find the relevant result for a specific cell.
-    :param model_results: Search space.
-    :param label: Needs to match output.
-    :param context_depth: Needs to match output.
-    :param quantization: Needs to match output.
-    :return: Result if found, None if otherwise.
-    """
-
-    return next(
-        (
-            r
-            for r in model_results
-            if r.label == label
-            and r.context_depth == context_depth
-            and r.quantization == quantization
-        ),
-        None,
-    )
-
-
 def _draw_bar(
     x_axis_max: float,
     ax: plt.Axes,
@@ -511,9 +379,167 @@ def _draw_bar(
         )
 
 
+def _find_result(
+    model_results: Tuple[LLMThroughputResult, ...],
+    label: str,
+    context_depth: int,
+    quantization: str,
+) -> Optional[LLMThroughputResult]:
+    """
+    Helper to find the relevant result for a specific cell.
+    :param model_results: Search space.
+    :param label: Needs to match output.
+    :param context_depth: Needs to match output.
+    :param quantization: Needs to match output.
+    :return: Result if found, None if otherwise.
+    """
+
+    return next(
+        (
+            r
+            for r in model_results
+            if r.label == label
+            and r.context_depth == context_depth
+            and r.quantization == quantization
+        ),
+        None,
+    )
+
+
+def _generate_color_palette(count: int) -> list[str]:
+    """
+    Deterministic method for getting a color map, a list of colors consumed by matplotlib.
+    :param count: How many colors are needed.
+    :return: List of colors.
+    """
+
+    cmap = plt.get_cmap("Set1")
+
+    # If we need significantly more colors than standard qualitative sets have,
+    # switch to a wider palette like 'tab20' or 'Paired'.
+    if count > 9:
+        cmap = plt.get_cmap("Paired")
+
+    colors = []
+    for i in range(count):
+        # Map index i (0..N-1) to a value between 0.0 and 1.0
+        norm_val = float(i) / max(1, count - 1) if count > 1 else 0.5
+        colors.append(mcolors.to_hex(cmap(norm_val)))
+
+    return colors
+
+
+def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many-positional-arguments
+    evaluations_and_base: EvaluationsBase,
+    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
+    flatten_versions: bool,
+    output_path: Path,
+    title: str,
+    only_render_tests: Tuple[BenchmarkName, ...],
+    n_cols: int,
+    watermark: Optional[str],
+    y_axis_pad_pct: Optional[float],
+) -> None:
+    """
+    Create a comparison visualization with one subplot per benchmark.
+
+    :param evaluations_and_base: To convert.
+    :param labeled_evaluations: To convert.
+    :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
+    :param output_path: Where to write the resulting image.
+    :param title: Overall figure title.
+    :param only_render_tests: Only benchmarks with these names will be included in the output
+    visualization.
+    :param n_cols: Number of columns to show.
+    to show before truncation.
+    :param watermark: String written along the right center of the image.
+    :param y_axis_pad_pct: If given, The y-axis range of each subplot is restricted to this value
+    multiplied by the min max values in the y range to clearly show the ranking. If not given,
+    auto y-axis settings are used.
+    :return: None
+    """
+
+    df_specs: _DFSpecs = _system_evaluations_to_dataframe(
+        evaluations_and_base=evaluations_and_base,
+        labeled_evaluations=labeled_evaluations,
+        flatten_versions=flatten_versions,
+        only_render_tests=only_render_tests,
+    )
+
+    if df_specs.df.empty:
+        raise ValueError("No benchmark data available to plot")
+
+    n_plots = len(df_specs.df.columns)
+    n_rows = math.ceil(n_plots / n_cols)
+
+    # Use helper for figure and grid creation (sharex=False for vertical bar charts)
+    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False)
+
+    unique_labels = set(df_specs.df.index)
+
+    system_colors: Dict[str, str] = dict(
+        zip(unique_labels, _generate_color_palette(len(unique_labels)))
+    )
+
+    for ax, column in zip(axes, df_specs.df.columns):
+        series = df_specs.df[column].dropna()
+        spec = df_specs.specs[column]
+
+        x_ticks = range(len(series))
+        ax.bar(
+            x_ticks,
+            series.values,
+            color=[system_colors[system] for system in series.index],
+            width=1,
+        )
+
+        ax.set_xticks([])
+
+        subtitle = BENCHMARK_TO_PRETTY[BenchmarkName(spec.name)]
+        if spec.benchmark_version:
+            subtitle = (
+                f"{'↑' if spec.larger_better else '↓'}"
+                + subtitle
+                + ("*" if not spec.multi_gpu_native else "")
+            )
+
+        ax.set_title(subtitle, fontsize="medium")
+        ax.set_ylabel(spec.verbose_unit, fontsize="small")
+
+        value_range = series.max() - series.min()
+
+        if y_axis_pad_pct is not None:
+
+            y_axis_numerical_pad_value: float = (
+                value_range * y_axis_pad_pct
+                if value_range > 0
+                else max(abs(series.max()) * y_axis_pad_pct, 1.0)
+            )
+
+            ax.set_ylim(
+                bottom=series.min() - y_axis_numerical_pad_value,
+                top=series.max() + y_axis_numerical_pad_value,
+            )
+
+        ax.grid(axis="y", linestyle=":", alpha=0.8)
+
+    # Hide empty plots if we generated more grid slots than we have data
+    for ax in axes[n_plots:]:
+        ax.set_visible(False)
+
+    # Pass results to the helper for finalizing (legend, watermark, saving)
+    _apply_legend_and_save(
+        fig=fig,
+        label_to_color=system_colors,
+        title=title,
+        watermark=watermark,
+        output_path=output_path,
+    )
+
+
 def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-many-nested-blocks
     results: Tuple[LLMThroughputResult, ...],
-    model: LLMName,
+    plot_model: LLMName,
     output_path: Path,
     title: str,
     watermark: Optional[str],
@@ -521,7 +547,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     """
     Renders the input parsed LLM throughput results as a visualization to the given path.
     :param results: To plot, includes failures.
-    :param model: Results may contain more than one model, but the output visualization can
+    :param plot_model: Results may contain more than one model, but the output visualization can
     only contain a single model at a time. Filtering `results` by model occurs within this function.
     :param output_path: Matplotlib visualization is written to this path.
     :param title: Added to the top of the figure.
@@ -529,10 +555,12 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     :return: None
     """
 
-    model_results = tuple(result for result in results if result.model == model)
+    model_results: Tuple[LLMThroughputResult, ...] = tuple(
+        result for result in results if result.model == plot_model
+    )
 
     if not model_results:
-        raise ValueError(f"No benchmark data available for {model.value}")
+        raise ValueError(f"No benchmark data available for {plot_model.value}")
 
     # Use SUPPORTED_QUANTS to ensure canonical ordering (e.g., q4 before q8)
     quants = tuple(
@@ -548,18 +576,18 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
         if any(r.context_depth == v for r in model_results)
     )
 
-    labels = tuple(dict.fromkeys(result.label for result in model_results))
-
     fig, axes = _create_grid(n_rows=len(context_depths), n_cols=len(quants), sharex=True)
 
-    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    unique_labels = {result.label for result in model_results}
 
-    system_colors = {label: color_cycle[i % len(color_cycle)] for i, label in enumerate(labels)}
+    label_to_color: Dict[str, str] = dict(
+        zip(unique_labels, _generate_color_palette(len(unique_labels)))
+    )
 
     subplot_title_text_size = "medium"
 
     # Safe scaling logic (ignores None/failed results)
-    max_tokens_per_second = max(
+    max_tokens_per_second: float = max(
         (
             result.tokens_per_second
             for result in model_results
@@ -573,11 +601,15 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     # Main Grid Loop
     for context_index, context_depth in enumerate(context_depths):
         for quantization_index, quantization in enumerate(quants):
+
             ax = axes[context_index * len(quants) + quantization_index]
             ax.set_xlim(0, x_axis_max)
 
             # Iterate through systems and delegate drawing to the closure
-            for label_index, label in enumerate(labels):
+
+            # Reversed here so the top to bottom reading matches the left to right reading of the
+            # legend.
+            for label_index, label in enumerate(reversed(label_to_color.keys())):
 
                 result: Optional[LLMThroughputResult] = _find_result(
                     model_results=model_results,
@@ -590,7 +622,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
                     x_axis_max=x_axis_max,
                     ax=ax,
                     label_index=label_index,
-                    color=system_colors[label],
+                    color=label_to_color[label],
                     result=result,
                 )
 
@@ -614,9 +646,10 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
                 ax.set_xlabel("Tokens / Second", fontsize="small")
 
     fig.supylabel("Context Depth")
+
     _apply_legend_and_save(
         fig=fig,
-        system_colors=system_colors,
+        label_to_color=label_to_color,
         title=title,
         watermark=watermark,
         output_path=output_path,

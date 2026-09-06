@@ -249,6 +249,11 @@ def _abstract_llama_bench_executor(  # pylint: disable=too-many-arguments,too-ma
                 ("NUM_GENERATION_TOKENS", str(llama_bench_parameters.generation_tokens)),
                 ("NUM_REPETITIONS", str(llama_bench_parameters.repetitions)),
                 ("CONTEXT_DEPTH", str(llama_bench_parameters.context_depth)),
+                (
+                    # TODO: We can add a few specific test with tensor split enabled
+                    "TENSOR_SPLIT",
+                    ",".join(["1"] * len(runtime_gpus) if (len(runtime_gpus) > 1) else "0"),
+                ),
             ],
             multi_gpu_native=multi_gpu_native,
             docker_cleanup=docker_cleanup,

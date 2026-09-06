@@ -281,7 +281,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
 
             except Exception as e:  # pylint: disable=broad-except
                 failed_tests.append(named_executor.benchmark_name)
-                pretty_exception = re.sub(r"\s+", " ", str(e))[:100] + "..."
+                pretty_exception = re.sub(r"\s+", " ", str(e))[:1000] + "..."
                 LOGGER.info(f"Failed! Err: {pretty_exception}")
 
     # Tests are complete, write the output.
@@ -630,7 +630,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
 
     visualization.create_llm_throughput_visualization(
         results=results,
-        model=llm,
+        plot_model=llm,
         output_path=output_path,
         title=title if title is not None else llm.value,
         watermark=watermark,
@@ -695,7 +695,7 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
 
         visualization.create_llm_throughput_visualization(
             results=results,
-            model=model,
+            plot_model=model,
             output_path=output_path,
             title=model.value,
             watermark=watermark,
