@@ -2,7 +2,6 @@
 Core of the comparison between different benchmarks.
 """
 
-import math
 from collections import Counter
 from enum import Enum
 from pathlib import Path
@@ -136,21 +135,26 @@ def benchmark_names_from_evaluations(
 
 
 def _create_grid(
-    n_rows: int, n_cols: int, sharex: bool = False
+    n_rows: int,
+    n_cols: int,
+    sharex: bool = False,
+    height_unit: float = 2.5  # Added optional argument
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
     Creates a standard sized subplot grid and returns the axes as a flattened list.
     Handles single-subplot cases where plt.subplots doesn't return an array.
+
     :param n_rows:
     :param n_cols:
     :param sharex:
+    :param height_unit: Multiplier for the row height (default 2.5).
     :return:
     """
 
     fig, axes = plt.subplots(
         nrows=n_rows,
         ncols=n_cols,
-        figsize=(3 * n_cols, 2.5 * n_rows),
+        figsize=(3 * n_cols, height_unit * n_rows),
         sharex=sharex,
     )
 
