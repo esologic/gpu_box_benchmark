@@ -551,12 +551,16 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
 
 
 def cli_inputs_to_llm_results(
-    input_path: Tuple[Path, ...], legend_label: LabelBase
+    input_paths: Tuple[Path, ...],
+    legend_label: LabelBase,
+    labeled_input: Tuple[Tuple[Path, str], ...],
 ) -> Tuple[LLMThroughputResult, ...]:
     """
     Helper function to take user input and generate a set of NTs for plotting.
-    :param input_path: List of input evaluations on disk.
+    :param input_paths: List of input evaluations on disk.
     :param legend_label: Decides how plots are labeled in the legend.
+    :param labeled_input: Pre-labeled inputs from the CLI, user wants a specific label for the
+    given input evaluation.
     :return: NTs for plotting.
     """
 
@@ -571,9 +575,25 @@ def cli_inputs_to_llm_results(
                     ),
                 )
                 for label_index, evaluation in enumerate(
-                    map(load_system_evaluation_from_disk, input_path), start=1
+                    map(load_system_evaluation_from_disk, input_paths), start=1
                 )
             ]
+        )
+    )
+
+    results += tuple(
+        itertools.chain.from_iterable(
+            (
+                llama_bench_dockerfile_wrapper.read_throughput_results(
+                    complete_results=labeled_evaluation.results,
+                    failed_tests=labeled_evaluation.failed_tests,
+                    label=label,
+                )
+                for labeled_evaluation, label in [
+                    (load_system_evaluation_from_disk(path=path), label)
+                    for path, label in labeled_input
+                ]
+            )
         )
     )
 
@@ -586,6 +606,7 @@ def cli_inputs_to_llm_results(
 )
 @INPUT_OPTION
 @LEGEND_LABEL_OPTION
+@LABELED_INPUT_OPTION
 @OUTPUT_OPTION
 @TITLE_OPTION
 @WATERMARK_OPTION
@@ -600,6 +621,7 @@ def cli_inputs_to_llm_results(
 def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
     legend_label: LabelBase,
+    labeled_input: Tuple[Tuple[Path, str], ...],
     output_path: Path,
     title: Optional[str],
     watermark: Optional[str],
@@ -613,6 +635,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
 
     :param input_path: See click help for docs!
     :param legend_label: See click help for docs!
+    :param labeled_input: See click help for docs!
     :param output_path: See click help for docs!
     :param title: See click help for docs!
     :param watermark: See click help for docs!
@@ -625,7 +648,9 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
         plt.rcParams["font.family"] = font_family
 
     results: Tuple[LLMThroughputResult, ...] = cli_inputs_to_llm_results(
-        input_path=input_path, legend_label=legend_label
+        input_paths=input_path,
+        legend_label=legend_label,
+        labeled_input=labeled_input,
     )
 
     visualization.create_llm_throughput_visualization(
@@ -646,6 +671,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
 )
 @INPUT_OPTION
 @LEGEND_LABEL_OPTION
+@LABELED_INPUT_OPTION
 @click.option(
     "--output-dir",
     type=click.Path(dir_okay=True, file_okay=False, writable=True, path_type=Path),
@@ -658,6 +684,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
 def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
     legend_label: LabelBase,
+    labeled_input: Tuple[Tuple[Path, str], ...],
     output_dir: str,
     watermark: Optional[str],
     font_family: Optional[str],
@@ -669,8 +696,8 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
 
     :param input_path: See click help for docs!
     :param legend_label: See click help for docs!
+    :param labeled_input: See click help for docs!
     :param output_dir: Directory to save the generated images.
-    :param title: See click help for docs!
     :param watermark: See click help for docs!
     :param font_family: See click help for docs!
     :return: None
@@ -680,7 +707,9 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
         plt.rcParams["font.family"] = font_family
 
     results: Tuple[LLMThroughputResult, ...] = cli_inputs_to_llm_results(
-        input_path=input_path, legend_label=legend_label
+        input_paths=input_path,
+        legend_label=legend_label,
+        labeled_input=labeled_input,
     )
 
     os.makedirs(output_dir, exist_ok=True)
