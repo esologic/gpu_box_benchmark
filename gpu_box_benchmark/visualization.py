@@ -2,6 +2,7 @@
 Core of the comparison between different benchmarks.
 """
 
+import math
 from collections import Counter
 from enum import Enum
 from pathlib import Path
@@ -94,16 +95,6 @@ def _names_in_evaluation(evaluation: SystemEvaluation) -> Set[BenchmarkName]:
     return set((result.name for result in evaluation.results))
 
 
-class _DFSpecs(NamedTuple):
-    """
-    Links the dataframe with a sample dict mapping column name to one of the benchmarks to be able
-    to pull out units, versions etc.
-    """
-
-    df: pd.DataFrame
-    specs: dict[str, BenchmarkResult]
-
-
 class EvaluationsBase(NamedTuple):
     """
     Intermediate type. Links a set of evaluations with the distinguishing element of the run that
@@ -138,7 +129,7 @@ def _create_grid(
     n_rows: int,
     n_cols: int,
     sharex: bool = False,
-    height_unit: float = 2.5  # Added optional argument
+    height_unit: float = 2.5,  # Added optional argument
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
     Creates a standard sized subplot grid and returns the axes as a flattened list.
@@ -238,27 +229,36 @@ def _apply_legend_and_save(
     plt.close(fig)
 
 
-def _system_evaluations_to_dataframe(
+class _DFSpecs(NamedTuple):
+    """
+    Holds the aligned dataframes for results and power consumption,
+    along with a mapping of column names to their representative BenchmarkResult specs.
+    """
+
+    df_results: pd.DataFrame
+    df_power: pd.DataFrame
+    specs: dict[str, BenchmarkResult]
+
+
+def _system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
     evaluations_and_base: EvaluationsBase,
     labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
     flatten_versions: bool,
     only_render_tests: Tuple[BenchmarkName, ...],
 ) -> _DFSpecs:
     """
-    Convert a list of SystemEvaluation objects into a wide dataframe.
+    Convert a list of SystemEvaluation objects into aligned wide dataframes for results and power.
 
     :param evaluations_and_base: NT containing a list of Evaluations and an enum that describes
     what the x-axis label should be.
     :param labeled_evaluations: Iterator of the loaded evaluations and their specific x-axis label.
     :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
-    :param only_render_tests: Only benchmarks with these names will be included in the ouput
+    :param only_render_tests: Only benchmarks with these names will be included in the output
     visualization.
-    :return: A tuple containing
-        - DataFrame: index = system title, columns = benchmarks
-        - Dict mapping column name -> representative BenchmarkResult (spec)
+    :return: A tuple containing (df_results, df_power, specs).
     """
 
-    benchmarks_in_evaluations: Set[BenchmarkName] = benchmark_names_from_evaluations(
+    benchmarks_in_evaluations: set[BenchmarkName] = benchmark_names_from_evaluations(
         evaluations=evaluations_and_base.evaluations,
         labeled_evaluations=labeled_evaluations,
     )
@@ -272,56 +272,78 @@ def _system_evaluations_to_dataframe(
             f"Discovered tests: {benchmarks_in_evaluations}"
         )
 
-    rows: dict[str, dict[str, float]] = {}
+    results_rows: dict[str, dict[str, float]] = {}
+    power_rows: dict[str, dict[str, Optional[float]]] = {}
     specs: dict[str, BenchmarkResult] = {}
 
-    def column_values_dict(evaluation: SystemEvaluation) -> dict[str, float]:
-        """
-        Helper function to create the dictionary that will become the values for the column values.
-        :param evaluation: To turn into a row.
-        :return: Row for the given evaluation.
-        """
-
-        output: dict[str, float] = {}
+    def process_evaluation_results(
+        evaluation: SystemEvaluation,
+    ) -> Tuple[dict[str, float], dict[str, Optional[float]]]:
+        """Helper to extract both results and power values for a single evaluation."""
+        res_row: dict[str, float] = {}
+        pw_row: dict[str, Optional[float]] = {}
 
         benchmark_results: Iterable[BenchmarkResult] = evaluation.results
-
         if any(only_render_tests):
             benchmark_results = filter(lambda b_r: b_r.name in only_render_tests, benchmark_results)
 
-        for benchmark_result in benchmark_results:
-
-            column = _benchmark_column_name(benchmark_result, flatten_version=flatten_versions)
+        for br in benchmark_results:
+            column = _benchmark_column_name(br, flatten_version=flatten_versions)
 
             # Record spec once (first occurrence wins)
-            specs.setdefault(column, benchmark_result)
+            specs.setdefault(column, br)
 
-            # We could parameterize this later.
-            value = _extract_critical_value(benchmark_result)
-
-            # Allow missing / unsupported results to stay NaN
+            # Extract Result Value (Y-axis generally)
+            value = _extract_critical_value(br)
             if value is not None:
-                output[column] = value
+                res_row[column] = value
 
-        return output
+            # Extract Power/Energy (X-axis generally)
+            gpu_usage = br.gpu_power_usage
+            critical_key = br.critical_gpu_power_usage_key
 
-    for index, unlabeled_evaluation in enumerate(evaluations_and_base.evaluations, start=1):
+            pw_val: Optional[float] = None
+            if gpu_usage and critical_key:
+                try:
+                    pw_val = getattr(gpu_usage, critical_key.value)
+                except AttributeError:
+                    pass
 
+            if pw_val is not None:
+                pw_row[column] = pw_val
+
+        return res_row, pw_row
+
+    # 1. Process unlabeled evaluations
+    for idx, evaluation in enumerate(evaluations_and_base.evaluations, start=1):
         row_title = render_legend_title(
-            index=index,
-            evaluation=unlabeled_evaluation,
+            index=idx,
+            evaluation=evaluation,
             label_base=evaluations_and_base.label_base,
         )
+        res_row, pw_row = process_evaluation_results(evaluation)
+        results_rows[row_title] = res_row
+        power_rows[row_title] = pw_row
 
-        rows[row_title] = column_values_dict(evaluation=unlabeled_evaluation)
+    # 2. Process labeled evaluations
+    for evaluation, row_title in labeled_evaluations:
+        res_row, pw_row = process_evaluation_results(evaluation)
+        results_rows[row_title] = res_row
+        power_rows[row_title] = pw_row
 
-    for labeled_evaluation, row_title in labeled_evaluations:
-        rows[row_title] = column_values_dict(evaluation=labeled_evaluation)
+    # 3. Construct DataFrames
+    df_results = pd.DataFrame.from_dict(results_rows, orient="index")
 
-    df = pd.DataFrame.from_dict(rows, orient="index")
+    if not power_rows:
+        # If no power data was collected, create an empty dataframe aligned to the result rows
+        df_power = pd.DataFrame(index=df_results.index)
+    else:
+        # Ensure power dataframe columns align perfectly with results dataframe
+        df_power = pd.DataFrame.from_dict(power_rows, orient="index").reindex(
+            columns=df_results.columns
+        )
 
-    # Keep specs aligned with dataframe columns
-    return _DFSpecs(df=df, specs={col: specs[col] for col in df.columns})
+    return _DFSpecs(df_results=df_results, df_power=df_power, specs=specs)
 
 
 def _draw_bar(
@@ -470,21 +492,21 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
         only_render_tests=only_render_tests,
     )
 
-    if df_specs.df.empty:
+    if df_specs.df_results.empty:
         raise ValueError("No benchmark data available to plot")
 
-    n_plots = len(df_specs.df.columns)
+    n_plots = len(df_specs.df_results.columns)
     n_rows = math.ceil(n_plots / n_cols)
 
     # Use helper for figure and grid creation (sharex=False for vertical bar charts)
     fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False)
 
     system_colors: Dict[str, str] = dict(
-        zip(df_specs.df.index, _generate_color_palette(len(df_specs.df.index)))
+        zip(df_specs.df_results.index, _generate_color_palette(len(df_specs.df_results.index)))
     )
 
-    for ax, column in zip(axes, df_specs.df.columns):
-        series = df_specs.df[column].dropna()
+    for ax, column in zip(axes, df_specs.df_results.columns):
+        series = df_specs.df_results[column].dropna()
         spec = df_specs.specs[column]
 
         x_ticks = range(len(series))
@@ -652,6 +674,122 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     _apply_legend_and_save(
         fig=fig,
         label_to_color=label_to_color,
+        title=title,
+        watermark=watermark,
+        output_path=output_path,
+    )
+
+
+def create_comparison_visualization_power(  # pylint: disable=too-many-positional-arguments,too-many-locals
+    evaluations_and_base: EvaluationsBase,
+    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
+    flatten_versions: bool,
+    output_path: Path,
+    title: str,
+    only_render_tests: Tuple[BenchmarkName, ...],
+    n_cols: int,
+    watermark: Optional[str],
+    y_axis_pad_pct: float,
+) -> None:
+    """
+    Create a comparison visualization with one subplot per benchmark using Scatter plots.
+
+    :param evaluations_and_base: To convert.
+    :param labeled_evaluations: To convert.
+    :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
+    :param output_path: Where to write the resulting image.
+    :param title: Overall figure title.
+    :param only_render_tests: Only benchmarks with these names will be included in the output.
+    :param n_cols: Number of columns for the subplot grid.
+    :param watermark: String written along the right center of the image.
+    """
+
+    print(y_axis_pad_pct)
+
+    # 1. Load Data (using refactored function)
+    df_specs = _system_evaluations_to_dataframe(
+        evaluations_and_base=evaluations_and_base,
+        labeled_evaluations=labeled_evaluations,
+        flatten_versions=flatten_versions,
+        only_render_tests=only_render_tests,
+    )
+
+    df_results: pd.DataFrame = df_specs.df_results
+    df_power: pd.DataFrame = df_specs.df_power
+    specs: dict[str, BenchmarkResult] = df_specs.specs
+
+    # 2. Setup Grid
+    n_plots = len(df_results.columns)
+    n_rows = math.ceil(n_plots / n_cols)
+
+    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False, height_unit=3.0)
+
+    # 3. Color Mapping
+    system_colors: Dict[str, str] = dict(
+        zip(df_results.index, _generate_color_palette(len(df_results.index)))
+    )
+
+    for ax, column in zip(axes, df_results.columns):
+        spec: BenchmarkResult = specs[column]
+
+        # Extract Y values (Results)
+        series_results = df_results[column].dropna()
+
+        if series_results.empty:
+            continue
+
+        # 4. Independent Scaling using DataFrame indexing
+        # Filter out NaN power values safely using pandas native methods
+        valid_mask = df_power.loc[series_results.index, column].notna()
+        valid_sys = series_results.index[valid_mask]
+        valid_x_vals = list(df_power.loc[valid_sys, column])
+
+        if not valid_x_vals:
+            continue
+
+        x_min, x_max = min(valid_x_vals), max(valid_x_vals)
+        y_min, y_max = series_results.min(), series_results.max()
+
+        # Add padding (e.g., 10%) so points don't touch the edges of the plot box
+        x_pad = (x_max - x_min) * 0.1 or x_max * 0.1
+        y_pad = (y_max - y_min) * 0.1 or y_max * 0.1
+
+        ax.set_xlim(x_min - x_pad, x_max + x_pad)
+        ax.set_ylim(y_min - y_pad, y_max + y_pad)
+
+        # --- VISUAL FIX: Smaller points (reduced from 200 to 150) ---
+        colors = [system_colors[sys] for sys in series_results.index]
+
+        ax.scatter(
+            valid_x_vals, series_results.values, c=colors, edgecolors="k", linewidths=0.8, zorder=3
+        )
+
+        # 5. Styling and Labels
+        subtitle = BENCHMARK_TO_PRETTY[BenchmarkName(spec.name)]
+
+        if spec.benchmark_version:
+            subtitle = (
+                f"{'↑' if spec.larger_better else '↓'}"
+                + subtitle
+                + ("*" if not spec.multi_gpu_native else "")
+            )
+
+        ax.set_title(subtitle, fontsize="medium", pad=10)
+        ax.set_ylabel(spec.verbose_unit, fontsize="small")
+
+        # --- VISUAL FIX: Added gridlines to both axes (X and Y) ---
+        ax.grid(True, linestyle=":", alpha=0.8)
+
+        ax.set_xlabel("Power Consumption (J)", fontsize="small")
+
+    # 6. Cleanup unused axes
+    for ax in axes[n_plots:]:
+        ax.set_visible(False)
+
+    # 7. Save
+    _apply_legend_and_save(
+        fig=fig,
+        label_to_color=system_colors,
         title=title,
         watermark=watermark,
         output_path=output_path,

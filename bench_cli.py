@@ -15,7 +15,6 @@ import psutil
 from bonus_click import options
 from click.decorators import FC
 
-import gpu_box_benchmark.power_viz
 from gpu_box_benchmark import visualization
 from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
     llama_bench_dockerfile_wrapper,
@@ -530,7 +529,7 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     if font_family is not None:
         plt.rcParams["font.family"] = font_family
 
-    gpu_box_benchmark.power_viz.create_comparison_visualization_power(
+    visualization.create_comparison_visualization_power(
         evaluations_and_base=EvaluationsBase(
             evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
             label_base=legend_label,
@@ -547,6 +546,7 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
         only_render_tests=only_test,
         n_cols=n_cols,
         watermark=watermark,
+        y_axis_pad_pct=y_axis_pad_pct,
     )
 
 
