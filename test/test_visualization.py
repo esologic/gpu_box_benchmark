@@ -29,7 +29,7 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
     :return: None
     """
 
-    render_plot.create_comparison_visualization(
+    render_plot.create_system_comparison_visualization_results(
         evaluations_and_base=EvaluationsBase(
             evaluations=_SAMPLE_EVALUATIONS,
             label_base=LabelBase.gpu,
@@ -159,7 +159,7 @@ def test_create_comparison_visualization_exhaustive(  # pylint: disable=too-many
 
         output_path = Path(tmpdir) / "sample_output.png"
 
-        render_plot.create_comparison_visualization(
+        render_plot.create_system_comparison_visualization_results(
             evaluations_and_base=evaluations_and_base,
             labeled_evaluations=labeled_evaluations,
             output_path=output_path,

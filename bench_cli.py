@@ -48,6 +48,7 @@ from gpu_box_benchmark.visualization import render_plot
 from gpu_box_benchmark.visualization.load_for_visualization import (
     EvaluationsBase,
     LabelBase,
+    SystemComparisonPlotMode,
     render_legend_title,
 )
 
@@ -465,6 +466,15 @@ FONT_FAMILY_OPTION = click.option(
 
 
 @cli.command(name="compare-systems", short_help="Draw graphs comparing benchmark outputs.")
+@options.create_enum_option(
+    "--mode",
+    help_message=(
+        "Decides which data should be plotted within the input files to compare the systems."
+    ),
+    input_enum=SystemComparisonPlotMode,
+    default=SystemComparisonPlotMode.results,
+    multiple=False,
+)
 @INPUT_OPTION
 @LEGEND_LABEL_OPTION
 @LABELED_INPUT_OPTION
@@ -496,9 +506,11 @@ FONT_FAMILY_OPTION = click.option(
     required=False,
     help="Numerical pad percent applied to the Y-Axes of the subplots.",
     type=click.FloatRange(min=0),
+    default=0.1,
 )
 @FONT_FAMILY_OPTION
 def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    mode: SystemComparisonPlotMode,
     input_path: Tuple[Path, ...],
     labeled_input: Tuple[Tuple[Path, str], ...],
     legend_label: LabelBase,
@@ -516,6 +528,7 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
 
     \f
 
+    :param mode: See click help for docs!
     :param input_path: See click help for docs!
     :param labeled_input: See click help for docs!
     :param legend_label: See click help for docs!
@@ -533,7 +546,13 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     if font_family is not None:
         plt.rcParams["font.family"] = font_family
 
-    render_plot.create_comparison_visualization_power(
+    plot_function = (
+        render_plot.create_system_comparison_visualization_results
+        if mode == SystemComparisonPlotMode.results
+        else render_plot.create_system_comparison_visualization_results_power
+    )
+
+    plot_function(
         evaluations_and_base=EvaluationsBase(
             evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
             label_base=legend_label,

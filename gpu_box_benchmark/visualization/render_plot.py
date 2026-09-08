@@ -217,7 +217,45 @@ def _generate_color_palette(count: int) -> list[str]:
     return colors
 
 
-def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many-positional-arguments
+def _format_subplot_title(spec: BenchmarkResult) -> str:
+    """Constructs the formatted string for the subplot subtitle."""
+    base = BENCHMARK_TO_PRETTY[BenchmarkName(spec.name)]
+
+    if spec.benchmark_version:
+        direction = "↑" if spec.larger_better else "↓"
+        modifier = "*" if not spec.multi_gpu_native else ""
+        return f"{direction}{base}{modifier}"
+    return base
+
+
+def _get_padded_bounds(min_val: float, max_val: float, pad_pct: float) -> tuple[float, float]:
+    """
+    Calculates plot limits with consistent padding relative to the data's scale
+    rather than just its range. Ensures positive-only data (benchmarks)
+    always has a gap below zero so bars never touch the x-axis.
+
+    :param min_val:
+    :param max_val:
+    :param pad_pct:
+    :return:
+    """
+
+    # Use max magnitude as the base for padding, not range.
+    # This prevents tiny whitespace for tightly clustered data at high values.
+    scale = max(abs(max_val), abs(min_val)) if (max_val != 0 or min_val != 0) else 1.0
+
+    y_pad = scale * pad_pct
+
+    lower = min_val - y_pad
+    upper = max_val + y_pad
+
+    if lower >= 0:
+        lower = -y_pad
+
+    return lower, upper
+
+
+def create_system_comparison_visualization_results(  # pylint: disable=too-many-locals, too-many-positional-arguments
     evaluations_and_base: EvaluationsBase,
     labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
     flatten_versions: bool,
@@ -226,7 +264,7 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     only_render_tests: Tuple[BenchmarkName, ...],
     n_cols: int,
     watermark: Optional[str],
-    y_axis_pad_pct: Optional[float],
+    y_axis_pad_pct: Optional[float] = None,
 ) -> None:
     """
     Create a comparison visualization with one subplot per benchmark.
@@ -263,6 +301,7 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     # Use helper for figure and grid creation (sharex=False for vertical bar charts)
     fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False)
 
+    # Color mapping kept inline as requested
     system_colors: Dict[str, str] = dict(
         zip(df_specs.df_results.index, _generate_color_palette(len(df_specs.df_results.index)))
     )
@@ -281,31 +320,14 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
 
         ax.set_xticks([])
 
-        subtitle = BENCHMARK_TO_PRETTY[BenchmarkName(spec.name)]
-        if spec.benchmark_version:
-            subtitle = (
-                f"{'↑' if spec.larger_better else '↓'}"
-                + subtitle
-                + ("*" if not spec.multi_gpu_native else "")
-            )
-
-        ax.set_title(subtitle, fontsize="medium")
+        # Use shared subtitle helper
+        ax.set_title(_format_subplot_title(spec), fontsize="medium")
         ax.set_ylabel(spec.verbose_unit, fontsize="small")
 
-        value_range = series.max() - series.min()
-
-        if y_axis_pad_pct is not None:
-
-            y_axis_numerical_pad_value: float = (
-                value_range * y_axis_pad_pct
-                if value_range > 0
-                else max(abs(series.max()) * y_axis_pad_pct, 1.0)
-            )
-
-            ax.set_ylim(
-                bottom=series.min() - y_axis_numerical_pad_value,
-                top=series.max() + y_axis_numerical_pad_value,
-            )
+        lower, upper = _get_padded_bounds(
+            min_val=series.min(), max_val=series.max(), pad_pct=y_axis_pad_pct
+        )
+        ax.set_ylim(bottom=lower, top=upper)
 
         ax.grid(axis="y", linestyle=":", alpha=0.8)
 
@@ -314,6 +336,109 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
         ax.set_visible(False)
 
     # Pass results to the helper for finalizing (legend, watermark, saving)
+    _apply_legend_and_save(
+        fig=fig,
+        label_to_color=system_colors,
+        title=title,
+        watermark=watermark,
+        output_path=output_path,
+    )
+
+
+def create_system_comparison_visualization_results_power(  # pylint: disable=too-many-locals, too-many-positional-arguments
+    evaluations_and_base: EvaluationsBase,
+    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
+    flatten_versions: bool,
+    output_path: Path,
+    title: str,
+    only_render_tests: Tuple[BenchmarkName, ...],
+    n_cols: int,
+    watermark: Optional[str],
+    y_axis_pad_pct: float = 0.1,
+) -> None:
+    """
+    Creates a scatter plot per input evalution. X-axis is power consumption, Y-axis is the units
+    for the actual test.
+
+    :param evaluations_and_base: To convert.
+    :param labeled_evaluations: To convert.
+    :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
+    :param output_path: Where to write the resulting image.
+    :param title: Overall figure title.
+    :param only_render_tests: Only benchmarks with these names will be included in the output
+    visualization.
+    :param n_cols: Number of columns to show.
+    to show before truncation.
+    :param watermark: String written along the right center of the image.
+    :param y_axis_pad_pct: If given, The y-axis range of each subplot is restricted to this value
+    multiplied by the min max values in the y range to clearly show the ranking. If not given,
+    auto y-axis settings are used.
+    :return: None
+    """
+
+    df_specs = system_evaluations_to_dataframe(
+        evaluations_and_base=evaluations_and_base,
+        labeled_evaluations=labeled_evaluations,
+        flatten_versions=flatten_versions,
+        only_render_tests=only_render_tests,
+    )
+
+    df_results: pd.DataFrame = df_specs.df_results
+    df_power: pd.DataFrame = df_specs.df_power
+    specs: dict[str, BenchmarkResult] = df_specs.specs
+
+    n_plots = len(df_results.columns)
+    n_rows = math.ceil(n_plots / n_cols)
+
+    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False, height_unit=3)
+
+    system_colors: Dict[str, str] = dict(
+        zip(df_results.index, _generate_color_palette(len(df_results.index)))
+    )
+
+    for ax, column in zip(axes, df_results.columns):
+        spec: BenchmarkResult = specs[column]
+        series_results = df_results[column].dropna()
+
+        if series_results.empty:
+            continue
+
+        # Filter for valid power data to ensure X/Y alignment
+        valid_mask = df_power.loc[series_results.index, column].notna()
+        valid_sys = series_results.index[valid_mask]
+        valid_x_vals = list(df_power.loc[valid_sys, column])
+
+        if not valid_x_vals:
+            continue
+
+        # Synchronize Y-values and colors with X-filtering to prevent shape mismatches
+        valid_series = series_results[valid_mask]
+        colors = [system_colors[sys] for sys in valid_sys]
+
+        x_min, x_max = min(valid_x_vals), max(valid_x_vals)
+        y_min, y_max = valid_series.min(), valid_series.max()
+
+        # Apply padding using shared helper
+        x_lower, x_upper = _get_padded_bounds(x_min, x_max, pad_pct=0.1)
+        y_lower, y_upper = _get_padded_bounds(y_min, y_max, y_axis_pad_pct)
+
+        ax.set_xlim(x_lower, x_upper)
+        ax.set_ylim(y_lower, y_upper)
+
+        ax.scatter(
+            valid_x_vals, valid_series.values, c=colors, edgecolors="k", linewidths=0.8, zorder=3
+        )
+
+        # Use shared subtitle helper
+        ax.set_title(_format_subplot_title(spec), fontsize="medium", pad=10)
+        ax.set_ylabel(spec.verbose_unit, fontsize="small")
+        ax.set_xlabel("Power Consumption (J)", fontsize="small")
+
+        ax.grid(True, linestyle=":", alpha=0.8)
+
+    for ax in axes[n_plots:]:
+        ax.set_visible(False)
+
     _apply_legend_and_save(
         fig=fig,
         label_to_color=system_colors,
@@ -436,122 +561,6 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     _apply_legend_and_save(
         fig=fig,
         label_to_color=label_to_color,
-        title=title,
-        watermark=watermark,
-        output_path=output_path,
-    )
-
-
-def create_comparison_visualization_power(  # pylint: disable=too-many-positional-arguments,too-many-locals
-    evaluations_and_base: EvaluationsBase,
-    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
-    flatten_versions: bool,
-    output_path: Path,
-    title: str,
-    only_render_tests: Tuple[BenchmarkName, ...],
-    n_cols: int,
-    watermark: Optional[str],
-    y_axis_pad_pct: float,
-) -> None:
-    """
-    Create a comparison visualization with one subplot per benchmark using Scatter plots.
-
-    :param evaluations_and_base: To convert.
-    :param labeled_evaluations: To convert.
-    :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
-    :param output_path: Where to write the resulting image.
-    :param title: Overall figure title.
-    :param only_render_tests: Only benchmarks with these names will be included in the output.
-    :param n_cols: Number of columns for the subplot grid.
-    :param watermark: String written along the right center of the image.
-    """
-
-    print(y_axis_pad_pct)
-
-    # 1. Load Data (using refactored function)
-    df_specs = system_evaluations_to_dataframe(
-        evaluations_and_base=evaluations_and_base,
-        labeled_evaluations=labeled_evaluations,
-        flatten_versions=flatten_versions,
-        only_render_tests=only_render_tests,
-    )
-
-    df_results: pd.DataFrame = df_specs.df_results
-    df_power: pd.DataFrame = df_specs.df_power
-    specs: dict[str, BenchmarkResult] = df_specs.specs
-
-    # 2. Setup Grid
-    n_plots = len(df_results.columns)
-    n_rows = math.ceil(n_plots / n_cols)
-
-    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False, height_unit=3.0)
-
-    # 3. Color Mapping
-    system_colors: Dict[str, str] = dict(
-        zip(df_results.index, _generate_color_palette(len(df_results.index)))
-    )
-
-    for ax, column in zip(axes, df_results.columns):
-        spec: BenchmarkResult = specs[column]
-
-        # Extract Y values (Results)
-        series_results = df_results[column].dropna()
-
-        if series_results.empty:
-            continue
-
-        # 4. Independent Scaling using DataFrame indexing
-        # Filter out NaN power values safely using pandas native methods
-        valid_mask = df_power.loc[series_results.index, column].notna()
-        valid_sys = series_results.index[valid_mask]
-        valid_x_vals = list(df_power.loc[valid_sys, column])
-
-        if not valid_x_vals:
-            continue
-
-        x_min, x_max = min(valid_x_vals), max(valid_x_vals)
-        y_min, y_max = series_results.min(), series_results.max()
-
-        # Add padding (e.g., 10%) so points don't touch the edges of the plot box
-        x_pad = (x_max - x_min) * 0.1 or x_max * 0.1
-        y_pad = (y_max - y_min) * 0.1 or y_max * 0.1
-
-        ax.set_xlim(x_min - x_pad, x_max + x_pad)
-        ax.set_ylim(y_min - y_pad, y_max + y_pad)
-
-        # --- VISUAL FIX: Smaller points (reduced from 200 to 150) ---
-        colors = [system_colors[sys] for sys in series_results.index]
-
-        ax.scatter(
-            valid_x_vals, series_results.values, c=colors, edgecolors="k", linewidths=0.8, zorder=3
-        )
-
-        # 5. Styling and Labels
-        subtitle = BENCHMARK_TO_PRETTY[BenchmarkName(spec.name)]
-
-        if spec.benchmark_version:
-            subtitle = (
-                f"{'↑' if spec.larger_better else '↓'}"
-                + subtitle
-                + ("*" if not spec.multi_gpu_native else "")
-            )
-
-        ax.set_title(subtitle, fontsize="medium", pad=10)
-        ax.set_ylabel(spec.verbose_unit, fontsize="small")
-
-        # --- VISUAL FIX: Added gridlines to both axes (X and Y) ---
-        ax.grid(True, linestyle=":", alpha=0.8)
-
-        ax.set_xlabel("Power Consumption (J)", fontsize="small")
-
-    # 6. Cleanup unused axes
-    for ax in axes[n_plots:]:
-        ax.set_visible(False)
-
-    # 7. Save
-    _apply_legend_and_save(
-        fig=fig,
-        label_to_color=system_colors,
         title=title,
         watermark=watermark,
         output_path=output_path,

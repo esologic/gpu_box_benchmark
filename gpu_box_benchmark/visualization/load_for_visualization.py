@@ -14,6 +14,15 @@ from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_typ
 from gpu_box_benchmark.benchmark_types import BenchmarkName, BenchmarkResult, SystemEvaluation
 
 
+class SystemComparisonPlotMode(str, Enum):
+    """
+    Different supported system comparison plot modes
+    """
+
+    results = "results"
+    results_power = "results_power"
+
+
 class LabelBase(str, Enum):
     """
     Options for the basis of the labels on the x axis of the graphs in the resulting visualizations.
