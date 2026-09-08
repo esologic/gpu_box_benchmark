@@ -24,10 +24,6 @@ but creates a viz for all the families in the input files.
 * Added several `llama-bench` tests that use `--tensor-split` across attached GPUs per feedback from
 first post.
 
-TODO: Pre-Post 2
-
-* `compare-system` with power mode. Y axis result, X axis power for each subplot.
-
 ### 0.7.0 - (2026-07-11)
 
 * Added `--x-label` and `--labeled-input` to comparison mode to be able to have more control over
@@ -102,7 +98,7 @@ able to finish in the multi GPU case, `min_by_gpu_type`, `max_by_gpu_type`, `mea
 all be set to None. 
 * Added a new field `gpu_power_usage` (and type `ReportFileGPUPowerUsage`) to `BenchmarkResult`
 that records GPU energy consumption for a given benchmark.
-
+* Added new field to output to record tests that failed.
 
 ### 0.2.0 - (2026-05-07)
 

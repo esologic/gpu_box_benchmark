@@ -8,9 +8,6 @@ from typing import Iterable, NamedTuple, Optional, Set, Tuple, cast
 
 import pandas as pd
 
-from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import (
-    LLMThroughputResult,
-)
 from gpu_box_benchmark.benchmark_types import BenchmarkName, BenchmarkResult, SystemEvaluation
 
 
@@ -42,7 +39,7 @@ class EvaluationsBase(NamedTuple):
     label_base: LabelBase
 
 
-class DFSpecs(NamedTuple):
+class DFsSpecs(NamedTuple):
     """
     Holds the aligned dataframes for results and power consumption,
     along with a mapping of column names to their representative BenchmarkResult specs.
@@ -51,6 +48,15 @@ class DFSpecs(NamedTuple):
     df_results: pd.DataFrame
     df_power: pd.DataFrame
     specs: dict[str, BenchmarkResult]
+
+
+class BenchmarkData(NamedTuple):
+    """
+    Stores both the headline numerical value and the corresponding power consumption.
+    """
+
+    result_value: Optional[float]
+    power_value: Optional[float]
 
 
 def _benchmark_column_name(result: BenchmarkResult, flatten_version: bool) -> str:
@@ -63,22 +69,18 @@ def _benchmark_column_name(result: BenchmarkResult, flatten_version: bool) -> st
     return result.name if flatten_version else f"{result.name}@{result.benchmark_version}"
 
 
-class BenchmarkData(NamedTuple):
-    """Stores both the headline numerical value and the corresponding power consumption."""
-
-    result_value: float | None
-    power_value: float | None
-
-
 def _extract_benchmark_data(result: BenchmarkResult) -> BenchmarkData:
     """
-    Replaces _extract_critical_value to return a NamedTuple containing both values.
+    Pull out the critical results from a given benchmark result.
+    :param result: To read.
+    :return: NT containing the possible critical results.
     """
-    # 1. Extract the headline numerical value (Y-axis)
+
+    # Extract the headline numerical value (Y-axis)
     key = result.critical_result_key.value
     value = cast(float | None, getattr(result.numerical_results, key))
 
-    # 2. Extract power/energy data (X-axis)
+    # Extract power/energy data (X-axis)
     gpu_usage = result.gpu_power_usage
     critical_key = result.critical_gpu_power_usage_key
     power_value: float | None = None
@@ -156,7 +158,7 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
     labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
     flatten_versions: bool,
     only_render_tests: Tuple[BenchmarkName, ...],
-) -> DFSpecs:
+) -> DFsSpecs:
     """
     Convert a list of SystemEvaluation objects into aligned wide dataframes for results and power.
 
@@ -188,12 +190,17 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
     specs: dict[str, BenchmarkResult] = {}
 
     def process_evaluation_results(
-        evaluation: SystemEvaluation,
+        benchmark_results_iter: Iterable[BenchmarkResult],
     ) -> tuple[dict[str, float], dict[str, Optional[float]]]:
+        """
+        Converts the results to rows.
+        :param benchmark_results_iter: Data source.
+        :return: Tuple of rows.
+        """
+
         output_row_results: dict[str, float] = {}
         output_row_power: dict[str, Optional[float]] = {}
 
-        benchmark_results_iter: Iterable[BenchmarkResult] = evaluation.results
         if any(only_render_tests):
             benchmark_results_iter = filter(
                 lambda b_r: b_r.name in only_render_tests, benchmark_results_iter
@@ -216,24 +223,28 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
 
         return output_row_results, output_row_power
 
-    # 1. Process unlabeled evaluations
+    # Process unlabeled evaluations
     for idx, evaluation in enumerate(evaluations_and_base.evaluations, start=1):
         row_title = render_legend_title(
             index=idx,
             evaluation=evaluation,
             label_base=evaluations_and_base.label_base,
         )
-        res_row, pw_row = process_evaluation_results(evaluation)
-        results_rows[row_title] = res_row
-        power_rows[row_title] = pw_row
+        results_row, power_row = process_evaluation_results(
+            benchmark_results_iter=evaluation.results
+        )
+        results_rows[row_title] = results_row
+        power_rows[row_title] = power_row
 
-    # 2. Process labeled evaluations
+    # Process labeled evaluations
     for evaluation, row_title in labeled_evaluations:
-        res_row, pw_row = process_evaluation_results(evaluation)
-        results_rows[row_title] = res_row
-        power_rows[row_title] = pw_row
+        results_row, power_row = process_evaluation_results(
+            benchmark_results_iter=evaluation.results
+        )
+        results_rows[row_title] = results_row
+        power_rows[row_title] = power_row
 
-    # 3. Construct DataFrames
+    # Construct DataFrames
     df_results = pd.DataFrame.from_dict(results_rows, orient="index")
 
     if not power_rows:
@@ -245,31 +256,4 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
             columns=df_results.columns
         )
 
-    return DFSpecs(df_results=df_results, df_power=df_power, specs=specs)
-
-
-def find_result(
-    model_results: Tuple[LLMThroughputResult, ...],
-    label: str,
-    context_depth: int,
-    quantization: str,
-) -> Optional[LLMThroughputResult]:
-    """
-    Helper to find the relevant result for a specific cell.
-    :param model_results: Search space.
-    :param label: Needs to match output.
-    :param context_depth: Needs to match output.
-    :param quantization: Needs to match output.
-    :return: Result if found, None if otherwise.
-    """
-
-    return next(
-        (
-            r
-            for r in model_results
-            if r.label == label
-            and r.context_depth == context_depth
-            and r.quantization == quantization
-        ),
-        None,
-    )
+    return DFsSpecs(df_results=df_results, df_power=df_power, specs=specs)

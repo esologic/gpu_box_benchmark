@@ -3,11 +3,11 @@ Core of the comparison between different benchmarks.
 """
 
 import math
+import textwrap
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import matplotlib.colors as mcolors
-import pandas as pd
 from matplotlib import pyplot as plt
 
 from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
@@ -24,9 +24,8 @@ from gpu_box_benchmark.benchmark_types import (
     SystemEvaluation,
 )
 from gpu_box_benchmark.visualization.load_for_visualization import (
-    DFSpecs,
+    DFsSpecs,
     EvaluationsBase,
-    find_result,
     system_evaluations_to_dataframe,
 )
 
@@ -35,15 +34,15 @@ def _create_grid(
     n_rows: int,
     n_cols: int,
     sharex: bool = False,
-    height_unit: float = 2.5,  # Added optional argument
+    height_unit: float = 2.5,
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
     Creates a standard sized subplot grid and returns the axes as a flattened list.
-    Handles single-subplot cases where plt.subplots doesn't return an array.
+    Handles single-subplot cases where `plt.subplots` doesn't return an array.
 
-    :param n_rows:
-    :param n_cols:
-    :param sharex:
+    :param n_rows: Rows of subplots.
+    :param n_cols: Columns of subplots.
+    :param sharex: Passed to call.
     :param height_unit: Multiplier for the row height (default 2.5).
     :return:
     """
@@ -217,42 +216,73 @@ def _generate_color_palette(count: int) -> list[str]:
     return colors
 
 
-def _format_subplot_title(spec: BenchmarkResult) -> str:
-    """Constructs the formatted string for the subplot subtitle."""
+def _format_subplot_title(spec: BenchmarkResult, max_width: int = 35) -> str:
+    """
+    Constructs the formatted string for the subplot subtitle with automatic wrapping.
+
+    :param spec: Benchmark result to create the title for.
+    :param max_width: Maximum number of characters per line (default 25).
+    :return: Title string, potentially containing newlines.
+    """
     base = BENCHMARK_TO_PRETTY[BenchmarkName(spec.name)]
 
     if spec.benchmark_version:
         direction = "↑" if spec.larger_better else "↓"
         modifier = "*" if not spec.multi_gpu_native else ""
-        return f"{direction}{base}{modifier}"
+        base = f"{direction}{base}{modifier}"
+
+    base = "\n".join(textwrap.wrap(base, width=max_width))
+
     return base
 
 
-def _get_padded_bounds(min_val: float, max_val: float, pad_pct: float) -> tuple[float, float]:
+def _get_padded_bounds(data_min: float, data_max: float, pad_pct: float) -> tuple[float, float]:
     """
-    Calculates plot limits with consistent padding relative to the data's scale
-    rather than just its range. Ensures positive-only data (benchmarks)
-    always has a gap below zero so bars never touch the x-axis.
+    Calculates plot limits with consistent padding relative to the data's scale.
 
-    :param min_val:
-    :param max_val:
-    :param pad_pct:
-    :return:
+    Uses the maximum magnitude of the values as the base for padding. This ensures
+    that a 10% padding always represents roughly the same visual amount
+    across different benchmarks (e.g. Tokens/sec vs FPS), regardless of the
+    absolute range or minimum values.
+
+    :param data_min: Min value in the data being plotted.
+    :param data_max: Max value in the data being plotted.
+    :param pad_pct: Pad percent. Used to add some space in resulting plots.
+    :return: Bounds.
     """
 
-    # Use max magnitude as the base for padding, not range.
-    # This prevents tiny whitespace for tightly clustered data at high values.
-    scale = max(abs(max_val), abs(min_val)) if (max_val != 0 or min_val != 0) else 1.0
+    pad_amount = (
+        max(abs(data_max), abs(data_min)) if (data_max != 0 or data_min != 0) else 1.0
+    ) * pad_pct
 
-    y_pad = scale * pad_pct
+    return data_min - pad_amount, data_max + pad_amount
 
-    lower = min_val - y_pad
-    upper = max_val + y_pad
 
-    if lower >= 0:
-        lower = -y_pad
+def _find_result(
+    model_results: Tuple[LLMThroughputResult, ...],
+    label: str,
+    context_depth: int,
+    quantization: str,
+) -> Optional[LLMThroughputResult]:
+    """
+    Helper to find the relevant result for a specific cell.
+    :param model_results: Search space.
+    :param label: Needs to match output.
+    :param context_depth: Needs to match output.
+    :param quantization: Needs to match output.
+    :return: Result if found, None if otherwise.
+    """
 
-    return lower, upper
+    return next(
+        (
+            r
+            for r in model_results
+            if r.label == label
+            and r.context_depth == context_depth
+            and r.quantization == quantization
+        ),
+        None,
+    )
 
 
 def create_system_comparison_visualization_results(  # pylint: disable=too-many-locals, too-many-positional-arguments
@@ -285,17 +315,17 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     :return: None
     """
 
-    df_specs: DFSpecs = system_evaluations_to_dataframe(
+    dfs_specs: DFsSpecs = system_evaluations_to_dataframe(
         evaluations_and_base=evaluations_and_base,
         labeled_evaluations=labeled_evaluations,
         flatten_versions=flatten_versions,
         only_render_tests=only_render_tests,
     )
 
-    if df_specs.df_results.empty:
+    if dfs_specs.df_results.empty:
         raise ValueError("No benchmark data available to plot")
 
-    n_plots = len(df_specs.df_results.columns)
+    n_plots = len(dfs_specs.df_results.columns)
     n_rows = math.ceil(n_plots / n_cols)
 
     # Use helper for figure and grid creation (sharex=False for vertical bar charts)
@@ -303,12 +333,12 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
 
     # Color mapping kept inline as requested
     system_colors: Dict[str, str] = dict(
-        zip(df_specs.df_results.index, _generate_color_palette(len(df_specs.df_results.index)))
+        zip(dfs_specs.df_results.index, _generate_color_palette(len(dfs_specs.df_results.index)))
     )
 
-    for ax, column in zip(axes, df_specs.df_results.columns):
-        series = df_specs.df_results[column].dropna()
-        spec = df_specs.specs[column]
+    for ax, column in zip(axes, dfs_specs.df_results.columns):
+        series = dfs_specs.df_results[column].dropna()
+        spec = dfs_specs.specs[column]
 
         x_ticks = range(len(series))
         ax.bar(
@@ -325,7 +355,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
         ax.set_ylabel(spec.verbose_unit, fontsize="small")
 
         lower, upper = _get_padded_bounds(
-            min_val=series.min(), max_val=series.max(), pad_pct=y_axis_pad_pct
+            data_min=series.min(), data_max=series.max(), pad_pct=y_axis_pad_pct
         )
         ax.set_ylim(bottom=lower, top=upper)
 
@@ -376,37 +406,35 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
     :return: None
     """
 
-    df_specs = system_evaluations_to_dataframe(
+    dfs_specs = system_evaluations_to_dataframe(
         evaluations_and_base=evaluations_and_base,
         labeled_evaluations=labeled_evaluations,
         flatten_versions=flatten_versions,
         only_render_tests=only_render_tests,
     )
 
-    df_results: pd.DataFrame = df_specs.df_results
-    df_power: pd.DataFrame = df_specs.df_power
-    specs: dict[str, BenchmarkResult] = df_specs.specs
-
-    n_plots = len(df_results.columns)
+    n_plots = len(dfs_specs.df_results.columns)
     n_rows = math.ceil(n_plots / n_cols)
 
     fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False, height_unit=3)
 
     system_colors: Dict[str, str] = dict(
-        zip(df_results.index, _generate_color_palette(len(df_results.index)))
+        zip(dfs_specs.df_results.index, _generate_color_palette(len(dfs_specs.df_results.index)))
     )
 
-    for ax, column in zip(axes, df_results.columns):
-        spec: BenchmarkResult = specs[column]
-        series_results = df_results[column].dropna()
+    for ax, column in zip(axes, dfs_specs.df_results.columns):
+        spec: BenchmarkResult = dfs_specs.specs[column]
+        series_results = dfs_specs.df_results[column].dropna()
 
         if series_results.empty:
             continue
 
         # Filter for valid power data to ensure X/Y alignment
-        valid_mask = df_power.loc[series_results.index, column].notna()
+        valid_mask = dfs_specs.df_power.loc[series_results.index, column].notna()
         valid_sys = series_results.index[valid_mask]
-        valid_x_vals = list(df_power.loc[valid_sys, column])
+
+        # Convert power from Joules to Kilojoules for accurate scaling
+        valid_x_vals = [v / 1000 for v in dfs_specs.df_power.loc[valid_sys, column]]
 
         if not valid_x_vals:
             continue
@@ -432,7 +460,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
         # Use shared subtitle helper
         ax.set_title(_format_subplot_title(spec), fontsize="medium", pad=10)
         ax.set_ylabel(spec.verbose_unit, fontsize="small")
-        ax.set_xlabel("Power Consumption (J)", fontsize="small")
+        ax.set_xlabel("Power Consumption (kJ)", fontsize="small")
 
         ax.grid(True, linestyle=":", alpha=0.8)
 
@@ -522,7 +550,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
             # legend.
             for label_index, label in enumerate(reversed(label_to_color.keys())):
 
-                result: Optional[LLMThroughputResult] = find_result(
+                result: Optional[LLMThroughputResult] = _find_result(
                     model_results=model_results,
                     label=label,
                     context_depth=context_depth,
