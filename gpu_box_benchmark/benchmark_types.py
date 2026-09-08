@@ -199,10 +199,10 @@ class BenchmarkName(str, Enum):
     llama_bench_max_model_parameters_f16_32k_ctx = "llama_bench_max_model_parameters_f16_32k_ctx"
 
     # Even Tensor Split loads models into the GPUs differently
-    llama_bench_gemma_4_8b_q4_4k_ctx_generation_e_tensor_split = "llama_bench_gemma_4_8b_q4_4k_ctx_generation_e_tensor_split"
-    llama_bench_gemma_4_8b_f16_128k_ctx_generation_e_tensor_split = "llama_bench_gemma_4_8b_f16_128k_ctx_generation_e_tensor_split"
-    llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_generation_e_tensor_split = "llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_generation_e_tensor_split"
-    llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_generation_e_tensor_split = "llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_generation_e_tensor_split"
+    llama_bench_gemma_4_8b_q4_4k_ctx_gen_e_tensor_split = "llama_bench_gemma_4_8b_q4_4k_ctx_generation_e_tensor_split"
+    llama_bench_gemma_4_8b_f16_128k_ctx_gen_e_tensor_split = "llama_bench_gemma_4_8b_f16_128k_ctx_generation_e_tensor_split"
+    llama_bench_qwen_2_5_14b_inst_q4_4k_ctx_gen_e_tensor_split = "llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_generation_e_tensor_split"
+    llama_bench_qwen_2_5_14b_inst_q4_32k_ctx_gen_e_tensor_split = "llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_generation_e_tensor_split"
 
     # More Traditional GPU Usage
     blender_benchmark_monster_cpu = "blender_benchmark_monster_cpu"
@@ -398,10 +398,10 @@ BENCHMARK_TO_PRETTY: Dict[BenchmarkName, str] = {
     BenchmarkName.llama_bench_max_model_parameters_f16_32k_ctx: "llama.cpp Max Model Parameters (F16) + 32K Context",
 
     # Even Tensor Split
-    BenchmarkName.llama_bench_gemma_4_8b_q4_4k_ctx_generation_e_tensor_split: "llama.cpp Gemma 4 8B Q4_K_M Generation (4K) Tensor Split (Even)",
-    BenchmarkName.llama_bench_gemma_4_8b_f16_128k_ctx_generation_e_tensor_split: "llama.cpp Gemma 4 8B F16 Generation (128K) Tensor Split (Even)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_4k_ctx_generation_e_tensor_split: "llama.cpp Qwen2.5 14B Q4_K_M Generation (4K) Tensor Split (Even)",
-    BenchmarkName.llama_bench_qwen_2_5_14b_instruct_q4_32k_ctx_generation_e_tensor_split: "llama.cpp Qwen2.5 14B Q4_K_M Generation (32K) Tensor Split (Even)",
+    BenchmarkName.llama_bench_gemma_4_8b_q4_4k_ctx_gen_e_tensor_split: "llama.cpp Gemma 4 8B Q4_K_M Generation (4K) Tensor Split (Even)",
+    BenchmarkName.llama_bench_gemma_4_8b_f16_128k_ctx_gen_e_tensor_split: "llama.cpp Gemma 4 8B F16 Generation (128K) Tensor Split (Even)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_inst_q4_4k_ctx_gen_e_tensor_split: "llama.cpp Qwen2.5 14B Q4_K_M Generation (4K) Tensor Split (Even)",
+    BenchmarkName.llama_bench_qwen_2_5_14b_inst_q4_32k_ctx_gen_e_tensor_split: "llama.cpp Qwen2.5 14B Q4_K_M Generation (32K) Tensor Split (Even)",
 
     # Hardware & Other Benchmarks
     BenchmarkName.blender_benchmark_monster_cpu: "Blender CPU",
