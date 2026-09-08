@@ -6,10 +6,11 @@ import random
 import pytest
 from typing import Tuple, Optional, List, Iterator, Set
 from pathlib import Path
+
+from gpu_box_benchmark.visualization import render_plot, load_for_visualization
 from gpu_box_benchmark.benchmark_types import BenchmarkName, SystemEvaluation
 from gpu_box_benchmark import benchmark_types
-from gpu_box_benchmark import visualization
-from gpu_box_benchmark.visualization import EvaluationsBase, LabelBase
+from gpu_box_benchmark.visualization.load_for_visualization import EvaluationsBase, LabelBase
 from test import assets
 from _pytest._py.path import LocalPath
 
@@ -28,7 +29,7 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
     :return: None
     """
 
-    visualization.create_comparison_visualization(
+    render_plot.create_comparison_visualization(
         evaluations_and_base=EvaluationsBase(
             evaluations=_SAMPLE_EVALUATIONS,
             label_base=LabelBase.gpu,
@@ -158,7 +159,7 @@ def test_create_comparison_visualization_exhaustive(  # pylint: disable=too-many
 
         output_path = Path(tmpdir) / "sample_output.png"
 
-        visualization.create_comparison_visualization(
+        render_plot.create_comparison_visualization(
             evaluations_and_base=evaluations_and_base,
             labeled_evaluations=labeled_evaluations,
             output_path=output_path,
@@ -172,7 +173,7 @@ def test_create_comparison_visualization_exhaustive(  # pylint: disable=too-many
 
         return output_path
 
-    tests_in_input: Set[BenchmarkName] = visualization.benchmark_names_from_evaluations(
+    tests_in_input: Set[BenchmarkName] = load_for_visualization.benchmark_names_from_evaluations(
         evaluations=evaluations_and_base.evaluations,
         labeled_evaluations=labeled_evaluations,
     )

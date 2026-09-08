@@ -3,10 +3,8 @@ Core of the comparison between different benchmarks.
 """
 
 import math
-from collections import Counter
-from enum import Enum
 from pathlib import Path
-from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, cast
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.colors as mcolors
 import pandas as pd
@@ -25,104 +23,12 @@ from gpu_box_benchmark.benchmark_types import (
     BenchmarkResult,
     SystemEvaluation,
 )
-
-
-class LabelBase(str, Enum):
-    """
-    Options for the basis of the labels on the x axis of the graphs in the resulting visualizations.
-    """
-
-    gpu = "gpu"
-    cpu = "cpu"
-
-
-def _benchmark_column_name(result: BenchmarkResult, flatten_version: bool) -> str:
-    """
-    Formats the `BenchmarkResult.name` column name form.
-    :param result: To read.
-    :param flatten_version: Whether to include the version number.
-    :return: Column name as a string.
-    """
-    return result.name if flatten_version else f"{result.name}@{result.benchmark_version}"
-
-
-def _extract_critical_value(result: BenchmarkResult) -> float | None:
-    """
-    Extract the benchmark's headline numerical value.
-    :param result: To read.
-    :return: The critical value.
-    """
-    key = result.critical_result_key.value
-    return cast(float | None, getattr(result.numerical_results, key))
-
-
-def render_legend_title(index: int, evaluation: SystemEvaluation, label_base: LabelBase) -> str:
-    """
-    Create a row title for the given evaluation.
-    :param index: The index evaluation in the larger batch.
-    :param evaluation: To read.
-    :param label_base: Selects which field in the evaluation is the basis for the resulting value.
-    :return: Depends on `x_label_base`. For gpu: the count of each GPU and type of GPU sorted by
-    quantity as a stwing.
-    """
-
-    if label_base == LabelBase.gpu:
-        return f"#{index}: " + ",".join(
-            [
-                f"{v}X {k}"
-                for k, v in sorted(
-                    Counter([gpu.name for gpu in evaluation.gpus]).items(), key=lambda item: item[1]
-                )
-            ]
-        )
-    elif label_base == LabelBase.cpu:
-        return (
-            f"#{index}: " + f"Phys. {evaluation.cpu.physical_cpus}, "
-            f"Logi. {evaluation.cpu.logical_cpus} "
-            f"- {evaluation.cpu.name}"
-        )
-    else:
-        raise ValueError(f"Unsupported label_base: {label_base}")
-
-
-def _names_in_evaluation(evaluation: SystemEvaluation) -> Set[BenchmarkName]:
-    """
-    Helper function to read the names of the tests in the benchmark evaluation.
-    :param evaluation: Loaded system evaluation.
-    :return: A set of the names of the benchmarks found in the loaded evaluation.
-    """
-
-    return set((result.name for result in evaluation.results))
-
-
-class EvaluationsBase(NamedTuple):
-    """
-    Intermediate type. Links a set of evaluations with the distinguishing element of the run that
-    should be used as the basis for the resulting x-axis label.
-    """
-
-    evaluations: Tuple[SystemEvaluation, ...]
-    label_base: LabelBase
-
-
-def benchmark_names_from_evaluations(
-    evaluations: Iterable[SystemEvaluation],
-    labeled_evaluations: Iterable[Tuple[SystemEvaluation, str]],
-) -> Set[BenchmarkName]:
-    """
-    Library function for reading out the benchmark names from different evaluation sources.
-    :param evaluations: Flat list.
-    :param labeled_evaluations: Nexted list, the input Tuple is a standard format.
-    :return: Set of benchmark names.
-    """
-
-    return set().union(
-        *[_names_in_evaluation(evaluation=evaluation) for evaluation in evaluations],
-        *[
-            _names_in_evaluation(evaluation=evaluation)
-            for evaluation, _label in labeled_evaluations
-        ],
-    )
+from gpu_box_benchmark.visualization.load_for_visualization import (
+    DFSpecs,
+    EvaluationsBase,
+    find_result,
+    system_evaluations_to_dataframe,
+)
 
 
 def _create_grid(
@@ -229,123 +135,6 @@ def _apply_legend_and_save(
     plt.close(fig)
 
 
-class _DFSpecs(NamedTuple):
-    """
-    Holds the aligned dataframes for results and power consumption,
-    along with a mapping of column names to their representative BenchmarkResult specs.
-    """
-
-    df_results: pd.DataFrame
-    df_power: pd.DataFrame
-    specs: dict[str, BenchmarkResult]
-
-
-def _system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
-    evaluations_and_base: EvaluationsBase,
-    labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
-    flatten_versions: bool,
-    only_render_tests: Tuple[BenchmarkName, ...],
-) -> _DFSpecs:
-    """
-    Convert a list of SystemEvaluation objects into aligned wide dataframes for results and power.
-
-    :param evaluations_and_base: NT containing a list of Evaluations and an enum that describes
-    what the x-axis label should be.
-    :param labeled_evaluations: Iterator of the loaded evaluations and their specific x-axis label.
-    :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
-    :param only_render_tests: Only benchmarks with these names will be included in the output
-    visualization.
-    :return: A tuple containing (df_results, df_power, specs).
-    """
-
-    benchmarks_in_evaluations: set[BenchmarkName] = benchmark_names_from_evaluations(
-        evaluations=evaluations_and_base.evaluations,
-        labeled_evaluations=labeled_evaluations,
-    )
-
-    if any(only_render_tests) and (
-        not any((benchmark in benchmarks_in_evaluations for benchmark in only_render_tests))
-    ):
-        raise ValueError(
-            "Benchmarking results did not contain any of the requested tests. "
-            f"Requested tests: {only_render_tests} "
-            f"Discovered tests: {benchmarks_in_evaluations}"
-        )
-
-    results_rows: dict[str, dict[str, float]] = {}
-    power_rows: dict[str, dict[str, Optional[float]]] = {}
-    specs: dict[str, BenchmarkResult] = {}
-
-    def process_evaluation_results(
-        evaluation: SystemEvaluation,
-    ) -> Tuple[dict[str, float], dict[str, Optional[float]]]:
-        """Helper to extract both results and power values for a single evaluation."""
-        res_row: dict[str, float] = {}
-        pw_row: dict[str, Optional[float]] = {}
-
-        benchmark_results: Iterable[BenchmarkResult] = evaluation.results
-        if any(only_render_tests):
-            benchmark_results = filter(lambda b_r: b_r.name in only_render_tests, benchmark_results)
-
-        for br in benchmark_results:
-            column = _benchmark_column_name(br, flatten_version=flatten_versions)
-
-            # Record spec once (first occurrence wins)
-            specs.setdefault(column, br)
-
-            # Extract Result Value (Y-axis generally)
-            value = _extract_critical_value(br)
-            if value is not None:
-                res_row[column] = value
-
-            # Extract Power/Energy (X-axis generally)
-            gpu_usage = br.gpu_power_usage
-            critical_key = br.critical_gpu_power_usage_key
-
-            pw_val: Optional[float] = None
-            if gpu_usage and critical_key:
-                try:
-                    pw_val = getattr(gpu_usage, critical_key.value)
-                except AttributeError:
-                    pass
-
-            if pw_val is not None:
-                pw_row[column] = pw_val
-
-        return res_row, pw_row
-
-    # 1. Process unlabeled evaluations
-    for idx, evaluation in enumerate(evaluations_and_base.evaluations, start=1):
-        row_title = render_legend_title(
-            index=idx,
-            evaluation=evaluation,
-            label_base=evaluations_and_base.label_base,
-        )
-        res_row, pw_row = process_evaluation_results(evaluation)
-        results_rows[row_title] = res_row
-        power_rows[row_title] = pw_row
-
-    # 2. Process labeled evaluations
-    for evaluation, row_title in labeled_evaluations:
-        res_row, pw_row = process_evaluation_results(evaluation)
-        results_rows[row_title] = res_row
-        power_rows[row_title] = pw_row
-
-    # 3. Construct DataFrames
-    df_results = pd.DataFrame.from_dict(results_rows, orient="index")
-
-    if not power_rows:
-        # If no power data was collected, create an empty dataframe aligned to the result rows
-        df_power = pd.DataFrame(index=df_results.index)
-    else:
-        # Ensure power dataframe columns align perfectly with results dataframe
-        df_power = pd.DataFrame.from_dict(power_rows, orient="index").reindex(
-            columns=df_results.columns
-        )
-
-    return _DFSpecs(df_results=df_results, df_power=df_power, specs=specs)
-
-
 def _draw_bar(
     x_axis_max: float,
     ax: plt.Axes,
@@ -405,33 +194,6 @@ def _draw_bar(
         )
 
 
-def _find_result(
-    model_results: Tuple[LLMThroughputResult, ...],
-    label: str,
-    context_depth: int,
-    quantization: str,
-) -> Optional[LLMThroughputResult]:
-    """
-    Helper to find the relevant result for a specific cell.
-    :param model_results: Search space.
-    :param label: Needs to match output.
-    :param context_depth: Needs to match output.
-    :param quantization: Needs to match output.
-    :return: Result if found, None if otherwise.
-    """
-
-    return next(
-        (
-            r
-            for r in model_results
-            if r.label == label
-            and r.context_depth == context_depth
-            and r.quantization == quantization
-        ),
-        None,
-    )
-
-
 def _generate_color_palette(count: int) -> list[str]:
     """
     Deterministic method for getting a color map, a list of colors consumed by matplotlib.
@@ -485,7 +247,7 @@ def create_comparison_visualization(  # pylint: disable=too-many-locals,too-many
     :return: None
     """
 
-    df_specs: _DFSpecs = _system_evaluations_to_dataframe(
+    df_specs: DFSpecs = system_evaluations_to_dataframe(
         evaluations_and_base=evaluations_and_base,
         labeled_evaluations=labeled_evaluations,
         flatten_versions=flatten_versions,
@@ -635,7 +397,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
             # legend.
             for label_index, label in enumerate(reversed(label_to_color.keys())):
 
-                result: Optional[LLMThroughputResult] = _find_result(
+                result: Optional[LLMThroughputResult] = find_result(
                     model_results=model_results,
                     label=label,
                     context_depth=context_depth,
@@ -707,7 +469,7 @@ def create_comparison_visualization_power(  # pylint: disable=too-many-positiona
     print(y_axis_pad_pct)
 
     # 1. Load Data (using refactored function)
-    df_specs = _system_evaluations_to_dataframe(
+    df_specs = system_evaluations_to_dataframe(
         evaluations_and_base=evaluations_and_base,
         labeled_evaluations=labeled_evaluations,
         flatten_versions=flatten_versions,

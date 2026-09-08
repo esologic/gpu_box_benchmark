@@ -15,7 +15,6 @@ import psutil
 from bonus_click import options
 from click.decorators import FC
 
-from gpu_box_benchmark import visualization
 from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
     llama_bench_dockerfile_wrapper,
 )
@@ -45,7 +44,12 @@ from gpu_box_benchmark.locate_describe_hardware import (
     discover_gpus,
 )
 from gpu_box_benchmark.render_systemd import render_systemd_file
-from gpu_box_benchmark.visualization import EvaluationsBase, LabelBase
+from gpu_box_benchmark.visualization import render_plot
+from gpu_box_benchmark.visualization.load_for_visualization import (
+    EvaluationsBase,
+    LabelBase,
+    render_legend_title,
+)
 
 LOGGER_FORMAT = "[%(asctime)s - %(levelname)s] %(message)s"
 LOGGER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -529,7 +533,7 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     if font_family is not None:
         plt.rcParams["font.family"] = font_family
 
-    visualization.create_comparison_visualization_power(
+    render_plot.create_comparison_visualization_power(
         evaluations_and_base=EvaluationsBase(
             evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
             label_base=legend_label,
@@ -570,7 +574,7 @@ def cli_inputs_to_llm_results(
                 llama_bench_dockerfile_wrapper.read_throughput_results(
                     complete_results=evaluation.results,
                     failed_tests=evaluation.failed_tests,
-                    label=visualization.render_legend_title(
+                    label=render_legend_title(
                         index=label_index, evaluation=evaluation, label_base=legend_label
                     ),
                 )
@@ -653,7 +657,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
         labeled_input=labeled_input,
     )
 
-    visualization.create_llm_throughput_visualization(
+    render_plot.create_llm_throughput_visualization(
         results=results,
         plot_model=llm,
         output_path=output_path,
@@ -722,7 +726,7 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
         sanitized_model = model.value.replace(" ", "_").lower()
         output_path = Path(output_dir) / f"llm_{index}_{sanitized_model}.png"
 
-        visualization.create_llm_throughput_visualization(
+        render_plot.create_llm_throughput_visualization(
             results=results,
             plot_model=model,
             output_path=output_path,
