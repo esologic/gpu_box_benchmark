@@ -236,7 +236,9 @@ def _format_subplot_title(spec: BenchmarkResult, max_width: int = 35) -> str:
     return base
 
 
-def _get_padded_bounds(data_min: float, data_max: float, pad_pct: float) -> tuple[float, float]:
+def _get_padded_bounds(
+    data_min: float, data_max: float, pad_pct: Optional[float]
+) -> tuple[float, float]:
     """
     Calculates plot limits with consistent padding relative to the data's scale.
 
@@ -247,9 +249,14 @@ def _get_padded_bounds(data_min: float, data_max: float, pad_pct: float) -> tupl
 
     :param data_min: Min value in the data being plotted.
     :param data_max: Max value in the data being plotted.
-    :param pad_pct: Pad percent. Used to add some space in resulting plots.
+    :param pad_pct: Pad percent. Used to add some space in resulting plots. If `None`, returns
+    exact data bounds to allow auto-scaling.
     :return: Bounds.
     """
+
+    # When padding is not specified, return exact bounds so matplotlib handles scaling
+    if pad_pct is None:
+        return data_min, data_max
 
     pad_amount = (
         max(abs(data_max), abs(data_min)) if (data_max != 0 or data_min != 0) else 1.0
@@ -448,7 +455,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
 
         # Apply padding using shared helper
         x_lower, x_upper = _get_padded_bounds(x_min, x_max, pad_pct=0.1)
-        y_lower, y_upper = _get_padded_bounds(y_min, y_max, y_axis_pad_pct)
+        y_lower, y_upper = _get_padded_bounds(y_min, y_max, pad_pct=y_axis_pad_pct)
 
         ax.set_xlim(x_lower, x_upper)
         ax.set_ylim(y_lower, y_upper)
