@@ -2,13 +2,26 @@
 Code related to loading the data to be visualized.
 """
 
+import itertools
 from collections import Counter
 from enum import Enum
-from typing import Iterable, NamedTuple, Optional, Set, Tuple, cast
+from pathlib import Path
+from typing import Iterable, List, NamedTuple, Optional, Set, Tuple, cast
 
 import pandas as pd
 
-from gpu_box_benchmark.benchmark_types import BenchmarkName, BenchmarkResult, SystemEvaluation
+from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
+    llama_bench_dockerfile_wrapper,
+)
+from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import (
+    LLMThroughputResult,
+)
+from gpu_box_benchmark.benchmark_types import (
+    BenchmarkName,
+    BenchmarkResult,
+    SystemEvaluation,
+    load_system_evaluation_from_disk,
+)
 
 
 class SystemComparisonPlotMode(str, Enum):
@@ -257,3 +270,69 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
         )
 
     return DFsSpecs(df_results=df_results, df_power=df_power, specs=specs)
+
+
+class LoadedLLMResults(NamedTuple):
+    """
+    Output of the load and EXPLODE of the `LLMThroughputResult` data. Need to preserve the
+    original label order from the input.
+    """
+
+    label_order: List[str]
+    results: Tuple[LLMThroughputResult, ...]
+
+
+def cli_inputs_to_llm_results(
+    input_paths: Tuple[Path, ...],
+    legend_label: LabelBase,
+    labeled_input: Tuple[Tuple[Path, str], ...],
+) -> LoadedLLMResults:
+    """
+    Helper function to take user input and generate a set of NTs for plotting.
+    :param input_paths: List of input evaluations on disk.
+    :param legend_label: Decides how plots are labeled in the legend.
+    :param labeled_input: Pre-labeled inputs from the CLI, user wants a specific label for the
+    given input evaluation.
+    :return: NTs for plotting.
+    """
+
+    results: Tuple[LLMThroughputResult, ...] = tuple(
+        itertools.chain.from_iterable(
+            [
+                llama_bench_dockerfile_wrapper.read_throughput_results(
+                    complete_results=evaluation.results,
+                    failed_tests=evaluation.failed_tests,
+                    label=render_legend_title(
+                        index=label_index, evaluation=evaluation, label_base=legend_label
+                    ),
+                )
+                for label_index, evaluation in enumerate(
+                    map(load_system_evaluation_from_disk, input_paths), start=1
+                )
+            ]
+        )
+    )
+
+    results += tuple(
+        itertools.chain.from_iterable(
+            (
+                llama_bench_dockerfile_wrapper.read_throughput_results(
+                    complete_results=labeled_evaluation.results,
+                    failed_tests=labeled_evaluation.failed_tests,
+                    label=label,
+                )
+                for labeled_evaluation, label in [
+                    (load_system_evaluation_from_disk(path=path), label)
+                    for path, label in labeled_input
+                ]
+            )
+        )
+    )
+
+    label_order = []
+
+    for result in results:
+        if result.label not in label_order:
+            label_order.append(result.label)
+
+    return LoadedLLMResults(label_order=label_order, results=results)

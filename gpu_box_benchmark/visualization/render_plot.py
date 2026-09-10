@@ -26,6 +26,7 @@ from gpu_box_benchmark.benchmark_types import (
 from gpu_box_benchmark.visualization.load_for_visualization import (
     DFsSpecs,
     EvaluationsBase,
+    LoadedLLMResults,
     system_evaluations_to_dataframe,
 )
 
@@ -63,8 +64,9 @@ def _create_grid(
     return fig, axes
 
 
-def _apply_legend_and_save(
+def _apply_legend_and_save(  # pylint: disable=too-many-positional-arguments
     fig: plt.Figure,
+    ordered_labels: List[str],
     label_to_color: Dict[str, str],
     title: str,
     watermark: Optional[str],
@@ -86,14 +88,12 @@ def _apply_legend_and_save(
         plt.Rectangle((0, 0), 0.5, 1, color=color) for color in label_to_color.values()
     ]
 
-    legend_labels: List[str] = list(label_to_color.keys())
-
-    longest_label_length = max((len(label) for label in legend_labels), default=0)
+    longest_label_length = max((len(label) for label in ordered_labels), default=0)
     num_legend_columns = 1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3)
 
     resulting_legend = fig.legend(
         legend_handles,
-        legend_labels,
+        ordered_labels,
         loc="outside lower center",
         ncol=num_legend_columns,
         frameon=True,
@@ -375,6 +375,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     # Pass results to the helper for finalizing (legend, watermark, saving)
     _apply_legend_and_save(
         fig=fig,
+        ordered_labels=list(system_colors.keys()),
         label_to_color=system_colors,
         title=title,
         watermark=watermark,
@@ -476,6 +477,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
 
     _apply_legend_and_save(
         fig=fig,
+        ordered_labels=list(system_colors.keys()),
         label_to_color=system_colors,
         title=title,
         watermark=watermark,
@@ -484,7 +486,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
 
 
 def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-many-nested-blocks
-    results: Tuple[LLMThroughputResult, ...],
+    results: LoadedLLMResults,
     plot_model: LLMName,
     output_path: Path,
     title: str,
@@ -502,7 +504,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     """
 
     model_results: Tuple[LLMThroughputResult, ...] = tuple(
-        result for result in results if result.model == plot_model
+        result for result in results.results if result.model == plot_model
     )
 
     if not model_results:
@@ -524,10 +526,8 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
 
     fig, axes = _create_grid(n_rows=len(context_depths), n_cols=len(quants), sharex=True)
 
-    unique_labels = {result.label for result in model_results}
-
     label_to_color: Dict[str, str] = dict(
-        zip(unique_labels, _generate_color_palette(len(unique_labels)))
+        zip(results.label_order, _generate_color_palette(len(results.label_order)))
     )
 
     subplot_title_text_size = "medium"
@@ -555,7 +555,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
 
             # Reversed here so the top to bottom reading matches the left to right reading of the
             # legend.
-            for label_index, label in enumerate(reversed(label_to_color.keys())):
+            for label_index, label in enumerate(reversed(results.label_order)):
 
                 result: Optional[LLMThroughputResult] = _find_result(
                     model_results=model_results,
@@ -595,6 +595,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
 
     _apply_legend_and_save(
         fig=fig,
+        ordered_labels=results.label_order,
         label_to_color=label_to_color,
         title=title,
         watermark=watermark,

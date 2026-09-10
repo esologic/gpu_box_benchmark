@@ -1,6 +1,5 @@
 """Main module."""
 
-import itertools
 import logging
 import os
 import re
@@ -15,13 +14,7 @@ import psutil
 from bonus_click import options
 from click.decorators import FC
 
-from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
-    llama_bench_dockerfile_wrapper,
-)
-from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import (
-    LLMName,
-    LLMThroughputResult,
-)
+from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import LLMName
 from gpu_box_benchmark.benchmark_types import (
     BENCHMARK_TO_PRETTY,
     EXTENDED_BENCHMARK_DOCUMENTS,
@@ -48,8 +41,9 @@ from gpu_box_benchmark.visualization import render_plot
 from gpu_box_benchmark.visualization.load_for_visualization import (
     EvaluationsBase,
     LabelBase,
+    LoadedLLMResults,
     SystemComparisonPlotMode,
-    render_legend_title,
+    cli_inputs_to_llm_results,
 )
 
 LOGGER_FORMAT = "[%(asctime)s - %(levelname)s] %(message)s"
@@ -404,6 +398,7 @@ INPUT_OPTION = click.option(
         file_okay=True, dir_okay=False, readable=True, resolve_path=True, path_type=Path
     ),
     multiple=True,
+    required=True,
 )
 
 LEGEND_LABEL_OPTION = options.create_enum_option(
@@ -573,56 +568,6 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     )
 
 
-def cli_inputs_to_llm_results(
-    input_paths: Tuple[Path, ...],
-    legend_label: LabelBase,
-    labeled_input: Tuple[Tuple[Path, str], ...],
-) -> Tuple[LLMThroughputResult, ...]:
-    """
-    Helper function to take user input and generate a set of NTs for plotting.
-    :param input_paths: List of input evaluations on disk.
-    :param legend_label: Decides how plots are labeled in the legend.
-    :param labeled_input: Pre-labeled inputs from the CLI, user wants a specific label for the
-    given input evaluation.
-    :return: NTs for plotting.
-    """
-
-    results: Tuple[LLMThroughputResult, ...] = tuple(
-        itertools.chain.from_iterable(
-            [
-                llama_bench_dockerfile_wrapper.read_throughput_results(
-                    complete_results=evaluation.results,
-                    failed_tests=evaluation.failed_tests,
-                    label=render_legend_title(
-                        index=label_index, evaluation=evaluation, label_base=legend_label
-                    ),
-                )
-                for label_index, evaluation in enumerate(
-                    map(load_system_evaluation_from_disk, input_paths), start=1
-                )
-            ]
-        )
-    )
-
-    results += tuple(
-        itertools.chain.from_iterable(
-            (
-                llama_bench_dockerfile_wrapper.read_throughput_results(
-                    complete_results=labeled_evaluation.results,
-                    failed_tests=labeled_evaluation.failed_tests,
-                    label=label,
-                )
-                for labeled_evaluation, label in [
-                    (load_system_evaluation_from_disk(path=path), label)
-                    for path, label in labeled_input
-                ]
-            )
-        )
-    )
-
-    return results
-
-
 @cli.command(
     name="compare-llms",
     short_help="Draw graphs comparing LLM context depth, Quantization and System Performance.",
@@ -670,7 +615,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     if font_family is not None:
         plt.rcParams["font.family"] = font_family
 
-    results: Tuple[LLMThroughputResult, ...] = cli_inputs_to_llm_results(
+    results = cli_inputs_to_llm_results(
         input_paths=input_path,
         legend_label=legend_label,
         labeled_input=labeled_input,
@@ -729,7 +674,7 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
     if font_family is not None:
         plt.rcParams["font.family"] = font_family
 
-    results: Tuple[LLMThroughputResult, ...] = cli_inputs_to_llm_results(
+    results: LoadedLLMResults = cli_inputs_to_llm_results(
         input_paths=input_path,
         legend_label=legend_label,
         labeled_input=labeled_input,
