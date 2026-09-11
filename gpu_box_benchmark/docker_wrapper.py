@@ -524,11 +524,13 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
         # Only consumed in the single attached GPU case.
         first_output: Optional[_RunOutputs] = next(iter(serialized_outputs.values()))
 
+        forced_parallel_outputs: Optional[List[_RunOutputs]] = None
+
         if multiple_gpus_to_test:
             # Creates a docker container per GPU for every input GPU, then
             # starts them at the same time. Results are returned.
             with contextlib.suppress(RuntimeError):
-                forced_parallel_outputs: Optional[List[_RunOutputs]] = _force_parallel_run(
+                forced_parallel_outputs = _force_parallel_run(
                     client=client,
                     image=image,
                     new_output_file=new_output_file,
@@ -572,7 +574,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
             else None
         )
 
-        if no_failures:
+        if no_failures and (forced_parallel_outputs is not None):
 
             theoretical_multi_gpu_sum: float = sum(
                 (name_to_serial_result[gpu.name] for gpu in gpus)
@@ -629,7 +631,7 @@ def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arg
                         sum(run_output.uuid_to_joules.values())
                         for run_output in forced_parallel_outputs
                     )
-                    if serialized_joules
+                    if serialized_joules and (forced_parallel_outputs is not None)
                     else None
                 ),
                 native_multi_gpu_total_energy_joules=(
