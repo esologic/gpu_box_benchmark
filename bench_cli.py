@@ -184,6 +184,15 @@ def cli() -> None:
         "to this location which is bind mounted into the container so the downloads can be re-used."
     ),
 )
+@click.option(
+    "--raise-on-exception",
+    type=click.BOOL,
+    is_flag=True,
+    help=(
+        "If given, exceptions that occur during the run will be re-raised, crashing the run. "
+        "Useful for debugging."
+    ),
+)
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     test: Tuple[BenchmarkName, ...],
     gpu: Tuple[GPUIdentity, ...],
@@ -194,6 +203,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     docker_cleanup: bool,
     force_rebuild: bool,
     downloads: Optional[Path],
+    raise_on_exception: bool,
 ) -> None:
     """
     Run one or more benchmarks and records the results.
@@ -209,6 +219,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     :param docker_cleanup: See click help for docs!
     :param force_rebuild: See click help for docs!
     :param downloads: See click help for docs!
+    :param raise_on_exception: See click help for docs!
     :return: None
     """
 
@@ -279,6 +290,10 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
                 LOGGER.info(result_log)
 
             except Exception as e:  # pylint: disable=broad-except
+
+                if raise_on_exception:
+                    raise e
+
                 failed_tests.append(named_executor.benchmark_name)
                 pretty_exception = re.sub(r"\s+", " ", str(e))[:100] + "..."
                 LOGGER.info(f"Failed! Err: {pretty_exception}")

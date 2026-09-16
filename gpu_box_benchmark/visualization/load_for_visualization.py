@@ -61,6 +61,7 @@ class DFsSpecs(NamedTuple):
     df_results: pd.DataFrame
     df_power: pd.DataFrame
     specs: dict[str, BenchmarkResult]
+    label_order: List[str]
 
 
 class BenchmarkData(NamedTuple):
@@ -220,7 +221,10 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
             )
 
         for benchmark_result in benchmark_results_iter:
-            column: str = _benchmark_column_name(benchmark_result, flatten_version=flatten_versions)
+            column: str = _benchmark_column_name(
+                benchmark_result,
+                flatten_version=flatten_versions,
+            )
 
             # Record spec once (first occurrence wins)
             specs.setdefault(column, benchmark_result)
@@ -236,6 +240,8 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
 
         return output_row_results, output_row_power
 
+    label_order: List[str] = []
+
     # Process unlabeled evaluations
     for idx, evaluation in enumerate(evaluations_and_base.evaluations, start=1):
         row_title = render_legend_title(
@@ -249,6 +255,9 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
         results_rows[row_title] = results_row
         power_rows[row_title] = power_row
 
+        if row_title not in label_order:
+            label_order.append(row_title)
+
     # Process labeled evaluations
     for evaluation, row_title in labeled_evaluations:
         results_row, power_row = process_evaluation_results(
@@ -256,20 +265,28 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
         )
         results_rows[row_title] = results_row
         power_rows[row_title] = power_row
+        if row_title not in label_order:
+            label_order.append(row_title)
 
     # Construct DataFrames
-    df_results = pd.DataFrame.from_dict(results_rows, orient="index")
+    df_results = pd.DataFrame.from_dict(results_rows, orient="index").reindex(index=label_order)
 
     if not power_rows:
         # If no power data was collected, create an empty dataframe aligned to the result rows
-        df_power = pd.DataFrame(index=df_results.index)
+        df_power = pd.DataFrame(index=label_order)
     else:
-        # Ensure power dataframe columns align perfectly with results dataframe
+        # Ensure power dataframe rows and columns align perfectly with results dataframe
         df_power = pd.DataFrame.from_dict(power_rows, orient="index").reindex(
-            columns=df_results.columns
+            index=label_order,
+            columns=df_results.columns,
         )
 
-    return DFsSpecs(df_results=df_results, df_power=df_power, specs=specs)
+    return DFsSpecs(
+        df_results=df_results,
+        df_power=df_power,
+        specs=specs,
+        label_order=label_order,
+    )
 
 
 class LoadedLLMResults(NamedTuple):

@@ -85,7 +85,7 @@ def _apply_legend_and_save(  # pylint: disable=too-many-positional-arguments
 
     # Legend Calculation
     legend_handles = [
-        plt.Rectangle((0, 0), 0.5, 1, color=color) for color in label_to_color.values()
+        plt.Rectangle((0, 0), 0.5, 1, color=label_to_color[color]) for color in ordered_labels
     ]
 
     longest_label_length = max((len(label) for label in ordered_labels), default=0)
@@ -375,7 +375,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     # Pass results to the helper for finalizing (legend, watermark, saving)
     _apply_legend_and_save(
         fig=fig,
-        ordered_labels=list(system_colors.keys()),
+        ordered_labels=dfs_specs.label_order,
         label_to_color=system_colors,
         title=title,
         watermark=watermark,
@@ -414,7 +414,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
     :return: None
     """
 
-    dfs_specs = system_evaluations_to_dataframe(
+    dfs_specs: DFsSpecs = system_evaluations_to_dataframe(
         evaluations_and_base=evaluations_and_base,
         labeled_evaluations=labeled_evaluations,
         flatten_versions=flatten_versions,
@@ -477,7 +477,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
 
     _apply_legend_and_save(
         fig=fig,
-        ordered_labels=list(system_colors.keys()),
+        ordered_labels=dfs_specs.label_order,
         label_to_color=system_colors,
         title=title,
         watermark=watermark,
