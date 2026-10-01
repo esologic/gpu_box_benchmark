@@ -6,9 +6,11 @@ import itertools
 from collections import Counter
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, List, NamedTuple, Optional, Set, Tuple, cast
+from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, cast
 
 import pandas as pd
+from matplotlib import colors as mcolors
+from matplotlib import pyplot as plt
 
 from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
     llama_bench_dockerfile_wrapper,
@@ -60,8 +62,13 @@ class DFsSpecs(NamedTuple):
 
     df_results: pd.DataFrame
     df_power: pd.DataFrame
-    specs: dict[str, BenchmarkResult]
+    specs: Dict[str, BenchmarkResult]
     label_order: List[str]
+
+    color_mapping: Dict[str, str]
+    """
+    Maps label to it's color in the resulting viz. Used to establish groups. 
+    """
 
 
 class BenchmarkData(NamedTuple):
@@ -165,6 +172,31 @@ def benchmark_names_from_evaluations(
             for evaluation, _label in labeled_evaluations
         ],
     )
+
+
+def generate_color_mapping(ungrouped_labels: List[str]) -> Dict[str, str]:
+    """
+    Deterministic method for getting a color map, a list of colors consumed by matplotlib.
+    :param ungrouped_labels:
+    :return:
+    """
+
+    cmap = plt.get_cmap("Set1")
+
+    color_count = len(ungrouped_labels)
+
+    # If we need significantly more colors than standard qualitative sets have,
+    # switch to a wider palette like 'tab20' or 'Paired'.
+    if color_count > 9:
+        cmap = plt.get_cmap("Paired")
+
+    colors = []
+    for i in range(color_count):
+        # Map index i (0..N-1) to a value between 0.0 and 1.0
+        norm_val = float(i) / max(1, color_count - 1) if color_count > 1 else 0.5
+        colors.append(mcolors.to_hex(cmap(norm_val)))
+
+    return dict(zip(ungrouped_labels, colors))
 
 
 def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
@@ -286,6 +318,7 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
         df_power=df_power,
         specs=specs,
         label_order=label_order,
+        color_mapping=generate_color_mapping(ungrouped_labels=label_order),
     )
 
 
@@ -297,6 +330,7 @@ class LoadedLLMResults(NamedTuple):
 
     label_order: List[str]
     results: Tuple[LLMThroughputResult, ...]
+    color_mapping: Dict[str, str]
 
 
 def cli_inputs_to_llm_results(
@@ -352,4 +386,8 @@ def cli_inputs_to_llm_results(
         if result.label not in label_order:
             label_order.append(result.label)
 
-    return LoadedLLMResults(label_order=label_order, results=results)
+    return LoadedLLMResults(
+        label_order=label_order,
+        results=results,
+        color_mapping=generate_color_mapping(ungrouped_labels=label_order),
+    )

@@ -7,7 +7,6 @@ import textwrap
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import matplotlib.colors as mcolors
 from matplotlib import pyplot as plt
 
 from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
@@ -193,29 +192,6 @@ def _draw_bar(
         )
 
 
-def _generate_color_palette(count: int) -> list[str]:
-    """
-    Deterministic method for getting a color map, a list of colors consumed by matplotlib.
-    :param count: How many colors are needed.
-    :return: List of colors.
-    """
-
-    cmap = plt.get_cmap("Set1")
-
-    # If we need significantly more colors than standard qualitative sets have,
-    # switch to a wider palette like 'tab20' or 'Paired'.
-    if count > 9:
-        cmap = plt.get_cmap("Paired")
-
-    colors = []
-    for i in range(count):
-        # Map index i (0..N-1) to a value between 0.0 and 1.0
-        norm_val = float(i) / max(1, count - 1) if count > 1 else 0.5
-        colors.append(mcolors.to_hex(cmap(norm_val)))
-
-    return colors
-
-
 def _format_subplot_title(spec: BenchmarkResult, max_width: int = 35) -> str:
     """
     Constructs the formatted string for the subplot subtitle with automatic wrapping.
@@ -338,11 +314,6 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     # Use helper for figure and grid creation (sharex=False for vertical bar charts)
     fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False)
 
-    # Color mapping kept inline as requested
-    system_colors: Dict[str, str] = dict(
-        zip(dfs_specs.df_results.index, _generate_color_palette(len(dfs_specs.df_results.index)))
-    )
-
     for ax, column in zip(axes, dfs_specs.df_results.columns):
         series = dfs_specs.df_results[column].dropna()
         spec = dfs_specs.specs[column]
@@ -351,7 +322,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
         ax.bar(
             x_ticks,
             series.values,
-            color=[system_colors[system] for system in series.index],
+            color=[dfs_specs.color_mapping[system] for system in series.index],
             width=1,
         )
 
@@ -376,7 +347,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     _apply_legend_and_save(
         fig=fig,
         ordered_labels=dfs_specs.label_order,
-        label_to_color=system_colors,
+        label_to_color=dfs_specs.color_mapping,
         title=title,
         watermark=watermark,
         output_path=output_path,
@@ -426,10 +397,6 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
 
     fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False, height_unit=3)
 
-    system_colors: Dict[str, str] = dict(
-        zip(dfs_specs.df_results.index, _generate_color_palette(len(dfs_specs.df_results.index)))
-    )
-
     for ax, column in zip(axes, dfs_specs.df_results.columns):
         spec: BenchmarkResult = dfs_specs.specs[column]
         series_results = dfs_specs.df_results[column].dropna()
@@ -449,7 +416,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
 
         # Synchronize Y-values and colors with X-filtering to prevent shape mismatches
         valid_series = series_results[valid_mask]
-        colors = [system_colors[sys] for sys in valid_sys]
+        colors = [dfs_specs.color_mapping[sys] for sys in valid_sys]
 
         x_min, x_max = min(valid_x_vals), max(valid_x_vals)
         y_min, y_max = valid_series.min(), valid_series.max()
@@ -478,7 +445,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
     _apply_legend_and_save(
         fig=fig,
         ordered_labels=dfs_specs.label_order,
-        label_to_color=system_colors,
+        label_to_color=dfs_specs.color_mapping,
         title=title,
         watermark=watermark,
         output_path=output_path,
@@ -526,10 +493,6 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
 
     fig, axes = _create_grid(n_rows=len(context_depths), n_cols=len(quants), sharex=True)
 
-    label_to_color: Dict[str, str] = dict(
-        zip(results.label_order, _generate_color_palette(len(results.label_order)))
-    )
-
     subplot_title_text_size = "medium"
 
     # Safe scaling logic (ignores None/failed results)
@@ -568,7 +531,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
                     x_axis_max=x_axis_max,
                     ax=ax,
                     label_index=label_index,
-                    color=label_to_color[label],
+                    color=results.color_mapping[label],
                     result=result,
                 )
 
@@ -596,7 +559,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     _apply_legend_and_save(
         fig=fig,
         ordered_labels=results.label_order,
-        label_to_color=label_to_color,
+        label_to_color=results.color_mapping,
         title=title,
         watermark=watermark,
         output_path=output_path,

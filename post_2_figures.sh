@@ -2,9 +2,12 @@
 
 # 1️⃣ Define your input JSON files in an array
 INPUTS=(
+  "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_2_Tesla_K80_2026-09-28T15_17_03.json"
+  "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_6_Tesla_K80_2026-09-18T17_16_05.json"
+  "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_4_Tesla_K80_2026-09-23T01_52_25.json"
   "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_1_Tesla_P100-PCIE-16GB_2026-09-15T17_27_15.json"
-  "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_2_Tesla_P100-PCIE-16GB_2026-09-14T20_47_32.json"
-  "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_3_Tesla_P100-PCIE-16GB_2026-09-13T18_57_41.json"
+  "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_2_Tesla_P100-PCIE-16GB_2026-09-16T01_33_06.json"
+  "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_3_Tesla_P100-PCIE-16GB_2026-09-17T09_09_02.json"
   "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_1_Tesla_V100-PCIE-16GB_2026-09-13T10_47_18.json"
   "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_2_Tesla_V100-PCIE-16GB_2026-09-12T12_17_15.json"
   "./post_2_files/24_Intel_Xeon_CPU_E5-2687W_v4_@_3.00GHz_3_Tesla_V100-PCIE-16GB_2026-09-11T13_31_26.json"
@@ -33,7 +36,7 @@ python bench_cli.py compare-systems \
   --watermark "esologic.com/telsas-for-llms" \
   --font-family "Inconsolata" \
   --y-axis-pad-pct 0.3 \
-  --output-path ./post_2_images/results_power.svg \
+  --output-path ./post_2_images/results_power.png \
   --mode results_power \
   --title "Assorted System Tests"
 
@@ -51,7 +54,7 @@ python bench_cli.py compare-systems \
   --n-cols 3 \
   --watermark "esologic.com/telsas-for-llms" \
   --font-family "Inconsolata" \
-  --output-path ./post_2_images/results.svg \
+  --output-path ./post_2_images/results.png \
   --mode results \
   --title "Assorted System Tests"
 
@@ -60,6 +63,3 @@ python bench_cli.py compare-llm-families \
   --watermark "esologic.com/telsas-for-llms" \
   --font-family "Inconsolata" \
   --output-dir ./post_2_images/llm_families
-
-
-# "./post_2_files/8_Intel_Xeon_CPU_E5-1680_v4_@_3.40GHz_2_Tesla_M60_2026-09-11T17_31_49.json"

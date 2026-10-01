@@ -416,6 +416,25 @@ INPUT_OPTION = click.option(
     required=True,
 )
 
+GROUPED_INPUT_OPTION = click.option(
+    "--grouped-input",
+    help=(
+        "A benchmark JSON file and its group name for color-coding. "
+        "Inputs sharing the same group name will be treated as a single set."
+    ),
+    type=(
+        click.Path(
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+            path_type=Path,
+        ),
+        str,  # The Group Name (e.g., "Tesla K80")
+    ),
+    multiple=True,
+)
+
 LEGEND_LABEL_OPTION = options.create_enum_option(
     "--legend-label",
     help_message=(
