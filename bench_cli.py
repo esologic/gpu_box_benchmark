@@ -413,7 +413,7 @@ INPUT_OPTION = click.option(
         file_okay=True, dir_okay=False, readable=True, resolve_path=True, path_type=Path
     ),
     multiple=True,
-    required=True,
+    required=False,  # TODO: Need to ensure one is given
 )
 
 GROUPED_INPUT_OPTION = click.option(
@@ -505,6 +505,7 @@ FONT_FAMILY_OPTION = click.option(
     multiple=False,
 )
 @INPUT_OPTION
+@GROUPED_INPUT_OPTION
 @LEGEND_LABEL_OPTION
 @LABELED_INPUT_OPTION
 @OUTPUT_OPTION
@@ -541,8 +542,9 @@ FONT_FAMILY_OPTION = click.option(
 def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     mode: SystemComparisonPlotMode,
     input_path: Tuple[Path, ...],
-    labeled_input: Tuple[Tuple[Path, str], ...],
+    grouped_input: Tuple[Tuple[Path, str], ...],
     legend_label: LabelBase,
+    labeled_input: Tuple[Tuple[Path, str], ...],
     output_path: Path,
     title: Optional[str],
     flatten_versions: bool,
@@ -559,8 +561,9 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
 
     :param mode: See click help for docs!
     :param input_path: See click help for docs!
-    :param labeled_input: See click help for docs!
+    :param grouped_input: See click help for docs!
     :param legend_label: See click help for docs!
+    :param labeled_input: See click help for docs!
     :param output_path: See click help for docs!
     :param title: See click help for docs!
     :param flatten_versions: See click help for docs!
@@ -583,7 +586,10 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
 
     plot_function(
         evaluations_and_base=EvaluationsBase(
-            evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
+            ungrouped_evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
+            grouped_evaluations=tuple(
+                (load_system_evaluation_from_disk(path), label) for path, label in grouped_input
+            ),
             label_base=legend_label,
         ),
         labeled_evaluations=tuple(

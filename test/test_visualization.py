@@ -31,7 +31,8 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
 
     render_plot.create_system_comparison_visualization_results(
         evaluations_and_base=EvaluationsBase(
-            evaluations=_SAMPLE_EVALUATIONS,
+            ungrouped_evaluations=_SAMPLE_EVALUATIONS,
+            grouped_evaluations=tuple(),
             label_base=LabelBase.gpu,
         ),
         labeled_evaluations=tuple(),
@@ -83,15 +84,18 @@ def get_benchmark_iterator(
     "evaluations_and_base",
     [
         EvaluationsBase(
-            evaluations=_SAMPLE_EVALUATIONS,
+            ungrouped_evaluations=_SAMPLE_EVALUATIONS,
+            grouped_evaluations=tuple(),
             label_base=LabelBase.gpu,
         ),
         EvaluationsBase(
-            evaluations=_SAMPLE_EVALUATIONS,
+            ungrouped_evaluations=_SAMPLE_EVALUATIONS,
+            grouped_evaluations=tuple(),
             label_base=LabelBase.cpu,
         ),
         EvaluationsBase(
-            evaluations=tuple(),
+            ungrouped_evaluations=tuple(),
+            grouped_evaluations=tuple(),
             label_base=LabelBase.gpu,
         ),
     ],
@@ -174,7 +178,7 @@ def test_create_comparison_visualization_exhaustive(  # pylint: disable=too-many
         return output_path
 
     tests_in_input: Set[BenchmarkName] = load_for_visualization.benchmark_names_from_evaluations(
-        evaluations=evaluations_and_base.evaluations,
+        evaluations=evaluations_and_base.ungrouped_evaluations,
         labeled_evaluations=labeled_evaluations,
     )
 

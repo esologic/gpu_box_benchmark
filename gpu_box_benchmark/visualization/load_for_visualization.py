@@ -2,15 +2,16 @@
 Code related to loading the data to be visualized.
 """
 
+import colorsys
 import itertools
-from collections import Counter
+from collections import Counter, defaultdict
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, cast
 
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib import colors as mcolors
-from matplotlib import pyplot as plt
 
 from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench import (
     llama_bench_dockerfile_wrapper,
@@ -50,7 +51,8 @@ class EvaluationsBase(NamedTuple):
     should be used as the basis for the resulting x-axis label.
     """
 
-    evaluations: Tuple[SystemEvaluation, ...]
+    ungrouped_evaluations: Tuple[SystemEvaluation, ...]
+    grouped_evaluations: Tuple[Tuple[SystemEvaluation, str], ...]
     label_base: LabelBase
 
 
@@ -174,29 +176,90 @@ def benchmark_names_from_evaluations(
     )
 
 
-def generate_color_mapping(ungrouped_labels: List[str]) -> Dict[str, str]:
+def _get_group_shades(hue: float, saturation: float, count: int) -> List[str]:
     """
-    Deterministic method for getting a color map, a list of colors consumed by matplotlib.
-    :param ungrouped_labels:
-    :return:
+    Generate 'count' distinct hex colors based on a base hue and saturation.
+
+    We vary the lightness around a safe center (0.65) to ensure all bars
+    are visible and clearly distinguishable within their group.
+    :param hue: The hue component (0.0 - 1.0).
+    :param saturation: The saturation component (0.0 - 1.0).
+    :param count: Number of distinct shades needed for this group.
+    :return: List of hex color strings.
+    """
+    shades = []
+    target_l = 0.65
+
+    if count == 1:
+        # Single item gets the full vibrant color at the center lightness
+        l_var = max(0.25, min(0.85, target_l))
+        shades.append(mcolors.to_hex(colorsys.hls_to_rgb(hue, l_var, saturation)))
+    else:
+        # Spread lightness evenly around the center to prevent "muddy" or too-dark colors
+        step = 0.4 / (count - 1)  # Span of roughly 0.4 in lightness space
+        center_idx = (count - 1) / 2
+
+        for i in range(count):
+            l_var = target_l + (i - center_idx) * step
+
+            # Clamp to prevent washout (near white) or near-black bars
+            l_var = max(0.25, min(0.85, l_var))
+
+            shades.append(mcolors.to_hex(colorsys.hls_to_rgb(hue, l_var, saturation)))
+
+    return shades
+
+
+def generate_color_mapping(
+    all_labels: List[str], group_to_labels: Dict[str, List[str]]
+) -> Dict[str, str]:
+    """
+    Create a dictionary mapping labels to their color in the plot.
+    Ensures colors are visually distinct and groups share similar hues but different lightnesses.
+
+    :param all_labels: Contains labels in/out of groups.
+    :param group_to_labels: Labels within the given group should have similar colors.
+    :return: Dictionary mapping each label to a hex color string.
     """
 
+    # Output to populate
+    result_colors: Dict[str, str] = {}
+
+    # Assign distinct base hues to each group first using tab20
+    num_groups = len(group_to_labels)
+
+    if num_groups > 0:
+        tab_cmap = plt.get_cmap("tab20")
+
+        for i, labels in enumerate(group_to_labels.values()):
+            # Spread the groups across the entire color wheel (0.0 to 1.0)
+            normalization_constant: float = (
+                float(i) / max(1, num_groups - 1) if num_groups > 1 else 0.5
+            )
+
+            # Pull out the RGB here, convert it to HLS
+            h, s, _ = colorsys.rgb_to_hls(*tab_cmap(normalization_constant)[0:3])
+
+            # Delegate the shading logic to the helper function
+            shades = _get_group_shades(hue=h, saturation=s, count=len(labels))
+
+            for label, color in zip(labels, shades):
+                result_colors[label] = color
+
+    # Handle ungrouped labels using a qualitative map (Set1 is great for <10 items)
+    uncategorized = [label for label in all_labels if label not in result_colors]
     cmap = plt.get_cmap("Set1")
 
-    color_count = len(ungrouped_labels)
+    for i, label in enumerate(uncategorized):
+        normalization_constant = (
+            float(i) / max(1, len(uncategorized) - 1) if len(uncategorized) > 1 else 0.5
+        )
 
-    # If we need significantly more colors than standard qualitative sets have,
-    # switch to a wider palette like 'tab20' or 'Paired'.
-    if color_count > 9:
-        cmap = plt.get_cmap("Paired")
+        result_colors[label] = mcolors.to_hex(
+            cast(Tuple[float, float, float], tuple(cmap(normalization_constant)[0:2]))
+        )
 
-    colors = []
-    for i in range(color_count):
-        # Map index i (0..N-1) to a value between 0.0 and 1.0
-        norm_val = float(i) / max(1, color_count - 1) if color_count > 1 else 0.5
-        colors.append(mcolors.to_hex(cmap(norm_val)))
-
-    return dict(zip(ungrouped_labels, colors))
+    return result_colors
 
 
 def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
@@ -218,7 +281,10 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
     """
 
     benchmarks_in_evaluations: set[BenchmarkName] = benchmark_names_from_evaluations(
-        evaluations=evaluations_and_base.evaluations,
+        evaluations=(
+            evaluations_and_base.ungrouped_evaluations
+            + tuple(evaluation for evaluation, label in evaluations_and_base.grouped_evaluations)
+        ),
         labeled_evaluations=labeled_evaluations,
     )
 
@@ -234,6 +300,7 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
     results_rows: dict[str, dict[str, float]] = {}
     power_rows: dict[str, dict[str, Optional[float]]] = {}
     specs: dict[str, BenchmarkResult] = {}
+    label_order: List[str] = []
 
     def process_evaluation_results(
         benchmark_results_iter: Iterable[BenchmarkResult],
@@ -272,23 +339,50 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
 
         return output_row_results, output_row_power
 
-    label_order: List[str] = []
+    def fill_evaluation_results(evaluation: SystemEvaluation, title: str) -> str:
+        """
 
-    # Process unlabeled evaluations
-    for idx, evaluation in enumerate(evaluations_and_base.evaluations, start=1):
-        row_title = render_legend_title(
-            index=idx,
-            evaluation=evaluation,
-            label_base=evaluations_and_base.label_base,
-        )
+        :param evaluation:
+        :param title:
+        :return:
+        """
+
         results_row, power_row = process_evaluation_results(
             benchmark_results_iter=evaluation.results
         )
-        results_rows[row_title] = results_row
-        power_rows[row_title] = power_row
+        results_rows[title] = results_row
+        power_rows[title] = power_row
 
-        if row_title not in label_order:
-            label_order.append(row_title)
+        if title not in label_order:
+            label_order.append(title)
+
+        return title
+
+    # Process unlabeled, ungrouped evaluations
+    for idx, evaluation in enumerate(evaluations_and_base.ungrouped_evaluations, start=1):
+        fill_evaluation_results(
+            evaluation=evaluation,
+            title=render_legend_title(
+                index=idx,
+                evaluation=evaluation,
+                label_base=evaluations_and_base.label_base,
+            ),
+        )
+
+    group_to_labels: Dict[str, List[str]] = defaultdict(list)
+
+    # Process unlabeled, grouped evaluations
+    for idx, (evaluation, group) in enumerate(evaluations_and_base.grouped_evaluations, start=1):
+        group_to_labels[group].append(
+            fill_evaluation_results(
+                evaluation=evaluation,
+                title=render_legend_title(
+                    index=idx,
+                    evaluation=evaluation,
+                    label_base=evaluations_and_base.label_base,
+                ),
+            )
+        )
 
     # Process labeled evaluations
     for evaluation, row_title in labeled_evaluations:
@@ -318,7 +412,9 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
         df_power=df_power,
         specs=specs,
         label_order=label_order,
-        color_mapping=generate_color_mapping(ungrouped_labels=label_order),
+        color_mapping=generate_color_mapping(
+            all_labels=label_order, group_to_labels=group_to_labels
+        ),
     )
 
 
@@ -389,5 +485,5 @@ def cli_inputs_to_llm_results(
     return LoadedLLMResults(
         label_order=label_order,
         results=results,
-        color_mapping=generate_color_mapping(ungrouped_labels=label_order),
+        color_mapping=generate_color_mapping(all_labels=label_order, group_to_labels={}),
     )
