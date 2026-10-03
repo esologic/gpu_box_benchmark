@@ -5,6 +5,7 @@ import os
 import re
 import textwrap
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
@@ -21,6 +22,7 @@ from gpu_box_benchmark.benchmark_types import (
     BenchmarkFamily,
     BenchmarkName,
     BenchmarkResult,
+    LineMode,
     SystemEvaluation,
     load_system_evaluation_from_disk,
 )
@@ -493,6 +495,23 @@ FONT_FAMILY_OPTION = click.option(
     type=click.STRING,
 )
 
+SCATTER_LINE_MODE = options.create_enum_option(
+    "--scatter-line-mode",
+    help_message=(
+        "For visualizations that produce scatter plots, this controls if/how lines are also drawn "
+        "on the scatter plots."
+    ),
+    input_enum=LineMode,
+    default=LineMode.input_order,
+)
+
+LEGEND_COLUMNS_OPTION = click.option(
+    "--legend-columns",
+    default=None,
+    help="Override for the number of columns in the legend.",
+    type=click.IntRange(min=1),
+)
+
 
 @cli.command(name="compare-systems", short_help="Draw graphs comparing benchmark outputs.")
 @options.create_enum_option(
@@ -539,6 +558,8 @@ FONT_FAMILY_OPTION = click.option(
     default=0.1,
 )
 @FONT_FAMILY_OPTION
+@SCATTER_LINE_MODE
+@LEGEND_COLUMNS_OPTION
 def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     mode: SystemComparisonPlotMode,
     input_path: Tuple[Path, ...],
@@ -553,6 +574,8 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     watermark: Optional[str],
     y_axis_pad_pct: Optional[float],
     font_family: Optional[str],
+    scatter_line_mode: LineMode,
+    legend_columns: Optional[int],
 ) -> None:
     """
     Draws a matplotlib visualization comparing the results of the different input benchmarks.
@@ -572,6 +595,8 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     :param watermark: See click help for docs!
     :param y_axis_pad_pct: See click help for docs!
     :param font_family: See click help for docs!
+    :param scatter_line_mode: See click help for docs!
+    :param legend_columns: See click help for docs!
     :return: None
     """
 
@@ -581,7 +606,9 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     plot_function = (
         render_plot.create_system_comparison_visualization_results
         if mode == SystemComparisonPlotMode.results
-        else render_plot.create_system_comparison_visualization_results_power
+        else partial(
+            render_plot.create_system_comparison_visualization_results_power, scatter_line_mode
+        )
     )
 
     plot_function(
@@ -605,6 +632,7 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
         n_cols=n_cols,
         watermark=watermark,
         y_axis_pad_pct=y_axis_pad_pct,
+        legend_columns=legend_columns,
     )
 
 
@@ -613,6 +641,7 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     short_help="Draw graphs comparing LLM context depth, Quantization and System Performance.",
 )
 @INPUT_OPTION
+@GROUPED_INPUT_OPTION
 @LEGEND_LABEL_OPTION
 @LABELED_INPUT_OPTION
 @OUTPUT_OPTION
@@ -626,8 +655,10 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     default=LLMName.qwen_2_5_14b_instruct,
     multiple=False,
 )
+@LEGEND_COLUMNS_OPTION
 def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
+    grouped_input: Tuple[Tuple[Path, str], ...],
     legend_label: LabelBase,
     labeled_input: Tuple[Tuple[Path, str], ...],
     output_path: Path,
@@ -635,6 +666,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     watermark: Optional[str],
     font_family: Optional[str],
     llm: LLMName,
+    legend_columns: Optional[int],
 ) -> None:
     """
     Draws a matplotlib visualization comparing the results of the different input benchmarks.
@@ -642,6 +674,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     \f
 
     :param input_path: See click help for docs!
+    :param grouped_input: See click help for docs!
     :param legend_label: See click help for docs!
     :param labeled_input: See click help for docs!
     :param output_path: See click help for docs!
@@ -649,6 +682,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     :param watermark: See click help for docs!
     :param font_family: See click help for docs!
     :param llm: See click help for docs!
+    :param legend_columns: See click help for docs!
     :return: None
     """
 
@@ -657,6 +691,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
 
     results = cli_inputs_to_llm_results(
         input_paths=input_path,
+        grouped_inputs=grouped_input,
         legend_label=legend_label,
         labeled_input=labeled_input,
     )
@@ -667,6 +702,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
         output_path=output_path,
         title=title if title is not None else llm.value,
         watermark=watermark,
+        legend_columns=legend_columns,
     )
 
 
@@ -678,6 +714,7 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     ),
 )
 @INPUT_OPTION
+@GROUPED_INPUT_OPTION
 @LEGEND_LABEL_OPTION
 @LABELED_INPUT_OPTION
 @click.option(
@@ -689,13 +726,16 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
 )
 @WATERMARK_OPTION
 @FONT_FAMILY_OPTION
+@LEGEND_COLUMNS_OPTION
 def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
+    grouped_input: Tuple[Tuple[Path, str], ...],
     legend_label: LabelBase,
     labeled_input: Tuple[Tuple[Path, str], ...],
     output_dir: str,
     watermark: Optional[str],
     font_family: Optional[str],
+    legend_columns: Optional[int],
 ) -> None:
     """
     Iterates through all supported LLMs and generates a comparison visualization for each.
@@ -703,11 +743,13 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
     \f
 
     :param input_path: See click help for docs!
+    :param grouped_input: See click help for docs!
     :param legend_label: See click help for docs!
     :param labeled_input: See click help for docs!
     :param output_dir: Directory to save the generated images.
     :param watermark: See click help for docs!
     :param font_family: See click help for docs!
+    :param legend_columns: See click help for docs!
     :return: None
     """
 
@@ -716,6 +758,7 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
 
     results: LoadedLLMResults = cli_inputs_to_llm_results(
         input_paths=input_path,
+        grouped_inputs=grouped_input,
         legend_label=legend_label,
         labeled_input=labeled_input,
     )
@@ -736,6 +779,7 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
             output_path=output_path,
             title=model.value,
             watermark=watermark,
+            legend_columns=legend_columns,
         )
 
 

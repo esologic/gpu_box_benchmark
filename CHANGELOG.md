@@ -24,6 +24,9 @@ but creates a viz for all the families in the input files.
 * Added several `llama-bench` tests that use `--tensor-split` across attached GPUs per feedback from
 first post.
 * Fixed bug in sequence execution logic that could lead to false failures.
+* Added ability to group systems in visualizations, they have similar colors to make seeing groups
+easier.
+* Brought out more visualization params to CLI.
 
 ### 0.7.0 - (2026-07-11)
 

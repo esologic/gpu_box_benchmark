@@ -781,3 +781,13 @@ class BenchmarkData(NamedTuple):
 
     report_file_numerical: ReportFileNumerical
     report_file_gpu_power_usage: Optional[ReportFileGPUPowerUsage]
+
+
+class LineMode(str, Enum):
+    """
+    For scatterplot graphs, determines how lines are drawn if requested.
+    """
+
+    no_lines = "no_lines"
+    input_order = "input_order"
+    x_value = "x_value"

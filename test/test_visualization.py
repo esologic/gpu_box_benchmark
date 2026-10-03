@@ -43,6 +43,7 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
         n_cols=2,
         watermark=None,
         y_axis_pad_pct=None,
+        legend_columns=None,
     )
 
 
@@ -173,6 +174,7 @@ def test_create_comparison_visualization_exhaustive(  # pylint: disable=too-many
             n_cols=n_cols,
             watermark=watermark,
             y_axis_pad_pct=y_axis_pad_pct,
+            legend_columns=None,
         )
 
         return output_path

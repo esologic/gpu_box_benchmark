@@ -215,7 +215,8 @@ def generate_color_mapping(
 ) -> Dict[str, str]:
     """
     Create a dictionary mapping labels to their color in the plot.
-    Ensures colors are visually distinct and groups share similar hues but different lightnesses.
+    Ensures colors are visually distinct and groups share similar hues
+    but different lightnesses.
 
     :param all_labels: Contains labels in/out of groups.
     :param group_to_labels: Labels within the given group should have similar colors.
@@ -225,38 +226,44 @@ def generate_color_mapping(
     # Output to populate
     result_colors: Dict[str, str] = {}
 
-    # Assign distinct base hues to each group first using tab20
+    # Assign distinct base hues to each group.
     num_groups = len(group_to_labels)
 
     if num_groups > 0:
-        tab_cmap = plt.get_cmap("tab20")
+        for index, labels in enumerate(group_to_labels.values()):
 
-        for i, labels in enumerate(group_to_labels.values()):
-            # Spread the groups across the entire color wheel (0.0 to 1.0)
-            normalization_constant: float = (
-                float(i) / max(1, num_groups - 1) if num_groups > 1 else 0.5
+            # Evenly distribute groups around the color wheel.
+            hue = float(index) / float(num_groups)
+
+            # Use a consistent, reasonably strong saturation.
+            # HLS lightness is controlled by _get_group_shades.
+            saturation = 0.65
+
+            # Delegate the shading logic to the helper function.
+            shades = _get_group_shades(
+                hue=hue,
+                saturation=saturation,
+                count=len(labels),
             )
-
-            # Pull out the RGB here, convert it to HLS
-            h, s, _ = colorsys.rgb_to_hls(*tab_cmap(normalization_constant)[0:3])
-
-            # Delegate the shading logic to the helper function
-            shades = _get_group_shades(hue=h, saturation=s, count=len(labels))
 
             for label, color in zip(labels, shades):
                 result_colors[label] = color
 
-    # Handle ungrouped labels using a qualitative map (Set1 is great for <10 items)
-    uncategorized = [label for label in all_labels if label not in result_colors]
-    cmap = plt.get_cmap("Set1")
+    # Handle ungrouped labels using a qualitative map.
+    ungrouped_labels = [label for label in all_labels if label not in result_colors]
 
-    for i, label in enumerate(uncategorized):
+    ungrouped_colormap = plt.get_cmap("Set1")
+
+    for index, label in enumerate(ungrouped_labels):
         normalization_constant = (
-            float(i) / max(1, len(uncategorized) - 1) if len(uncategorized) > 1 else 0.5
+            float(index) / max(1, len(ungrouped_labels) - 1) if len(ungrouped_labels) > 1 else 0.5
         )
 
         result_colors[label] = mcolors.to_hex(
-            cast(Tuple[float, float, float], tuple(cmap(normalization_constant)[0:2]))
+            cast(
+                Tuple[float, float, float],
+                tuple(ungrouped_colormap(normalization_constant)[0:3]),
+            )
         )
 
     return result_colors
@@ -341,15 +348,16 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
 
     def fill_evaluation_results(evaluation: SystemEvaluation, title: str) -> str:
         """
-
-        :param evaluation:
-        :param title:
-        :return:
+        Populate the lists for processing.
+        :param evaluation: To read.
+        :param title: Label.
+        :return: Input label forwarded.
         """
 
         results_row, power_row = process_evaluation_results(
             benchmark_results_iter=evaluation.results
         )
+
         results_rows[title] = results_row
         power_rows[title] = power_row
 
@@ -386,11 +394,14 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
 
     # Process labeled evaluations
     for evaluation, row_title in labeled_evaluations:
-        results_row, power_row = process_evaluation_results(
+
+        row_results, row_power = process_evaluation_results(
             benchmark_results_iter=evaluation.results
         )
-        results_rows[row_title] = results_row
-        power_rows[row_title] = power_row
+
+        results_rows[row_title] = row_results
+        power_rows[row_title] = row_power
+
         if row_title not in label_order:
             label_order.append(row_title)
 
@@ -431,12 +442,14 @@ class LoadedLLMResults(NamedTuple):
 
 def cli_inputs_to_llm_results(
     input_paths: Tuple[Path, ...],
+    grouped_inputs: Tuple[Tuple[Path, str], ...],
     legend_label: LabelBase,
     labeled_input: Tuple[Tuple[Path, str], ...],
 ) -> LoadedLLMResults:
     """
     Helper function to take user input and generate a set of NTs for plotting.
     :param input_paths: List of input evaluations on disk.
+    :param grouped_inputs: Inputs with their corresponding labels from the CLI.
     :param legend_label: Decides how plots are labeled in the legend.
     :param labeled_input: Pre-labeled inputs from the CLI, user wants a specific label for the
     given input evaluation.
@@ -459,6 +472,26 @@ def cli_inputs_to_llm_results(
             ]
         )
     )
+
+    group_to_labels: Dict[str, List[str]] = defaultdict(list)
+
+    for label_index, (evaluation_path, group) in enumerate(grouped_inputs, start=1):
+
+        evaluation = load_system_evaluation_from_disk(path=evaluation_path)
+
+        label = render_legend_title(
+            index=label_index, evaluation=evaluation, label_base=legend_label
+        )
+
+        results += tuple(
+            llama_bench_dockerfile_wrapper.read_throughput_results(
+                complete_results=evaluation.results,
+                failed_tests=evaluation.failed_tests,
+                label=label,
+            )
+        )
+
+        group_to_labels[group].append(label)
 
     results += tuple(
         itertools.chain.from_iterable(
@@ -485,5 +518,7 @@ def cli_inputs_to_llm_results(
     return LoadedLLMResults(
         label_order=label_order,
         results=results,
-        color_mapping=generate_color_mapping(all_labels=label_order, group_to_labels={}),
+        color_mapping=generate_color_mapping(
+            all_labels=label_order, group_to_labels=group_to_labels
+        ),
     )

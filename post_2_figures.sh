@@ -26,15 +26,21 @@ GROUP_NAMES=(
   "V100"
 )
 
-# 2️⃣ Build the command-line arguments array correctly using --grouped-input
-INPUT_ARGS=()
+# 2️⃣ Build the grouped-input command-line arguments
+GROUPED_INPUT_ARGS=()
 for i in "${!FILE_PATHS[@]}"; do
-    INPUT_ARGS+=("--grouped-input" "${FILE_PATHS[$i]}" "${GROUP_NAMES[$i]}")
+    GROUPED_INPUT_ARGS+=("--grouped-input" "${FILE_PATHS[$i]}" "${GROUP_NAMES[$i]}")
 done
 
-# 3️⃣ Run the commands using the constructed arguments
+# 3️⃣ Build the regular input command-line arguments
+INPUT_ARGS=()
+for file_path in "${FILE_PATHS[@]}"; do
+    INPUT_ARGS+=("--input" "$file_path")
+done
+
+# 4️⃣ Grouped power plot
 python bench_cli.py compare-systems \
-  "${INPUT_ARGS[@]}" \
+  "${GROUPED_INPUT_ARGS[@]}" \
   --only-test blender_benchmark_monster_gpu \
   --only-test content_aware_timelapse_vit_attention \
   --only-test fah_bench_single \
@@ -50,8 +56,11 @@ python bench_cli.py compare-systems \
   --y-axis-pad-pct 0.3 \
   --output-path ./post_2_images/results_power.png \
   --mode results_power \
-  --title "Assorted System Tests"
+  --title "Assorted System Tests" \
+  --legend-columns 3
 
+
+# 5️⃣ Regular power plot
 python bench_cli.py compare-systems \
   "${INPUT_ARGS[@]}" \
   --only-test blender_benchmark_monster_gpu \
@@ -66,13 +75,68 @@ python bench_cli.py compare-systems \
   --n-cols 3 \
   --watermark "esologic.com/telsas-for-llms" \
   --font-family "Inconsolata" \
+  --y-axis-pad-pct 0.3 \
+  --output-path ./post_2_images/results_power_input.png \
+  --mode results_power \
+  --title "Assorted System Tests" \
+  --legend-columns 3
+
+
+# 6️⃣ Grouped regular results plot
+python bench_cli.py compare-systems \
+  "${GROUPED_INPUT_ARGS[@]}" \
+  --only-test blender_benchmark_monster_gpu \
+  --only-test content_aware_timelapse_vit_attention \
+  --only-test fah_bench_single \
+  --only-test whisper_medium_fp16 \
+  --only-test hashcat_sha256 \
+  --only-test llama_bench_qwen_2_5_3b_instruct_f16_128k_ctx_generation \
+  --only-test llama_bench_gemma_4_8b_f16_128k_ctx_generation \
+  --only-test llama_bench_max_model_parameters_q4_4k_ctx \
+  --only-test llama_bench_max_model_parameters_f16_32k_ctx \
+  --n-cols 3 \
+  --watermark "esologic.com/telsas-for-llms" \
+  --font-family "Inconsolata" \
   --output-path ./post_2_images/results.png \
   --mode results \
-  --title "Assorted System Tests"
+  --title "Assorted System Tests" \
+  --legend-columns 3
 
-# LLM families command left alone as requested.
+
+# 7️⃣ Regular input results plot
+python bench_cli.py compare-systems \
+  "${INPUT_ARGS[@]}" \
+  --only-test blender_benchmark_monster_gpu \
+  --only-test content_aware_timelapse_vit_attention \
+  --only-test fah_bench_single \
+  --only-test whisper_medium_fp16 \
+  --only-test hashcat_sha256 \
+  --only-test llama_bench_qwen_2_5_3b_instruct_f16_128k_ctx_generation \
+  --only-test llama_bench_gemma_4_8b_f16_128k_ctx_generation \
+  --only-test llama_bench_max_model_parameters_q4_4k_ctx \
+  --only-test llama_bench_max_model_parameters_f16_32k_ctx \
+  --n-cols 3 \
+  --watermark "esologic.com/telsas-for-llms" \
+  --font-family "Inconsolata" \
+  --output-path ./post_2_images/results_input.png \
+  --mode results \
+  --title "Assorted System Tests" \
+  --legend-columns 3
+
+
+# 8️⃣ Grouped LLM families
+python bench_cli.py compare-llm-families \
+  "${GROUPED_INPUT_ARGS[@]}" \
+  --watermark "esologic.com/telsas-for-llms" \
+  --font-family "Inconsolata" \
+  --output-dir ./post_2_images/llm_families \
+  --legend-columns 3
+
+
+# 9️⃣ Regular input LLM families
 python bench_cli.py compare-llm-families \
   "${INPUT_ARGS[@]}" \
   --watermark "esologic.com/telsas-for-llms" \
   --font-family "Inconsolata" \
-  --output-dir ./post_2_images/llm_families
+  --output-dir ./post_2_images/llm_families_input \
+  --legend-columns 3

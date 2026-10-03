@@ -20,6 +20,7 @@ from gpu_box_benchmark.benchmark_types import (
     BENCHMARK_TO_PRETTY,
     BenchmarkName,
     BenchmarkResult,
+    LineMode,
     SystemEvaluation,
 )
 from gpu_box_benchmark.visualization.load_for_visualization import (
@@ -69,6 +70,7 @@ def _apply_legend_and_save(  # pylint: disable=too-many-positional-arguments
     label_to_color: Dict[str, str],
     title: str,
     watermark: Optional[str],
+    legend_columns: Optional[int],
     output_path: Path,
 ) -> None:
     """
@@ -78,6 +80,7 @@ def _apply_legend_and_save(  # pylint: disable=too-many-positional-arguments
     :param label_to_color: Mapping describing how to draw the legend.
     :param title: Super title of the figure.
     :param watermark: Drawn on the right hand side of the output if given.
+    :param legend_columns: Manual override for the number of columns in the output.
     :param output_path: Desired output path.
     :return: None
     """
@@ -88,7 +91,11 @@ def _apply_legend_and_save(  # pylint: disable=too-many-positional-arguments
     ]
 
     longest_label_length = max((len(label) for label in ordered_labels), default=0)
-    num_legend_columns = 1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3)
+    num_legend_columns = (
+        (1 if longest_label_length > 45 else (2 if longest_label_length > 25 else 3))
+        if legend_columns is None
+        else legend_columns
+    )
 
     resulting_legend = fig.legend(
         legend_handles,
@@ -277,6 +284,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     only_render_tests: Tuple[BenchmarkName, ...],
     n_cols: int,
     watermark: Optional[str],
+    legend_columns: Optional[int],
     y_axis_pad_pct: Optional[float] = None,
 ) -> None:
     """
@@ -292,6 +300,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     :param n_cols: Number of columns to show.
     to show before truncation.
     :param watermark: String written along the right center of the image.
+    :param legend_columns: Override for the number of columns to include in the legend.
     :param y_axis_pad_pct: If given, The y-axis range of each subplot is restricted to this value
     multiplied by the min max values in the y range to clearly show the ranking. If not given,
     auto y-axis settings are used.
@@ -350,11 +359,13 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
         label_to_color=dfs_specs.color_mapping,
         title=title,
         watermark=watermark,
+        legend_columns=legend_columns,
         output_path=output_path,
     )
 
 
-def create_system_comparison_visualization_results_power(  # pylint: disable=too-many-locals, too-many-positional-arguments
+def create_system_comparison_visualization_results_power(  # pylint: disable=too-many-locals,too-many-positional-arguments,too-many-arguments
+    line_mode: LineMode,
     evaluations_and_base: EvaluationsBase,
     labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
     flatten_versions: bool,
@@ -363,12 +374,17 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
     only_render_tests: Tuple[BenchmarkName, ...],
     n_cols: int,
     watermark: Optional[str],
+    legend_columns: Optional[int],
     y_axis_pad_pct: float = 0.1,
 ) -> None:
     """
     Creates a scatter plot per input evalution. X-axis is power consumption, Y-axis is the units
     for the actual test.
 
+    :param line_mode: Controls whether and how points within each group are connected:
+        LineMode.no_lines does not draw connecting lines.
+        LineMode.input_order connects points in their original group position order.
+        LineMode.x_value sorts points within each group by X value before connecting them.
     :param evaluations_and_base: To convert.
     :param labeled_evaluations: To convert.
     :param flatten_versions: Whether to flatten versions into the same plots or keep them separate.
@@ -376,9 +392,9 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
     :param title: Overall figure title.
     :param only_render_tests: Only benchmarks with these names will be included in the output
     visualization.
-    :param n_cols: Number of columns to show.
-    to show before truncation.
+    :param n_cols: Subplot columns
     :param watermark: String written along the right center of the image.
+    :param legend_columns: Override for the number of columns to include in the legend.
     :param y_axis_pad_pct: If given, The y-axis range of each subplot is restricted to this value
     multiplied by the min max values in the y range to clearly show the ranking. If not given,
     auto y-axis settings are used.
@@ -395,7 +411,25 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
     n_plots = len(dfs_specs.df_results.columns)
     n_rows = math.ceil(n_plots / n_cols)
 
-    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False, height_unit=3)
+    fig, axes = _create_grid(
+        n_rows=n_rows,
+        n_cols=n_cols,
+        sharex=False,
+        height_unit=3,
+    )
+
+    dataframe_indices = list(dfs_specs.df_results.index)
+    grouped_evaluations = evaluations_and_base.grouped_evaluations
+
+    # Only build the group mapping when grouped inputs were actually provided.
+    # Regular --input evaluations have no corresponding group.
+    index_to_group: Dict[str, str] = {
+        dataframe_index: group
+        for dataframe_index, (_, group) in zip(
+            dataframe_indices,
+            grouped_evaluations,
+        )
+    }
 
     for ax, column in zip(axes, dfs_specs.df_results.columns):
         spec: BenchmarkResult = dfs_specs.specs[column]
@@ -422,18 +456,85 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
         y_min, y_max = valid_series.min(), valid_series.max()
 
         # Apply padding using shared helper
-        x_lower, x_upper = _get_padded_bounds(x_min, x_max, pad_pct=0.1)
-        y_lower, y_upper = _get_padded_bounds(y_min, y_max, pad_pct=y_axis_pad_pct)
+        x_lower, x_upper = _get_padded_bounds(
+            x_min,
+            x_max,
+            pad_pct=0.1,
+        )
+        y_lower, y_upper = _get_padded_bounds(
+            y_min,
+            y_max,
+            pad_pct=y_axis_pad_pct,
+        )
 
         ax.set_xlim(x_lower, x_upper)
         ax.set_ylim(y_lower, y_upper)
 
         ax.scatter(
-            valid_x_vals, valid_series.values, c=colors, edgecolors="k", linewidths=0.8, zorder=3
+            valid_x_vals,
+            valid_series.values,
+            c=colors,
+            edgecolors="k",
+            linewidths=0.8,
+            zorder=3,
+            alpha=0.8,
         )
 
+        if grouped_evaluations and line_mode != LineMode.no_lines:
+
+            # Build the points for each group. The final integer preserves the
+            # original position so we can optionally use group order instead
+            # of X order.
+            grouped_points: Dict[str, List[Tuple[float, float, str, int]]] = {}
+
+            for position, (sys, x_val, y_val) in enumerate(
+                zip(
+                    valid_sys,
+                    valid_x_vals,
+                    valid_series.values,
+                )
+            ):
+                group = index_to_group[sys]
+                color = dfs_specs.color_mapping[sys]
+
+                grouped_points.setdefault(group, []).append(
+                    (
+                        x_val,
+                        y_val,
+                        color,
+                        position,
+                    )
+                )
+
+            for group_points in grouped_points.values():
+                if len(group_points) < 2:
+                    continue
+
+                if line_mode == LineMode.x_value:
+                    group_points.sort(key=lambda point: point[0])
+                else:
+                    group_points.sort(key=lambda point: point[3])
+
+                group_x = [point[0] for point in group_points]
+                group_y = [point[1] for point in group_points]
+                group_color = group_points[0][2]
+
+                ax.plot(
+                    group_x,
+                    group_y,
+                    linestyle="--",
+                    linewidth=1.2,
+                    color=group_color,
+                    alpha=0.7,
+                    zorder=2,
+                )
+
         # Use shared subtitle helper
-        ax.set_title(_format_subplot_title(spec), fontsize="medium", pad=10)
+        ax.set_title(
+            _format_subplot_title(spec),
+            fontsize="medium",
+            pad=10,
+        )
         ax.set_ylabel(spec.verbose_unit, fontsize="small")
         ax.set_xlabel("Power Consumption (kJ)", fontsize="small")
 
@@ -448,16 +549,18 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
         label_to_color=dfs_specs.color_mapping,
         title=title,
         watermark=watermark,
+        legend_columns=legend_columns,
         output_path=output_path,
     )
 
 
-def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-many-nested-blocks
+def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-many-nested-blocks,too-many-positional-arguments
     results: LoadedLLMResults,
     plot_model: LLMName,
     output_path: Path,
     title: str,
     watermark: Optional[str],
+    legend_columns: Optional[int],
 ) -> None:
     """
     Renders the input parsed LLM throughput results as a visualization to the given path.
@@ -467,6 +570,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     :param output_path: Matplotlib visualization is written to this path.
     :param title: Added to the top of the figure.
     :param watermark: Written to the right of the figure.
+    :param legend_columns: Override for the number of columns to include in the legend.
     :return: None
     """
 
@@ -562,5 +666,6 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
         label_to_color=results.color_mapping,
         title=title,
         watermark=watermark,
+        legend_columns=legend_columns,
         output_path=output_path,
     )
