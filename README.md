@@ -59,6 +59,8 @@ This project was introduced and contextualized on my blog, see:
 introduction.
 * [esologic.com/benchmarking-tesla-gpus](https://esologic.com/benchmarking-tesla-gpus) for results 
 from K80-T40.
+* [esologic.com/multi-gpu-scaling](https://esologic.com/multi-gpu-scaling/) a deep dive into multi
+gpu setups and performance.
 
 Here is a sample `compare` output:
 
