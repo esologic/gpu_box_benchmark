@@ -636,6 +636,22 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
     )
 
 
+SUBPLOT_HEIGHT_OPTION = click.option(
+    "--subplot-height",
+    type=click.FloatRange(min=0),
+    default=2.5,
+    help="Height in inches of an individual subplot.",
+    show_default=True,
+)
+SUBPLOT_WIDTH_OPTION = click.option(
+    "--subplot-width",
+    type=click.FloatRange(min=0),
+    default=2.1,
+    help="Width in inches of an individual subplot.",
+    show_default=True,
+)
+
+
 @cli.command(
     name="compare-llms",
     short_help="Draw graphs comparing LLM context depth, Quantization and System Performance.",
@@ -648,6 +664,8 @@ def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-
 @TITLE_OPTION
 @WATERMARK_OPTION
 @FONT_FAMILY_OPTION
+@SUBPLOT_HEIGHT_OPTION
+@SUBPLOT_WIDTH_OPTION
 @options.create_enum_option(
     "--llm",
     help_message="Decides which benchmark to run.",
@@ -667,6 +685,8 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     font_family: Optional[str],
     llm: LLMName,
     legend_columns: Optional[int],
+    subplot_height: float,
+    subplot_width: float,
 ) -> None:
     """
     Draws a matplotlib visualization comparing the results of the different input benchmarks.
@@ -683,6 +703,8 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     :param font_family: See click help for docs!
     :param llm: See click help for docs!
     :param legend_columns: See click help for docs!
+    :param subplot_height: See click help for docs!
+    :param subplot_width: See click help for docs!
     :return: None
     """
 
@@ -703,6 +725,8 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
         title=title if title is not None else llm.value,
         watermark=watermark,
         legend_columns=legend_columns,
+        subplot_height=subplot_height,
+        subplot_width=subplot_width,
     )
 
 
@@ -733,6 +757,8 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
 @WATERMARK_OPTION
 @FONT_FAMILY_OPTION
 @LEGEND_COLUMNS_OPTION
+@SUBPLOT_HEIGHT_OPTION
+@SUBPLOT_WIDTH_OPTION
 def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     input_path: Tuple[Path, ...],
     grouped_input: Tuple[Tuple[Path, str], ...],
@@ -743,6 +769,8 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
     watermark: Optional[str],
     font_family: Optional[str],
     legend_columns: Optional[int],
+    subplot_height: float,
+    subplot_width: float,
 ) -> None:
     """
     Iterates through all supported LLMs and generates a comparison visualization for each.
@@ -758,6 +786,8 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
     :param watermark: See click help for docs!
     :param font_family: See click help for docs!
     :param legend_columns: See click help for docs!
+    :param subplot_height: See click help for docs!
+    :param subplot_width: See click help for docs!
     :return: None
     """
 
@@ -785,9 +815,11 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
             results=results,
             plot_model=model,
             output_path=output_path,
-            title=model.value,
+            title=f"{model.value} Generation Speed",
             watermark=watermark,
             legend_columns=legend_columns,
+            subplot_height=subplot_height,
+            subplot_width=subplot_width,
         )
 
 

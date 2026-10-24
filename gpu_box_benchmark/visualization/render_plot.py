@@ -34,12 +34,13 @@ from gpu_box_benchmark.visualization.load_for_visualization import (
 _DEFAULT_DPI = 300
 
 
-def _create_grid(
+def _create_grid(  # pylint: disable=too-many-positional-arguments
     n_rows: int,
     n_cols: int,
     dpi: int,
     sharex: bool = False,
     height_unit: float = 2.5,
+    width_unit: float = 3,
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
     Creates a standard sized subplot grid and returns the axes as a flattened list.
@@ -51,14 +52,15 @@ def _create_grid(
     a high-res viewbox by default2. Raster calculations (in _apply_legend_and_save) match the
     export density.
     :param sharex: Passed to call.
-    :param height_unit: Multiplier for the row height (default 2.5).
+    :param height_unit: Multiplier for the row height.
+    :param height_unit: Multiplier for the row width.
     :return: Figure and axes list.
     """
 
     fig, axes = plt.subplots(
         nrows=n_rows,
         ncols=n_cols,
-        figsize=(3 * n_cols, height_unit * n_rows),
+        figsize=(width_unit * n_cols, height_unit * n_rows),
         sharex=sharex,
     )
 
@@ -198,7 +200,8 @@ def _draw_bar(
                 f"{result.tokens_per_second:.1f}",
                 ha="left",
                 va="center",
-                fontsize="x-small",
+                fontweight="heavy",
+                fontsize="medium",
             )
         else:
             # Failed Execution (Marked by white bar + hatching)
@@ -209,8 +212,7 @@ def _draw_bar(
                 "FAILED",
                 ha="center",
                 va="center",
-                fontsize="small",
-                fontweight="bold",
+                fontsize="x-small",
                 color="black",
                 bbox={"facecolor": "white", "edgecolor": "none", "boxstyle": "round,pad=0.2"},
             )
@@ -593,6 +595,8 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     title: str,
     watermark: Optional[str],
     legend_columns: Optional[int],
+    subplot_height: float,
+    subplot_width: float,
     dpi: int = _DEFAULT_DPI,
 ) -> None:
     """
@@ -604,6 +608,8 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     :param title: Added to the top of the figure.
     :param watermark: Written to the right of the figure.
     :param legend_columns: Override for the number of columns to include in the legend.
+    :param subplot_height: Subplot height in inches.
+    :param subplot_width: Subplot width in inches.
     :param dpi: Sets the dots per inch of the output image.
     :return: None
     """
@@ -629,9 +635,16 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
         if any(r.context_depth == v for r in model_results)
     )
 
-    fig, axes = _create_grid(n_rows=len(context_depths), n_cols=len(quants), sharex=True, dpi=dpi)
+    fig, axes = _create_grid(
+        n_rows=len(context_depths),
+        n_cols=len(quants),
+        sharex=True,
+        dpi=dpi,
+        height_unit=subplot_height,
+        width_unit=subplot_width,
+    )
 
-    subplot_title_text_size = "medium"
+    subplot_title_text_size = "large"
 
     # Safe scaling logic (ignores None/failed results)
     max_tokens_per_second: float = max(
@@ -643,7 +656,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
         default=0.0,
     )
 
-    x_axis_max = max(1.0, max_tokens_per_second * 1.15)
+    x_axis_max = max(1.0, max_tokens_per_second * 1.4)
 
     # Main Grid Loop
     for context_index, context_depth in enumerate(context_depths):

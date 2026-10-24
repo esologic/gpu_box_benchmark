@@ -94,7 +94,7 @@ simultaneously using docker.
 
 Tracks changes of the main output file. There are per-test version histories in the python wrappers.
 
-### 0.3.0 - (2026-09-XX)
+### 0.3.0 - (2026-10-24)
 
 * Introduced new idiom to `ReportFileNumerical`. If a benchmark fails on ANY individual GPU but is 
 able to finish in the multi GPU case, `min_by_gpu_type`, `max_by_gpu_type`, `mean_by_gpu_type`, 
