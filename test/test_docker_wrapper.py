@@ -29,6 +29,8 @@ def test_benchmark_dockerfile_small() -> None:
         ),
         multi_gpu_native=False,
         docker_cleanup=True,  # This is the default from the CLI.
+        force_rebuild=True,
+        downloads_directory_path=None,
     )
 
     assert (
@@ -42,5 +44,5 @@ def test_benchmark_dockerfile_small() -> None:
             forced_multi_gpu_sum=1.0 * len(gpus),
             native_multi_gpu_result=None,
         )
-        == result
+        == result.report_file_numerical
     )

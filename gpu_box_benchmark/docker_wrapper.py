@@ -2,6 +2,8 @@
 Convince wrappers around the docker python API.
 """
 
+import contextlib
+import itertools
 import logging
 import tempfile
 import uuid
@@ -10,12 +12,18 @@ from statistics import mean
 from typing import Callable, Dict, List, NamedTuple, Optional, Protocol, Tuple
 
 import docker
+import psutil
 from docker.client import DockerClient
 from docker.errors import APIError, BuildError
 from docker.models.containers import Container
 from docker.models.images import Image
 
-from gpu_box_benchmark.benchmark_types import ReportFileNumerical
+from gpu_box_benchmark.benchmark_types import (
+    BenchmarkData,
+    ReportFileGPUPowerUsage,
+    ReportFileNumerical,
+)
+from gpu_box_benchmark.gpu_power_measurement import GPUPowerMeasurement
 from gpu_box_benchmark.locate_describe_hardware import GPUIdentity
 
 LOGGER = logging.getLogger(__name__)
@@ -27,13 +35,19 @@ output directly to a file. This is the path the containers write to internally, 
 that volume mount. 
 """
 
+_INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH = "/tmp/downloads"
+"""
+Similarly, this is the universal path inside the containers that will be optionally bind
+mounted to to preserve downloaded assets between runs. 
+"""
+
 
 class ContainerOutputs(NamedTuple):
     """
     Set of container outputs.
     """
 
-    logs: str
+    logs: Optional[str]
     """
     Stdout and Stderr logs as a string.
     """
@@ -71,120 +85,8 @@ class OutputsToResult(Protocol):
         """
 
 
-def _create_gpu_container(
-    client: DockerClient,
-    image: Image,
-    gpus: Tuple[GPUIdentity, ...],
-    env_vars: List[Tuple[str, str]],
-    output_file_path: Path,
-) -> Container:
-    """
-    Wrapper around the container creation function to pre-fill the params needed for GPU usage.
-
-    :param image: Built image to run.
-    :param gpus: GPUs to run the container on.
-    :param env_vars: Passed as environment variables to the container. Values are converted to
-    strings before passing.
-    :param output_file_path: Some containers output via stdout, some containers need to write their
-    results to a file. This path is volume mounted into the container so that it may optionally
-    write to it.
-    :return: The unstarted container.
-    """
-
-    container = client.containers.create(
-        image=image,
-        device_requests=[
-            docker.types.DeviceRequest(
-                device_ids=list(str(gpu.id) for gpu in gpus),
-                capabilities=[["gpu"]],
-            )
-        ],
-        environment=dict(env_vars),
-        ipc_mode="host",
-        detach=True,
-        volumes={
-            str(output_file_path): {
-                # This location is baked into all dockerfiles used by the benchmarking suite that
-                # need to output to a file.
-                "bind": _INTERNAL_CONTAINER_OUTPUT_FILE_PATH,
-                "mode": "rw",
-            }
-        },
-    )
-
-    return container
-
-
-def _wait_get_logs(container: Container) -> Optional[str]:
-    """
-    Runs a `.wait()` on the input container and then pulls the stdout/stderr logs.
-    Removes the container as well.
-    :param container: To interact with.
-    :return: The logs as a single string.
-    """
-
-    logs: Optional[str] = None
-
-    try:
-
-        result = container.wait()  # blocks until exit
-
-        logs = container.logs(stdout=True, stderr=True).decode()
-        status_code = result["StatusCode"]
-
-        if status_code != 0:
-            LOGGER.error("Container failed with exit code %s", status_code)
-            LOGGER.error("Container logs:\n%s", logs)
-            raise RuntimeError("Container execution failed")
-
-        LOGGER.debug("Container completed successfully")
-        LOGGER.debug("Container logs:\n%s", logs)
-
-    finally:
-        container.remove(force=True)
-
-    if logs is None:
-        raise ValueError("Couldn't read logs from container")
-
-    return logs
-
-
-def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
-    client: DockerClient,
-    image: Image,
-    gpus: Tuple[GPUIdentity, ...],
-    env_vars: List[Tuple[str, str]],
-    output_file_path: Path,
-) -> Optional[ContainerOutputs]:
-    """
-    Creates a container, starts it, and waits for its completion on a set of GPUs. This blocks
-    on waiting for the container to exit.
-
-    :param client: For interacting with docker.
-    :param image: To run.
-    :param gpus: GPUs to run the container on.
-    :param env_vars: Passed as environment.
-    :param output_file_path: Passed into container for optional usage.
-    :return: The set of outputs from the container.
-    """
-
-    container = _create_gpu_container(
-        client=client, image=image, gpus=gpus, env_vars=env_vars, output_file_path=output_file_path
-    )
-
-    container.start()
-
-    # This removes the container.
-    outputs = _wait_get_logs(container=container)
-
-    return ContainerOutputs(
-        logs=outputs,
-        file=output_file_path,
-    )
-
-
 def _build_image(
-    client: DockerClient, dockerfile_path: Path, tag: str, docker_cleanup: bool
+    client: DockerClient, dockerfile_path: Path, tag: str, force_rebuild: bool
 ) -> Image:
     """
     Canonical wrapper to build images.
@@ -193,30 +95,30 @@ def _build_image(
     :param dockerfile_path: Path to the dockerfile to build. The build context will be the parent
     of this file.
     :param tag: Tag for the image.
-    :param docker_cleanup: If True, efforts are made to leave little behind related to docker.
+    :param force_rebuild: If True, ignore Docker's build cache and rebuild the image from scratch.
+    If False, Docker will automatically reuse cached layers where possible while still detecting
+    changes to the Dockerfile and build context.
     :return: The built image.
     """
 
     LOGGER.debug("Building Image")
 
-    if not docker_cleanup:
-        try:
-            LOGGER.debug(f"Checking for existing image {tag}...")
-            return client.images.get(tag)
-        except docker.errors.ImageNotFound:
-            LOGGER.debug("Image not found locally. Proceeding to build.")
-
     build_directory = dockerfile_path.parent
 
     try:
-        image, _build_logs = client.images.build(
+        image, build_logs = client.images.build(
             path=str(build_directory),
-            dockerfile=str(dockerfile_path),
+            dockerfile=str(dockerfile_path.relative_to(build_directory)),
             tag=tag,
-            nocache=docker_cleanup,
+            nocache=force_rebuild,
+            pull=False,
             rm=True,
             forcerm=True,
-            pull=docker_cleanup,
+        )
+
+        LOGGER.debug(
+            "Image Built. Complete "
+            f"Logs: {''.join(entry['stream'] for entry in build_logs if 'stream' in entry)}"
         )
 
         return image
@@ -239,14 +141,174 @@ def _build_image(
         raise
 
 
-def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
+def _create_gpu_container(  # pylint: disable=too-many-positional-arguments
+    client: DockerClient,
+    image: Image,
+    gpus: Tuple[GPUIdentity, ...],
+    env_vars: List[Tuple[str, str]],
+    output_file_path: Path,
+    downloads_directory_path: Optional[Path],
+    memory_limit: int,
+) -> Container:
+    """
+    Wrapper around the container creation function to pre-fill the params needed for GPU usage.
+
+    :param image: Built image to run.
+    :param gpus: GPUs to run the container on.
+    :param env_vars: Passed as environment variables to the container. Values are converted to
+    strings before passing.
+    :param output_file_path: Some containers output via stdout, some containers need to write their
+    results to a file. This path is volume mounted into the container so that it may optionally
+    write to it.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
+    :param memory_limit: Memory limit for the container in bytes.
+    :return: The unstarted container.
+    """
+
+    volumes: Dict[str, Dict[str, str]] = {
+        str(output_file_path): {
+            # This location is baked into all dockerfiles used by the benchmarking suite that
+            # need to output to a file.
+            "bind": _INTERNAL_CONTAINER_OUTPUT_FILE_PATH,
+            "mode": "rw",
+        }
+    }
+
+    if downloads_directory_path is not None:
+        volumes[str(downloads_directory_path)] = {
+            "bind": _INTERNAL_CONTAINER_DOWNLOADS_DIRECTORY_PATH,
+            "mode": "rw",
+        }
+
+    container = client.containers.create(
+        image=image,
+        device_requests=[
+            docker.types.DeviceRequest(
+                device_ids=list(str(gpu.id) for gpu in gpus),
+                capabilities=[["gpu"]],
+            )
+        ],
+        environment=dict(env_vars),
+        ipc_mode="host",
+        detach=True,
+        volumes=volumes,
+        mem_limit=memory_limit,
+        memswap_limit=memory_limit,
+    )
+
+    return container
+
+
+def _wait_get_logs(container: Container) -> Optional[str]:
+    """
+    Runs a `.wait()` on the input container and then pulls the stdout/stderr logs.
+    Removes the container as well.
+    :param container: To interact with.
+    :return: The logs as a single string.
+    """
+
+    logs: Optional[str] = None
+
+    try:
+        result = container.wait()  # blocks until exit
+
+        logs = container.logs(stdout=True, stderr=True).decode()
+        status_code = result["StatusCode"]
+
+        if status_code != 0:
+            raise RuntimeError(
+                f"Container execution failed with exit code {status_code}.\n\n"
+                f"Container logs:\n{logs}"
+            )
+
+        LOGGER.debug("Container completed successfully")
+        LOGGER.debug("Container logs:\n%s", logs)
+
+    finally:
+        container.remove(force=True)
+
+    if logs is None:
+        raise RuntimeError("Container exited before logs could be retrieved.")
+
+    return logs
+
+
+class _RunOutputs(NamedTuple):
+    """
+    Links the different outputs from a given container run.
+    """
+
+    benchmark_result: float
+    uuid_to_joules: Dict[str, float]
+
+
+def _run_image_on_gpus(  # pylint: disable=too-many-positional-arguments
+    client: DockerClient,
+    image: Image,
+    gpus: Tuple[GPUIdentity, ...],
+    env_vars: List[Tuple[str, str]],
+    output_file_path: Path,
+    downloads_directory_path: Optional[Path],
+    memory_limit: int,
+    outputs_to_result: OutputsToResult,
+) -> _RunOutputs:
+    """
+    Creates a container, starts it, and waits for its completion on a set of GPUs. This blocks
+    on waiting for the container to exit.
+
+    :param client: For interacting with docker.
+    :param image: To run the container.
+    :param gpus: GPUs to run the container on.
+    :param env_vars: Passed as environment.
+    :param output_file_path: Passed into container for optional usage.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
+    :param memory_limit: Memory limit for the container in bytes.
+    :return: The set of outputs from the container.
+    """
+
+    container = _create_gpu_container(
+        client=client,
+        image=image,
+        gpus=gpus,
+        env_vars=env_vars,
+        output_file_path=output_file_path,
+        downloads_directory_path=downloads_directory_path,
+        memory_limit=memory_limit,
+    )
+
+    with GPUPowerMeasurement(gpus=gpus) as power_measurement:
+        container.start()
+
+        # Internally calls `container.wait()` and removes the container after completion.
+        logs: Optional[str] = _wait_get_logs(container=container)
+
+    container_outputs = ContainerOutputs(
+        logs=logs,
+        file=output_file_path,
+    )
+
+    return _RunOutputs(
+        benchmark_result=outputs_to_result(container_outputs),
+        uuid_to_joules=power_measurement.energy_joules,
+    )
+
+
+def _force_parallel_run(  # pylint: disable=too-many-positional-arguments,too-many-locals
     client: DockerClient,
     image: Image,
     new_output_file: Callable[[], Path],
     gpus: Tuple[GPUIdentity, ...],
     create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
     outputs_to_result: OutputsToResult,
-) -> List[float]:
+    downloads_directory_path: Optional[Path],
+    total_memory_limit: int,
+) -> List[_RunOutputs]:
     """
     Creates one docker container per GPU then starts each GPU at the same time. This is a simulation
     of the workload being multi-gpu capable but obviously there's no memory sharing on the GPUs
@@ -258,12 +320,20 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
     :param gpus: GPUs to run on.
     :param create_runtime_env_vars: Creates environment variables if required.
     :param outputs_to_result: Converts outputs to a numerical result.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
+    :param total_memory_limit: Each container will be limited to this amount of memory // the
+    number of input GPUs. The idea here is to defend against OOMs.
     :return: Results per GPU.
     """
 
     gpu_file: List[Tuple[GPUIdentity, Path]] = [(gpu, new_output_file()) for gpu in gpus]
 
-    container_file: List[Tuple[Container, Path]] = [
+    memory_per_container = total_memory_limit // len(gpus)
+
+    container_gpu_file: List[Tuple[Container, GPUIdentity, Path]] = [
         (
             _create_gpu_container(
                 client=client,
@@ -271,22 +341,40 @@ def _force_parallel_run(  # pylint: disable=too-many-positional-arguments
                 gpus=(gpu,),
                 env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
                 output_file_path=file,
+                downloads_directory_path=downloads_directory_path,
+                memory_limit=memory_per_container,
             ),
+            gpu,
             file,
         )
         for (gpu, file) in gpu_file
     ]
 
-    # Start all containers at around the same time
-    for container, _ in container_file:
-        container.start()
+    with GPUPowerMeasurement(gpus=gpus) as power_measurement:
 
-    parallel_results: List[float] = [
-        outputs_to_result(ContainerOutputs(logs=_wait_get_logs(container=container), file=file))
-        for (container, file) in container_file
+        # Start all containers at around the same time
+        for container, gpu, _output_file_path in container_gpu_file:
+            container.start()
+
+        parallel_results_gpus: List[Tuple[float, GPUIdentity]] = [
+            (
+                outputs_to_result(
+                    ContainerOutputs(logs=_wait_get_logs(container=container), file=file)
+                ),
+                gpu,
+            )
+            for (container, gpu, file) in container_gpu_file
+        ]
+
+    output: List[_RunOutputs] = [
+        _RunOutputs(
+            benchmark_result=result,
+            uuid_to_joules={gpu.uuid: power_measurement.energy_joules[gpu.uuid]},
+        )
+        for result, gpu in parallel_results_gpus
     ]
 
-    return parallel_results
+    return output
 
 
 def _list_prunable_images(client: docker.DockerClient) -> List[Image]:
@@ -341,60 +429,42 @@ def _docker_image_cleanup(client: DockerClient, run_image: Image, keep_images: L
         LOGGER.debug(f"Removed cruft image: {cruft_image.id}")
 
 
-def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
-    dockerfile_path: Path,
-    benchmark_name: str,
-    benchmark_version: str,
+def _run_benchmarking_image_sequence(  # pylint: disable=too-many-positional-arguments,too-many-locals
+    client: DockerClient,
+    image: Image,
     gpus: Tuple[GPUIdentity, ...],
     create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
     outputs_to_result: OutputsToResult,
     multi_gpu_native: bool,
-    docker_cleanup: bool,
-) -> ReportFileNumerical:
+    downloads_directory_path: Optional[Path],
+    benchmark_name: str,
+) -> BenchmarkData:
     """
-    Benchmarks a given dockerfile. The run sequence is as follows:
+    The run sequence is as follows:
 
     0. The image is built and environment prepped.
-    1. A container is run sequentially on _one_ of each type of GPUs passed in. So if there are four
-    M10 cores and a P100, it is run on one of the M10 cores and the P100.
-    2. A container is run on all the input GPUs in parallel.
+    1. Serial: A container is run sequentially on _one_ of each type of GPUs passed in. So if there
+    are four M10 cores and a P100, it is run on one of the M10 cores and the P100.
+    2. Forced Parallel: A benchmark container is run for each of the input GPUs at the same time.
+    3. Multi GPU Native: If the test supports it, a single container with each all input GPUs
+    exposed is run.
 
     This strategy helps us understand the cost of parallelizing.
 
-    Because all of these images and containers and images can become massive on disk, steps have
-    been taken to prune and remove artifacts between tests. This makes the overall runtime slower.
-    This shouldn't impact GPU scores and will likely be improved in the future.
-
-    :param dockerfile_path: Path to the dockerfile to run.
-    :param benchmark_name: Passed to image tagging process.
-    :param benchmark_version: Passed to image tagging process. Not consumed anywhere but in the
-    name of the image.
-    :param gpus: GPUs to run on.
-    :param create_runtime_env_vars: Callable to create runtime environment variables.
-    :param outputs_to_result: Converts the outputs from the container (logs and optional output
-    file) to a numerical result.
-    :param multi_gpu_native: If True, the input dockerfile can take advantage of having multiple
-    GPUs passed in and utilize the multiple inputs simultaneously. If False, docker is used to
-    run the benchmark on multiple GPUs at once.
-    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param client: Docker interface from environment.
+    :param image: Image to run.
+    :param gpus: Set of GPUs to run on.
+    :param create_runtime_env_vars: Function that returns runtime environment variables passed to
+    the container.
+    :param outputs_to_result: Function to extract the output for numerical.
+    :param multi_gpu_native: If the given test is multi GPU native or not. If True, the image is
+    run at the end of the sequence with all gpus input.
+    :param downloads_directory_path: Fixture passed to each container, a place for the containers
+    to download reusable assets.
+    :param benchmark_name: Benchmark being run as a string, consumed here generating exceptions
+    only.
     :return: Numerical results.
     """
-
-    if not gpus:
-        raise ValueError("Non GPU test aren't supported yet.")
-
-    client = docker.from_env()
-
-    # Images that would be pruned but existed on the system before the run. We don't want to
-    # touch these because they might be used for something outside the scope of our app.
-    existed_before_run = _list_prunable_images(client=client)
-
-    image: Image = _build_image(
-        client=client,
-        dockerfile_path=dockerfile_path,
-        tag="_".join([benchmark_name, benchmark_version]),
-        docker_cleanup=docker_cleanup,
-    )
 
     # If there's only a single GPU attached we can skip a lot of work.
     multiple_gpus_to_test = len(gpus) > 1
@@ -419,79 +489,232 @@ def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-m
 
             return output_file
 
-        # A single datapoint per type of GPU attached to the system. When the benchmark is run on
-        # all attached GPUs at the same time this lets us understand how much overhead is added.
-        name_to_serial_result: Dict[str, float] = {
-            gpu.name: outputs_to_result(
-                _run_image_on_gpus(
+        total_memory = psutil.virtual_memory().total
+        memory_limit = int(total_memory * 0.8)  # reserve 20% for host, prevent OOMs.
+
+        LOGGER.debug(f"Setting memory limit on containers to: {memory_limit}")
+
+        def exception_to_none(gpu: GPUIdentity) -> Optional[_RunOutputs]:
+            """
+            Wrapper to fall through on known exceptions.
+            :param gpu: Passed into the run.
+            :return: Forwarded from `outputs_to_result`, or `None` if the exception occurs.
+            """
+            try:
+                return _run_image_on_gpus(
                     client=client,
                     image=image,
                     gpus=(gpu,),
                     env_vars=create_runtime_env_vars(runtime_gpus=(gpu,)),
                     output_file_path=new_output_file(),
+                    downloads_directory_path=downloads_directory_path,
+                    memory_limit=memory_limit,
+                    outputs_to_result=outputs_to_result,
                 )
-            )
-            for gpu in serial_gpus
+            except RuntimeError:
+                return None
+
+        # A single datapoint per type of GPU attached to the system.
+        # When the benchmark is run on all attached GPUs at the same time this lets us understand
+        # how much overhead is added.
+        serialized_outputs: Dict[str, Optional[_RunOutputs]] = {
+            gpu.name: exception_to_none(gpu) for gpu in serial_gpus
         }
 
-        first_result: float = next(iter(name_to_serial_result.values()))
+        # Only consumed in the single attached GPU case.
+        first_output: Optional[_RunOutputs] = next(iter(serialized_outputs.values()))
 
-        # Creates a docker container per GPU for every input GPU, then
-        # starts them at the same time. Results are returned.
-        parallel_results = (
-            _force_parallel_run(
-                client=client,
-                image=image,
-                new_output_file=new_output_file,
-                gpus=gpus,
-                create_runtime_env_vars=create_runtime_env_vars,
-                outputs_to_result=outputs_to_result,
-            )
-            if multiple_gpus_to_test
-            else [first_result]
-        )
+        forced_parallel_outputs: Optional[List[_RunOutputs]] = None
 
-        native_multi_gpu_result: Optional[float] = None
+        if multiple_gpus_to_test:
+            # Creates a docker container per GPU for every input GPU, then
+            # starts them at the same time. Results are returned.
+            with contextlib.suppress(RuntimeError):
+                forced_parallel_outputs = _force_parallel_run(
+                    client=client,
+                    image=image,
+                    new_output_file=new_output_file,
+                    gpus=gpus,
+                    create_runtime_env_vars=create_runtime_env_vars,
+                    outputs_to_result=outputs_to_result,
+                    downloads_directory_path=downloads_directory_path,
+                    total_memory_limit=memory_limit,
+                )
+        else:
+            forced_parallel_outputs = [first_output]
+
+        native_multi_gpu_output: Optional[_RunOutputs] = None
 
         if multi_gpu_native:
 
             if multiple_gpus_to_test:
-
-                multi_gpu_file = new_output_file()
-                multi_gpu_container = _create_gpu_container(
+                native_multi_gpu_output = _run_image_on_gpus(
                     client=client,
                     image=image,
                     gpus=gpus,
                     env_vars=create_runtime_env_vars(runtime_gpus=gpus),
-                    output_file_path=multi_gpu_file,
-                )
-                multi_gpu_container.start()
-
-                complete_logs = _wait_get_logs(container=multi_gpu_container)
-
-                native_multi_gpu_result = outputs_to_result(
-                    ContainerOutputs(logs=complete_logs, file=multi_gpu_file)
+                    output_file_path=new_output_file(),
+                    downloads_directory_path=downloads_directory_path,
+                    memory_limit=memory_limit,
+                    outputs_to_result=outputs_to_result,
                 )
             else:
-                native_multi_gpu_result = first_result
+                native_multi_gpu_output = first_output
 
-        theoretical_multi_gpu_sum = sum((name_to_serial_result[gpu.name] for gpu in gpus))
-        forced_multi_gpu_sum = sum(parallel_results)
+        name_to_serial_result: Dict[str, Optional[float]] = {
+            key: value.benchmark_result if value is not None else None
+            for key, value in serialized_outputs.items()
+        }
 
-        if docker_cleanup:
-            _docker_image_cleanup(
-                client=client,
-                run_image=image,
-                keep_images=existed_before_run,
+        no_failures: bool = None not in name_to_serial_result.values()
+
+        native_multi_gpu_result = (
+            native_multi_gpu_output.benchmark_result
+            if native_multi_gpu_output is not None
+            else None
+        )
+
+        if no_failures and (forced_parallel_outputs is not None):
+
+            theoretical_multi_gpu_sum: float = sum(
+                (name_to_serial_result[gpu.name] for gpu in gpus)
             )
 
-        return ReportFileNumerical(
-            min_by_gpu_type=min(name_to_serial_result.values()),
-            max_by_gpu_type=max(name_to_serial_result.values()),
-            mean_by_gpu_type=mean(name_to_serial_result.values()),
-            theoretical_multi_gpu_mean=theoretical_multi_gpu_sum / len(gpus),
-            theoretical_multi_gpu_sum=theoretical_multi_gpu_sum,
-            forced_multi_gpu_numerical_mean=forced_multi_gpu_sum / len(gpus),
-            forced_multi_gpu_sum=forced_multi_gpu_sum,
-            native_multi_gpu_result=native_multi_gpu_result,
+            theoretical_multi_gpu_mean = theoretical_multi_gpu_sum / len(gpus)
+
+            forced_multi_gpu_sum: float = sum(
+                result.benchmark_result for result in forced_parallel_outputs
+            )
+
+            report_file_numerical = ReportFileNumerical(
+                min_by_gpu_type=min(name_to_serial_result.values()),
+                max_by_gpu_type=max(name_to_serial_result.values()),
+                mean_by_gpu_type=mean(name_to_serial_result.values()),
+                theoretical_multi_gpu_mean=theoretical_multi_gpu_mean,
+                theoretical_multi_gpu_sum=theoretical_multi_gpu_sum,
+                forced_multi_gpu_numerical_mean=(forced_multi_gpu_sum / len(gpus)),
+                forced_multi_gpu_sum=forced_multi_gpu_sum,
+                native_multi_gpu_result=native_multi_gpu_result,
+            )
+
+        else:
+            report_file_numerical = ReportFileNumerical(
+                min_by_gpu_type=None,
+                max_by_gpu_type=None,
+                mean_by_gpu_type=None,
+                theoretical_multi_gpu_mean=None,
+                theoretical_multi_gpu_sum=None,
+                forced_multi_gpu_numerical_mean=None,
+                forced_multi_gpu_sum=None,
+                native_multi_gpu_result=native_multi_gpu_result,
+            )
+
+        if not any(report_file_numerical.model_dump().values()):
+            raise ValueError(f"Benchmarking for {benchmark_name} produced no data")
+
+        serialized_joules: List[float] = list(
+            itertools.chain.from_iterable(
+                run_output.uuid_to_joules.values()
+                for run_output in serialized_outputs.values()
+                if run_output is not None
+            )
         )
+
+        return BenchmarkData(
+            report_file_numerical=report_file_numerical,
+            report_file_gpu_power_usage=ReportFileGPUPowerUsage(
+                min_serial_energy_joules=min(serialized_joules) if serialized_joules else None,
+                max_serial_energy_joules=max(serialized_joules) if serialized_joules else None,
+                mean_serial_energy_joules=mean(serialized_joules) if serialized_joules else None,
+                forced_multi_gpu_total_energy_joules=(
+                    sum(
+                        sum(run_output.uuid_to_joules.values())
+                        for run_output in forced_parallel_outputs
+                    )
+                    if serialized_joules and (forced_parallel_outputs is not None)
+                    else None
+                ),
+                native_multi_gpu_total_energy_joules=(
+                    sum(native_multi_gpu_output.uuid_to_joules.values())
+                    if native_multi_gpu_output is not None
+                    else None
+                ),
+            ),
+        )
+
+
+def benchmark_dockerfile(  # pylint: disable=too-many-positional-arguments,too-many-locals
+    dockerfile_path: Path,
+    benchmark_name: str,
+    benchmark_version: str,
+    gpus: Tuple[GPUIdentity, ...],
+    create_runtime_env_vars: CreateRuntimeEnvironmentVariables,
+    outputs_to_result: OutputsToResult,
+    multi_gpu_native: bool,
+    docker_cleanup: bool,
+    force_rebuild: bool,
+    downloads_directory_path: Optional[Path],
+) -> BenchmarkData:
+    """
+    Benchmarks a given dockerfile.
+
+    Because all of these images and containers and images can become massive on disk, steps have
+    been taken to prune and remove artifacts between tests. This makes the overall runtime slower.
+    This shouldn't impact GPU scores and will likely be improved in the future.
+
+    :param dockerfile_path: Path to the dockerfile to run.
+    :param benchmark_name: Passed to image tagging process.
+    :param benchmark_version: Passed to image tagging process. Not consumed anywhere but in the
+    name of the image.
+    :param gpus: GPUs to run on.
+    :param create_runtime_env_vars: Callable to create runtime environment variables.
+    :param outputs_to_result: Converts the outputs from the container (logs and optional output
+    file) to a numerical result.
+    :param multi_gpu_native: If True, the input dockerfile can take advantage of having multiple
+    GPUs passed in and utilize the multiple inputs simultaneously. If False, docker is used to
+    run the benchmark on multiple GPUs at once.
+    :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param force_rebuild: If given, the underlying docker containers are rebuilt from scratch
+    before running. This will take more time that using the existing images.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
+    :return: Numerical results.
+    """
+
+    if not gpus:
+        raise ValueError("Non GPU test aren't supported yet.")
+
+    client = docker.from_env()
+
+    # Images that would be pruned but existed on the system before the run. We don't want to
+    # touch these because they might be used for something outside the scope of our app.
+    existed_before_run = _list_prunable_images(client=client)
+
+    image: Image = _build_image(
+        client=client,
+        dockerfile_path=dockerfile_path,
+        tag="_".join([benchmark_name, benchmark_version]),
+        force_rebuild=force_rebuild,
+    )
+
+    benchmark_data = _run_benchmarking_image_sequence(
+        client=client,
+        image=image,
+        gpus=gpus,
+        create_runtime_env_vars=create_runtime_env_vars,
+        outputs_to_result=outputs_to_result,
+        multi_gpu_native=multi_gpu_native,
+        downloads_directory_path=downloads_directory_path,
+        benchmark_name=benchmark_name,
+    )
+
+    if docker_cleanup:
+        _docker_image_cleanup(
+            client=client,
+            run_image=image,
+            keep_images=existed_before_run,
+        )
+
+    return benchmark_data

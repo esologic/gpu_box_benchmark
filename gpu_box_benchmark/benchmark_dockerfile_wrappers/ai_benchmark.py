@@ -4,6 +4,7 @@ Doesn't yet support multiple GPUs.
 """
 
 import logging
+from pathlib import Path
 from typing import Optional, Tuple
 
 from benchmark_dockerfiles import AI_BENCHMARK_DOCKERFILE
@@ -12,6 +13,7 @@ from gpu_box_benchmark.benchmark_types import (
     BenchmarkExecutor,
     BenchmarkName,
     BenchmarkResult,
+    GPUPowerUsageKey,
     NumericalResultKey,
 )
 from gpu_box_benchmark.docker_wrapper import ContainerOutputs
@@ -46,6 +48,8 @@ def create_ai_benchmark_executor(  # pylin
     benchmark_name: BenchmarkName,
     gpus: Tuple[GPUIdentity, ...],
     docker_cleanup: bool,
+    force_rebuild: bool,
+    downloads_directory_path: Optional[Path],
 ) -> Optional[BenchmarkExecutor]:
     """
     Creates an executor that uses docker to run the ai-benchmark suite.
@@ -54,6 +58,12 @@ def create_ai_benchmark_executor(  # pylin
     :param benchmark_name: To lookup.
     :param gpus: GPUs to use in the benchmark.
     :param docker_cleanup: If given, run the docker image cleanup step after benchmarking.
+    :param force_rebuild: If given, the underlying docker containers are rebuilt from scratch
+    before running. This will take more time that using the existing images.
+    :param downloads_directory_path: Benchmark docker containers may need to download test assets
+    during build time or runtime. By default, if this is not given, those assets are downloaded
+    into the image. If this is given, the assets are downloaded to this location which is bind
+    mounted into the container so the downloads can be re-used.
     :return: The callable to run the benchmark.
     """
 
@@ -68,6 +78,19 @@ def create_ai_benchmark_executor(  # pylin
 
         multi_gpu_native = False
 
+        benchmark_data = docker_wrapper.benchmark_dockerfile(
+            outputs_to_result=_parse_ai_score,
+            dockerfile_path=AI_BENCHMARK_DOCKERFILE,
+            benchmark_name=benchmark_name.value,
+            benchmark_version=_AI_BENCHMARK_VERSION,
+            gpus=gpus,
+            create_runtime_env_vars=lambda runtime_gpus: [],
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+            downloads_directory_path=downloads_directory_path,
+            multi_gpu_native=multi_gpu_native,
+        )
+
         return BenchmarkResult(
             name=benchmark_name,
             benchmark_version=_AI_BENCHMARK_VERSION,
@@ -77,16 +100,9 @@ def create_ai_benchmark_executor(  # pylin
             unit="pts",
             multi_gpu_native=multi_gpu_native,
             critical_result_key=NumericalResultKey.forced_multi_gpu_sum,
-            numerical_results=docker_wrapper.benchmark_dockerfile(
-                dockerfile_path=AI_BENCHMARK_DOCKERFILE,
-                benchmark_name=benchmark_name.value,
-                benchmark_version=_AI_BENCHMARK_VERSION,
-                gpus=gpus,
-                create_runtime_env_vars=lambda runtime_gpus: [],
-                multi_gpu_native=multi_gpu_native,
-                outputs_to_result=_parse_ai_score,
-                docker_cleanup=docker_cleanup,
-            ),
+            numerical_results=benchmark_data.report_file_numerical,
+            critical_gpu_power_usage_key=GPUPowerUsageKey.forced_multi_gpu_total_energy_joules,
+            gpu_power_usage=benchmark_data.report_file_gpu_power_usage,
         )
 
     return run_ai_benchmark_docker

@@ -6,10 +6,11 @@ import random
 import pytest
 from typing import Tuple, Optional, List, Iterator, Set
 from pathlib import Path
+
+from gpu_box_benchmark.visualization import render_plot, load_for_visualization
 from gpu_box_benchmark.benchmark_types import BenchmarkName, SystemEvaluation
 from gpu_box_benchmark import benchmark_types
-from gpu_box_benchmark import visualization
-from gpu_box_benchmark.visualization import EvaluationsBase, XLabelBase
+from gpu_box_benchmark.visualization.load_for_visualization import EvaluationsBase, LabelBase
 from test import assets
 from _pytest._py.path import LocalPath
 
@@ -28,10 +29,11 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
     :return: None
     """
 
-    visualization.create_comparison_visualization(
+    render_plot.create_system_comparison_visualization_results(
         evaluations_and_base=EvaluationsBase(
-            evaluations=_SAMPLE_EVALUATIONS,
-            x_label_base=XLabelBase.gpu,
+            ungrouped_evaluations=_SAMPLE_EVALUATIONS,
+            grouped_evaluations=tuple(),
+            label_base=LabelBase.gpu,
         ),
         labeled_evaluations=tuple(),
         output_path=Path(tmpdir) / "sample_output.png",
@@ -41,6 +43,7 @@ def test_create_comparison_visualization(tmpdir: LocalPath) -> None:
         n_cols=2,
         watermark=None,
         y_axis_pad_pct=None,
+        legend_columns=None,
     )
 
 
@@ -82,16 +85,19 @@ def get_benchmark_iterator(
     "evaluations_and_base",
     [
         EvaluationsBase(
-            evaluations=_SAMPLE_EVALUATIONS,
-            x_label_base=XLabelBase.gpu,
+            ungrouped_evaluations=_SAMPLE_EVALUATIONS,
+            grouped_evaluations=tuple(),
+            label_base=LabelBase.gpu,
         ),
         EvaluationsBase(
-            evaluations=_SAMPLE_EVALUATIONS,
-            x_label_base=XLabelBase.cpu,
+            ungrouped_evaluations=_SAMPLE_EVALUATIONS,
+            grouped_evaluations=tuple(),
+            label_base=LabelBase.cpu,
         ),
         EvaluationsBase(
-            evaluations=tuple(),
-            x_label_base=XLabelBase.gpu,
+            ungrouped_evaluations=tuple(),
+            grouped_evaluations=tuple(),
+            label_base=LabelBase.gpu,
         ),
     ],
 )
@@ -158,7 +164,7 @@ def test_create_comparison_visualization_exhaustive(  # pylint: disable=too-many
 
         output_path = Path(tmpdir) / "sample_output.png"
 
-        visualization.create_comparison_visualization(
+        render_plot.create_system_comparison_visualization_results(
             evaluations_and_base=evaluations_and_base,
             labeled_evaluations=labeled_evaluations,
             output_path=output_path,
@@ -168,12 +174,18 @@ def test_create_comparison_visualization_exhaustive(  # pylint: disable=too-many
             n_cols=n_cols,
             watermark=watermark,
             y_axis_pad_pct=y_axis_pad_pct,
+            legend_columns=None,
         )
 
         return output_path
 
-    if any(evaluations_and_base.evaluations) or any(
-        (evaluations for evaluations, _labels in labeled_evaluations)
+    tests_in_input: Set[BenchmarkName] = load_for_visualization.benchmark_names_from_evaluations(
+        evaluations=evaluations_and_base.ungrouped_evaluations,
+        labeled_evaluations=labeled_evaluations,
+    )
+
+    if any(tests_in_input) and any(
+        requested_test in tests_in_input for requested_test in only_render_tests
     ):
         assert create_viz().exists()
     else:
