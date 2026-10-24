@@ -4,6 +4,30 @@
 
 Tracks changes of the codebase. 
 
+### 0.8.0 - (2026-10-24)
+
+* Added invocation of a few benchmarks as unit tests.
+* All docker containers now optionally have a "downloads" directory for saving assets outside the 
+container. CLI arg for this as well.
+* Underlying script for llama bench `run_llama_bench.sh` updated to add more models, and updated
+running mechanism to run multiple models in a sequence.
+* Added a ton of new model generation benchmarks. New models, new sizes, new quants, new context
+windows.
+* Added new benchmark, `llama_bench_max_model_parameters_q4_k_m` to see the largest number of LLM
+parameters that can be loaded into the attached GPUs using real models.
+* New flagging code to force rebuilding docker images.
+* Added a new field `gpu_power_usage` (and type `ReportFileGPUPowerUsage`) to `BenchmarkResult`
+that records GPU energy consumption for a given benchmark.
+* Added a new visualization mode `compare-llms` specifically to look at LLM performance when varying
+quantization, context depth, model and system build. The `compare-llm-families` does the same thing
+but creates a viz for all the families in the input files.
+* Added several `llama-bench` tests that use `--tensor-split` across attached GPUs per feedback from
+first post.
+* Fixed bug in sequence execution logic that could lead to false failures.
+* Added ability to group systems in visualizations, they have similar colors to make seeing groups
+easier.
+* Brought out more visualization params to CLI.
+
 ### 0.7.0 - (2026-07-11)
 
 * Added `--x-label` and `--labeled-input` to comparison mode to be able to have more control over
@@ -69,6 +93,16 @@ simultaneously using docker.
 ## Format Versions
 
 Tracks changes of the main output file. There are per-test version histories in the python wrappers.
+
+### 0.3.0 - (2026-10-24)
+
+* Introduced new idiom to `ReportFileNumerical`. If a benchmark fails on ANY individual GPU but is 
+able to finish in the multi GPU case, `min_by_gpu_type`, `max_by_gpu_type`, `mean_by_gpu_type`, 
+`theoretical_multi_gpu_mean`, `theoretical_multi_gpu_sum`, `forced_multi_gpu_numerical_mean` will
+all be set to None. 
+* Added a new field `gpu_power_usage` (and type `ReportFileGPUPowerUsage`) to `BenchmarkResult`
+that records GPU energy consumption for a given benchmark.
+* Added new field to output to record tests that failed.
 
 ### 0.2.0 - (2026-05-07)
 

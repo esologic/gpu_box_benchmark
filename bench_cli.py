@@ -2,37 +2,27 @@
 
 import logging
 import os
+import re
 import textwrap
 from datetime import datetime
+from functools import partial
 from pathlib import Path
-from typing import Callable, List, NamedTuple, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import click
 import matplotlib.pyplot as plt
 import psutil
-from bonus_click import options
+from bonus_click import bonus_types, options
 from click.decorators import FC
 
-from gpu_box_benchmark import visualization
-from gpu_box_benchmark.benchmark_dockerfile_wrappers import (
-    ai_benchmark,
-    blender_benchmark,
-    content_aware_timelapse,
-    folding_at_home,
-    hashcat,
-    llama_bench,
-    nvidia_deep_learning_examples,
-    nvidia_gds,
-    whisper,
-)
+from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import LLMName
 from gpu_box_benchmark.benchmark_types import (
     BENCHMARK_TO_PRETTY,
     EXTENDED_BENCHMARK_DOCUMENTS,
-    BenchmarkExecutor,
     BenchmarkFamily,
     BenchmarkName,
     BenchmarkResult,
-    CreateBenchmarkExecutor,
+    LineMode,
     SystemEvaluation,
     load_system_evaluation_from_disk,
 )
@@ -41,6 +31,7 @@ from gpu_box_benchmark.cli_common import (
     ENV_VAR_MAPPING,
     create_default_output_name,
 )
+from gpu_box_benchmark.executor_lookup import render_named_executors
 from gpu_box_benchmark.locate_describe_hardware import (
     GPU_CLICK_OPTION,
     GPUIdentity,
@@ -48,7 +39,14 @@ from gpu_box_benchmark.locate_describe_hardware import (
     discover_gpus,
 )
 from gpu_box_benchmark.render_systemd import render_systemd_file
-from gpu_box_benchmark.visualization import EvaluationsBase, XLabelBase
+from gpu_box_benchmark.visualization import render_plot
+from gpu_box_benchmark.visualization.load_for_visualization import (
+    EvaluationsBase,
+    LabelBase,
+    LoadedLLMResults,
+    SystemComparisonPlotMode,
+    cli_inputs_to_llm_results,
+)
 
 LOGGER_FORMAT = "[%(asctime)s - %(levelname)s] %(message)s"
 LOGGER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -61,19 +59,10 @@ logging.basicConfig(
 
 LOGGER = logging.getLogger(__name__)
 
-_GPU_BOX_BENCHMARK_VERSION = "0.2.0"
+_GPU_BOX_BENCHMARK_VERSION = "0.3.0"
 """
 See top level `CHANGELOG.md` for version history of this format.
 """
-
-
-class NamedExecutor(NamedTuple):
-    """
-    Intermediate Type for labeling executors.
-    """
-
-    benchmark_name: BenchmarkName
-    executor: BenchmarkExecutor
 
 
 def run_options() -> Callable[[FC], FC]:
@@ -177,6 +166,35 @@ def cli() -> None:
         "Enabling this will make things slower but consume less disk."
     ),
 )
+@click.option(
+    "--force-rebuild",
+    type=click.BOOL,
+    default=False,
+    show_default=True,
+    help=(
+        "If given, the underlying docker containers are rebuilt from scratch before running. "
+        "This will take more time that using the existing images."
+    ),
+)
+@click.option(
+    "--downloads",
+    type=click.Path(exists=True, dir_okay=True, file_okay=False, writable=True, path_type=Path),
+    show_default=True,
+    help=(
+        "Some benchmark docker containers need to download test assets. If no path is given here, "
+        "those assets are downloaded into the image. If this is given, the assets are downloaded "
+        "to this location which is bind mounted into the container so the downloads can be re-used."
+    ),
+)
+@click.option(
+    "--raise-on-exception",
+    type=click.BOOL,
+    is_flag=True,
+    help=(
+        "If given, exceptions that occur during the run will be re-raised, crashing the run. "
+        "Useful for debugging."
+    ),
+)
 def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     test: Tuple[BenchmarkName, ...],
     gpu: Tuple[GPUIdentity, ...],
@@ -185,6 +203,9 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     title: str,
     description: str,
     docker_cleanup: bool,
+    force_rebuild: bool,
+    downloads: Optional[Path],
+    raise_on_exception: bool,
 ) -> None:
     """
     Run one or more benchmarks and records the results.
@@ -198,6 +219,9 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
     :param title: See click help for docs!
     :param description: See click help for docs!
     :param docker_cleanup: See click help for docs!
+    :param force_rebuild: See click help for docs!
+    :param downloads: See click help for docs!
+    :param raise_on_exception: See click help for docs!
     :return: None
     """
 
@@ -228,68 +252,53 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
 
     # Create the tests the user requested and run them.
 
-    creation_functions: List[CreateBenchmarkExecutor] = [
-        nvidia_deep_learning_examples.create_resnet50_executor,
-        llama_bench.create_llama_bench_executor,
-        blender_benchmark.create_blender_benchmark_executor,
-        folding_at_home.create_fah_bench_executor,
-        ai_benchmark.create_ai_benchmark_executor,
-        whisper.create_whisper_executor,
-        content_aware_timelapse.create_content_aware_timelapse_executor,
-        nvidia_gds.create_gdsio_executor,
-        hashcat.create_hashcat_executor,
-    ]
-
-    def executor_for_test(requested_test: BenchmarkName) -> BenchmarkExecutor:
-        """
-        Look up the executor for the input test. Adds logging.
-        :param requested_test: From CLI.
-        :return: Executor for the test.
-        """
-        try:
-            return next(
-                filter(
-                    None,
-                    (
-                        creation_function(
-                            benchmark_name=requested_test,
-                            gpus=gpu,
-                            docker_cleanup=docker_cleanup,
-                        )
-                        for creation_function in creation_functions
-                    ),
-                ),
-            )
-        except StopIteration as lookup_error:
-            raise StopIteration(
-                f"Couldn't find executor for test: {requested_test.value}"
-            ) from lookup_error
-
-    try:
-        named_executors: List[Optional[NamedExecutor]] = [
-            NamedExecutor(
-                benchmark_name=requested_test,
-                executor=executor_for_test(requested_test=requested_test),
-            )
-            for requested_test in test
-        ]
-    except StopIteration as e:
-        raise ValueError("No valid tests for the given input.") from e
-
     results: List[BenchmarkResult] = []
+    failed_tests: List[BenchmarkName] = []
 
-    for named_executor in named_executors:
+    for index, named_executor in enumerate(
+        render_named_executors(
+            benchmarks=test,
+            gpu=gpu,
+            docker_cleanup=docker_cleanup,
+            force_rebuild=force_rebuild,
+            downloads_directory_path=downloads,
+        ),
+        start=1,
+    ):
         if named_executor is not None:
-            LOGGER.info(f"Executing benchmark: {named_executor.benchmark_name} ...")
+            LOGGER.info(
+                f"Executing benchmark {index}/{len(test)}: {named_executor.benchmark_name} ..."
+            )
             try:
                 result = named_executor.executor()
                 results.append(result)
                 result_number: float = round(
                     getattr(result.numerical_results, result.critical_result_key), 2
                 )
-                LOGGER.info(f"Result: {result_number} {result.unit}")
-            except Exception as _e:  # pylint: disable=broad-except
-                LOGGER.exception(f"Benchmark: {named_executor.benchmark_name} failed!")
+
+                result_log = f"Result: {result_number} {result.unit}"
+
+                if result.gpu_power_usage is not None:
+                    critical_power_value: float = round(
+                        getattr(result.gpu_power_usage, result.critical_gpu_power_usage_key), 2
+                    )
+                    result_log = ", ".join(
+                        [
+                            result_log,
+                            f"{critical_power_value} Joules",
+                        ]
+                    )
+
+                LOGGER.info(result_log)
+
+            except Exception as e:  # pylint: disable=broad-except
+
+                if raise_on_exception:
+                    raise e
+
+                failed_tests.append(named_executor.benchmark_name)
+                pretty_exception = re.sub(r"\s+", " ", str(e))[:100] + "..."
+                LOGGER.info(f"Failed! Err: {pretty_exception}")
 
     # Tests are complete, write the output.
 
@@ -305,6 +314,7 @@ def benchmark(  # pylint: disable=too-many-arguments, too-many-positional-argume
         results=results,
         start_time=start_time,
         runtime_seconds=(datetime.now() - start_time).total_seconds(),
+        failed_tests=failed_tests,
     )
 
     evaluation_string = system_evaluation.model_dump_json(indent=2)
@@ -397,8 +407,7 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     click.echo(file_contents)
 
 
-@cli.command(short_help="Draws graphs comparing benchmark outputs.")
-@click.option(
+INPUT_OPTION = click.option(
     "--input",
     "input_path",
     help="The set of benchmark JSON files to compare. Can be given multiple times",
@@ -406,17 +415,39 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
         file_okay=True, dir_okay=False, readable=True, resolve_path=True, path_type=Path
     ),
     multiple=True,
+    required=False,  # TODO: Need to ensure one is given
 )
-@options.create_enum_option(
-    "--x-label",
+
+GROUPED_INPUT_OPTION = click.option(
+    "--grouped-input",
+    help=(
+        "A benchmark JSON file and its group name for color-coding. "
+        "Inputs sharing the same group name will be treated as a single set."
+    ),
+    type=(
+        click.Path(
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+            path_type=Path,
+        ),
+        str,  # The Group Name (e.g., "Tesla K80")
+    ),
+    multiple=True,
+)
+
+LEGEND_LABEL_OPTION = options.create_enum_option(
+    "--legend-label",
     help_message=(
-        "Default basis for the X label. This will be overriden if a label is "
+        "Default basis for the legend label. This will be overriden if a label is "
         "specifically provided for the run."
     ),
-    input_enum=XLabelBase,
-    default=XLabelBase.gpu,
+    input_enum=LabelBase,
+    default=LabelBase.gpu,
 )
-@click.option(
+
+LABELED_INPUT_OPTION = click.option(
     "--labeled-input",
     help="A benchmark JSON file and its label. Can be given multiple times.",
     type=(
@@ -431,7 +462,8 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     ),
     multiple=True,
 )
-@click.option(
+
+OUTPUT_OPTION = click.option(
     "--output-path",
     default=Path("./comparison.png").resolve(),
     show_default=True,
@@ -440,13 +472,63 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
         file_okay=True, dir_okay=False, writable=True, resolve_path=True, path_type=Path
     ),
 )
-@click.option(
+
+TITLE_OPTION = click.option(
     "--title",
-    default="Comparison",
+    default=None,
     show_default=True,
     help="Written on the top of the figure.",
     type=click.STRING,
 )
+
+WATERMARK_OPTION = click.option(
+    "--watermark",
+    required=False,
+    help="Subtly written along the right side of the image.",
+    type=click.STRING,
+)
+
+FONT_FAMILY_OPTION = click.option(
+    "--font-family",
+    required=False,
+    help="Passed to rcParams['font.family'].",
+    type=click.STRING,
+)
+
+SCATTER_LINE_MODE = options.create_enum_option(
+    "--scatter-line-mode",
+    help_message=(
+        "For visualizations that produce scatter plots, this controls if/how lines are also drawn "
+        "on the scatter plots."
+    ),
+    input_enum=LineMode,
+    default=LineMode.input_order,
+)
+
+LEGEND_COLUMNS_OPTION = click.option(
+    "--legend-columns",
+    default=None,
+    help="Override for the number of columns in the legend.",
+    type=click.IntRange(min=1),
+)
+
+
+@cli.command(name="compare-systems", short_help="Draw graphs comparing benchmark outputs.")
+@options.create_enum_option(
+    "--mode",
+    help_message=(
+        "Decides which data should be plotted within the input files to compare the systems."
+    ),
+    input_enum=SystemComparisonPlotMode,
+    default=SystemComparisonPlotMode.results,
+    multiple=False,
+)
+@INPUT_OPTION
+@GROUPED_INPUT_OPTION
+@LEGEND_LABEL_OPTION
+@LABELED_INPUT_OPTION
+@OUTPUT_OPTION
+@TITLE_OPTION
 @click.option(
     "--flatten-versions",
     default=True,
@@ -467,45 +549,44 @@ def render_systemd(  # pylint: disable=too-many-arguments, too-many-positional-a
     help="If given tests of different versions will be combined in the result.",
     type=click.IntRange(min=1),
 )
-@click.option(
-    "--watermark",
-    required=False,
-    help="Subtly written along the right side of the image.",
-    type=click.STRING,
-)
+@WATERMARK_OPTION
 @click.option(
     "--y-axis-pad-pct",
     required=False,
     help="Numerical pad percent applied to the Y-Axes of the subplots.",
     type=click.FloatRange(min=0),
+    default=0.1,
 )
-@click.option(
-    "--font-family",
-    required=False,
-    help="Passed to rcParams['font.family'].",
-    type=click.STRING,
-)
-def compare(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+@FONT_FAMILY_OPTION
+@SCATTER_LINE_MODE
+@LEGEND_COLUMNS_OPTION
+def compare_systems(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    mode: SystemComparisonPlotMode,
     input_path: Tuple[Path, ...],
+    grouped_input: Tuple[Tuple[Path, str], ...],
+    legend_label: LabelBase,
     labeled_input: Tuple[Tuple[Path, str], ...],
-    x_label: XLabelBase,
     output_path: Path,
-    title: str,
+    title: Optional[str],
     flatten_versions: bool,
     only_test: Tuple[BenchmarkName, ...],
     n_cols: int,
     watermark: Optional[str],
     y_axis_pad_pct: Optional[float],
     font_family: Optional[str],
+    scatter_line_mode: LineMode,
+    legend_columns: Optional[int],
 ) -> None:
     """
     Draws a matplotlib visualization comparing the results of the different input benchmarks.
 
     \f
 
+    :param mode: See click help for docs!
     :param input_path: See click help for docs!
+    :param grouped_input: See click help for docs!
+    :param legend_label: See click help for docs!
     :param labeled_input: See click help for docs!
-    :param x_label: See click help for docs!
     :param output_path: See click help for docs!
     :param title: See click help for docs!
     :param flatten_versions: See click help for docs!
@@ -514,16 +595,29 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
     :param watermark: See click help for docs!
     :param y_axis_pad_pct: See click help for docs!
     :param font_family: See click help for docs!
+    :param scatter_line_mode: See click help for docs!
+    :param legend_columns: See click help for docs!
     :return: None
     """
 
     if font_family is not None:
         plt.rcParams["font.family"] = font_family
 
-    visualization.create_comparison_visualization(
+    plot_function = (
+        render_plot.create_system_comparison_visualization_results
+        if mode == SystemComparisonPlotMode.results
+        else partial(
+            render_plot.create_system_comparison_visualization_results_power, scatter_line_mode
+        )
+    )
+
+    plot_function(
         evaluations_and_base=EvaluationsBase(
-            evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
-            x_label_base=x_label,
+            ungrouped_evaluations=tuple(map(load_system_evaluation_from_disk, input_path)),
+            grouped_evaluations=tuple(
+                (load_system_evaluation_from_disk(path), label) for path, label in grouped_input
+            ),
+            label_base=legend_label,
         ),
         labeled_evaluations=tuple(
             (
@@ -533,12 +627,200 @@ def compare(  # pylint: disable=too-many-arguments, too-many-positional-argument
         ),
         flatten_versions=flatten_versions,
         output_path=output_path,
-        title=title,
+        title=title if title is not None else "Comparison",
         only_render_tests=only_test,
         n_cols=n_cols,
         watermark=watermark,
         y_axis_pad_pct=y_axis_pad_pct,
+        legend_columns=legend_columns,
     )
+
+
+SUBPLOT_HEIGHT_OPTION = click.option(
+    "--subplot-height",
+    type=click.FloatRange(min=0),
+    default=2.5,
+    help="Height in inches of an individual subplot.",
+    show_default=True,
+)
+SUBPLOT_WIDTH_OPTION = click.option(
+    "--subplot-width",
+    type=click.FloatRange(min=0),
+    default=2.1,
+    help="Width in inches of an individual subplot.",
+    show_default=True,
+)
+
+
+@cli.command(
+    name="compare-llms",
+    short_help="Draw graphs comparing LLM context depth, Quantization and System Performance.",
+)
+@INPUT_OPTION
+@GROUPED_INPUT_OPTION
+@LEGEND_LABEL_OPTION
+@LABELED_INPUT_OPTION
+@OUTPUT_OPTION
+@TITLE_OPTION
+@WATERMARK_OPTION
+@FONT_FAMILY_OPTION
+@SUBPLOT_HEIGHT_OPTION
+@SUBPLOT_WIDTH_OPTION
+@options.create_enum_option(
+    "--llm",
+    help_message="Decides which benchmark to run.",
+    input_enum=LLMName,
+    default=LLMName.qwen_2_5_14b_instruct,
+    multiple=False,
+)
+@LEGEND_COLUMNS_OPTION
+def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    input_path: Tuple[Path, ...],
+    grouped_input: Tuple[Tuple[Path, str], ...],
+    legend_label: LabelBase,
+    labeled_input: Tuple[Tuple[Path, str], ...],
+    output_path: Path,
+    title: Optional[str],
+    watermark: Optional[str],
+    font_family: Optional[str],
+    llm: LLMName,
+    legend_columns: Optional[int],
+    subplot_height: float,
+    subplot_width: float,
+) -> None:
+    """
+    Draws a matplotlib visualization comparing the results of the different input benchmarks.
+
+    \f
+
+    :param input_path: See click help for docs!
+    :param grouped_input: See click help for docs!
+    :param legend_label: See click help for docs!
+    :param labeled_input: See click help for docs!
+    :param output_path: See click help for docs!
+    :param title: See click help for docs!
+    :param watermark: See click help for docs!
+    :param font_family: See click help for docs!
+    :param llm: See click help for docs!
+    :param legend_columns: See click help for docs!
+    :param subplot_height: See click help for docs!
+    :param subplot_width: See click help for docs!
+    :return: None
+    """
+
+    if font_family is not None:
+        plt.rcParams["font.family"] = font_family
+
+    results = cli_inputs_to_llm_results(
+        input_paths=input_path,
+        grouped_inputs=grouped_input,
+        legend_label=legend_label,
+        labeled_input=labeled_input,
+    )
+
+    render_plot.create_llm_throughput_visualization(
+        results=results,
+        plot_model=llm,
+        output_path=output_path,
+        title=title if title is not None else llm.value,
+        watermark=watermark,
+        legend_columns=legend_columns,
+        subplot_height=subplot_height,
+        subplot_width=subplot_width,
+    )
+
+
+@cli.command(
+    name="compare-llm-families",
+    short_help=(
+        "Draw graphs comparing LLM context depth, Quantization and "
+        "System Performance for all models families."
+    ),
+)
+@INPUT_OPTION
+@GROUPED_INPUT_OPTION
+@LEGEND_LABEL_OPTION
+@LABELED_INPUT_OPTION
+@click.option(
+    "--output-dir",
+    type=click.Path(dir_okay=True, file_okay=False, writable=True, path_type=Path),
+    default=Path().cwd().joinpath("llm_families"),
+    show_default=True,
+    help="Output viz are all written to this directory.",
+)
+@click.option(
+    "--ext",
+    type=bonus_types.MATPLOTLIB_IMAGE_EXTENSION,
+    default=".png",
+    help="Output image format (choose from: .png, .svg, .pdf...)",
+)
+@WATERMARK_OPTION
+@FONT_FAMILY_OPTION
+@LEGEND_COLUMNS_OPTION
+@SUBPLOT_HEIGHT_OPTION
+@SUBPLOT_WIDTH_OPTION
+def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    input_path: Tuple[Path, ...],
+    grouped_input: Tuple[Tuple[Path, str], ...],
+    legend_label: LabelBase,
+    labeled_input: Tuple[Tuple[Path, str], ...],
+    output_dir: str,
+    ext: str,
+    watermark: Optional[str],
+    font_family: Optional[str],
+    legend_columns: Optional[int],
+    subplot_height: float,
+    subplot_width: float,
+) -> None:
+    """
+    Iterates through all supported LLMs and generates a comparison visualization for each.
+
+    \f
+
+    :param input_path: See click help for docs!
+    :param grouped_input: See click help for docs!
+    :param legend_label: See click help for docs!
+    :param labeled_input: See click help for docs!
+    :param output_dir: Directory to save the generated images.
+    :param ext: See click help for docs!
+    :param watermark: See click help for docs!
+    :param font_family: See click help for docs!
+    :param legend_columns: See click help for docs!
+    :param subplot_height: See click help for docs!
+    :param subplot_width: See click help for docs!
+    :return: None
+    """
+
+    if font_family is not None:
+        plt.rcParams["font.family"] = font_family
+
+    results: LoadedLLMResults = cli_inputs_to_llm_results(
+        input_paths=input_path,
+        grouped_inputs=grouped_input,
+        legend_label=legend_label,
+        labeled_input=labeled_input,
+    )
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Iterate over all supported LLMs and generate plots
+    for index, model in enumerate(LLMName):
+
+        model = LLMName(model)
+
+        sanitized_model = model.value.replace(" ", "_").lower()
+        output_path = Path(output_dir) / f"llm_{index}_{sanitized_model}{ext}"
+
+        render_plot.create_llm_throughput_visualization(
+            results=results,
+            plot_model=model,
+            output_path=output_path,
+            title=f"{model.value} Generation Speed",
+            watermark=watermark,
+            legend_columns=legend_columns,
+            subplot_height=subplot_height,
+            subplot_width=subplot_width,
+        )
 
 
 if __name__ == "__main__":
