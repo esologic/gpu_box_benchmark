@@ -706,6 +706,63 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     )
 
 
+class MatplotlibImageExtension(click.Choice[str]):  # pylint: disable=duplicate-bases
+    """
+    A reusable Click choice type for Matplotlib image formats.
+
+    Inherits from `click.Choice` to provide automatic validation and help text generation.
+    Normalizes inputs (e.g., "svg" -> ".svg") before validating against a standard list of formats.
+
+    Attributes:
+        VALID_FORMATS: A sequence of valid file extensions supported by Matplotlib.
+    """
+
+    VALID_FORMATS: List[str] = [
+        ".png",
+        ".pdf",
+        ".ps",
+        ".eps",
+        ".svg",
+        ".bmp",
+        ".gif",
+        ".icns",
+        ".ico",
+        ".jpeg",
+        ".jpg",
+        ".tiff",
+    ]
+
+    def __init__(self, formats: Optional[List[str]] = None) -> None:
+        """
+        Initialize the choice type.
+
+        :param formats: Optional sequence of valid extensions to use. Defaults to
+        Matplotlib's list if None.
+        """
+        self.formats = formats if formats is not None else self.VALID_FORMATS
+
+        # case_sensitive=False allows inputs like 'SVG' or '.svg'
+        super().__init__(self.formats, case_sensitive=False)
+
+    def convert(
+        self, value: str, param: Optional[click.Parameter], ctx: Optional[click.Context]
+    ) -> str:
+        """
+        Normalize and validate the input extension.
+
+        :param value: The raw string value provided by the user.
+        :param param: The Click parameter object receiving the value.
+        :param ctx: The current Click invocation context.
+        :returns: The normalized, valid extension string.
+        """
+        ext = str(value).strip().lower()
+
+        if not ext.startswith("."):
+            ext = f".{ext}"
+
+        return str(super().convert(ext, param, ctx))
+
+
 @cli.command(
     name="compare-llm-families",
     short_help=(
@@ -724,6 +781,12 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     show_default=True,
     help="Output viz are all written to this directory.",
 )
+@click.option(
+    "--ext",
+    type=MatplotlibImageExtension(),
+    default=".png",
+    help="Output image format (choose from: .png, .svg, .pdf...)",
+)
 @WATERMARK_OPTION
 @FONT_FAMILY_OPTION
 @LEGEND_COLUMNS_OPTION
@@ -733,6 +796,7 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
     legend_label: LabelBase,
     labeled_input: Tuple[Tuple[Path, str], ...],
     output_dir: str,
+    ext: str,
     watermark: Optional[str],
     font_family: Optional[str],
     legend_columns: Optional[int],
@@ -747,6 +811,7 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
     :param legend_label: See click help for docs!
     :param labeled_input: See click help for docs!
     :param output_dir: Directory to save the generated images.
+    :param ext: See click help for docs!
     :param watermark: See click help for docs!
     :param font_family: See click help for docs!
     :param legend_columns: See click help for docs!
@@ -771,7 +836,7 @@ def compare_llm_families(  # pylint: disable=too-many-arguments, too-many-positi
         model = LLMName(model)
 
         sanitized_model = model.value.replace(" ", "_").lower()
-        output_path = Path(output_dir) / f"llm_{index}_{sanitized_model}.png"
+        output_path = Path(output_dir) / f"llm_{index}_{sanitized_model}{ext}"
 
         render_plot.create_llm_throughput_visualization(
             results=results,

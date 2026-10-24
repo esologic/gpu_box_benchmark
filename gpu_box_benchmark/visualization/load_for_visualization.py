@@ -408,11 +408,17 @@ def system_evaluations_to_dataframe(  # pylint: disable=too-many-locals
     # Construct DataFrames
     df_results = pd.DataFrame.from_dict(results_rows, orient="index").reindex(index=label_order)
 
+    if only_render_tests:
+        valid_columns = [col for col in only_render_tests if col in df_results.columns]
+        if valid_columns:
+            df_results = df_results[valid_columns]
+
     if not power_rows:
         # If no power data was collected, create an empty dataframe aligned to the result rows
         df_power = pd.DataFrame(index=label_order)
     else:
         # Ensure power dataframe rows and columns align perfectly with results dataframe
+        # (Because we reordered df_results above, df_power will pick up the correct order here)
         df_power = pd.DataFrame.from_dict(power_rows, orient="index").reindex(
             index=label_order,
             columns=df_results.columns,

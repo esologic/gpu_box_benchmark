@@ -3,6 +3,7 @@ Core of the comparison between different benchmarks.
 """
 
 import math
+import re
 import textwrap
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -30,10 +31,13 @@ from gpu_box_benchmark.visualization.load_for_visualization import (
     system_evaluations_to_dataframe,
 )
 
+_DEFAULT_DPI = 300
+
 
 def _create_grid(
     n_rows: int,
     n_cols: int,
+    dpi: int,
     sharex: bool = False,
     height_unit: float = 2.5,
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
@@ -43,9 +47,12 @@ def _create_grid(
 
     :param n_rows: Rows of subplots.
     :param n_cols: Columns of subplots.
+    :param dpi: Sets the figure's internal DPI. This ensures: 1. Vector backends (SVG) use
+    a high-res viewbox by default2. Raster calculations (in _apply_legend_and_save) match the
+    export density.
     :param sharex: Passed to call.
     :param height_unit: Multiplier for the row height (default 2.5).
-    :return:
+    :return: Figure and axes list.
     """
 
     fig, axes = plt.subplots(
@@ -61,10 +68,28 @@ def _create_grid(
     else:
         axes = axes.flatten()
 
+    fig.set_dpi(dpi)
+
     return fig, axes
 
 
-def _apply_legend_and_save(  # pylint: disable=too-many-positional-arguments
+def _patch_svg_pixel_size(path: Path, width_px: int, height_px: int) -> None:
+    """
+    Rewrite the root <svg> width/height; the viewBox keeps content scaling correct.
+    :param path: File to modify.
+    :param width_px: New width.
+    :param height_px: New height.
+    :return: None
+    """
+
+    text = path.read_text(encoding="utf-8")
+    text = re.sub(r'(<svg\b[^>]*?\swidth=")[^"]*(")', rf"\g<1>{width_px}px\g<2>", text, count=1)
+    text = re.sub(r'(<svg\b[^>]*?\sheight=")[^"]*(")', rf"\g<1>{height_px}px\g<2>", text, count=1)
+
+    path.write_text(text, encoding="utf-8")
+
+
+def _apply_legend_and_save(  # pylint: disable=too-many-positional-arguments,too-many-locals
     fig: plt.Figure,
     ordered_labels: List[str],
     label_to_color: Dict[str, str],
@@ -72,6 +97,7 @@ def _apply_legend_and_save(  # pylint: disable=too-many-positional-arguments
     watermark: Optional[str],
     legend_columns: Optional[int],
     output_path: Path,
+    dpi: int,
 ) -> None:
     """
     Consolidated logic for calculating layout, adding the legend, applying the
@@ -136,7 +162,12 @@ def _apply_legend_and_save(  # pylint: disable=too-many-positional-arguments
     fig.tight_layout(pad=1.5, w_pad=2, rect=(0, tight_layout_bottom, 0.96, 1))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300)
+    fig.savefig(output_path, dpi=dpi)
+
+    if output_path.suffix.lower() == ".svg":
+        w_in, h_in = fig.get_size_inches()
+        _patch_svg_pixel_size(output_path, round(w_in * dpi), round(h_in * dpi))
+
     plt.close(fig)
 
 
@@ -275,7 +306,7 @@ def _find_result(
     )
 
 
-def create_system_comparison_visualization_results(  # pylint: disable=too-many-locals, too-many-positional-arguments
+def create_system_comparison_visualization_results(  # pylint: disable=too-many-locals, too-many-positional-arguments, too-many-arguments
     evaluations_and_base: EvaluationsBase,
     labeled_evaluations: Tuple[Tuple[SystemEvaluation, str], ...],
     flatten_versions: bool,
@@ -286,6 +317,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     watermark: Optional[str],
     legend_columns: Optional[int],
     y_axis_pad_pct: Optional[float] = None,
+    dpi: int = _DEFAULT_DPI,
 ) -> None:
     """
     Create a comparison visualization with one subplot per benchmark.
@@ -304,6 +336,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     :param y_axis_pad_pct: If given, The y-axis range of each subplot is restricted to this value
     multiplied by the min max values in the y range to clearly show the ranking. If not given,
     auto y-axis settings are used.
+    :param dpi: Dots per inch of output image.
     :return: None
     """
 
@@ -321,7 +354,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
     n_rows = math.ceil(n_plots / n_cols)
 
     # Use helper for figure and grid creation (sharex=False for vertical bar charts)
-    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False)
+    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False, dpi=dpi)
 
     for ax, column in zip(axes, dfs_specs.df_results.columns):
         series = dfs_specs.df_results[column].dropna()
@@ -361,6 +394,7 @@ def create_system_comparison_visualization_results(  # pylint: disable=too-many-
         watermark=watermark,
         legend_columns=legend_columns,
         output_path=output_path,
+        dpi=dpi,
     )
 
 
@@ -376,6 +410,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
     watermark: Optional[str],
     legend_columns: Optional[int],
     y_axis_pad_pct: float = 0.1,
+    dpi: int = _DEFAULT_DPI,
 ) -> None:
     """
     Creates a scatter plot per input evalution. X-axis is power consumption, Y-axis is the units
@@ -398,6 +433,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
     :param y_axis_pad_pct: If given, The y-axis range of each subplot is restricted to this value
     multiplied by the min max values in the y range to clearly show the ranking. If not given,
     auto y-axis settings are used.
+    :param dpi: Dots per inch of the output image.
     :return: None
     """
 
@@ -411,12 +447,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
     n_plots = len(dfs_specs.df_results.columns)
     n_rows = math.ceil(n_plots / n_cols)
 
-    fig, axes = _create_grid(
-        n_rows=n_rows,
-        n_cols=n_cols,
-        sharex=False,
-        height_unit=3,
-    )
+    fig, axes = _create_grid(n_rows=n_rows, n_cols=n_cols, sharex=False, height_unit=3, dpi=dpi)
 
     dataframe_indices = list(dfs_specs.df_results.index)
     grouped_evaluations = evaluations_and_base.grouped_evaluations
@@ -551,6 +582,7 @@ def create_system_comparison_visualization_results_power(  # pylint: disable=too
         watermark=watermark,
         legend_columns=legend_columns,
         output_path=output_path,
+        dpi=dpi,
     )
 
 
@@ -561,6 +593,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     title: str,
     watermark: Optional[str],
     legend_columns: Optional[int],
+    dpi: int = _DEFAULT_DPI,
 ) -> None:
     """
     Renders the input parsed LLM throughput results as a visualization to the given path.
@@ -571,6 +604,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
     :param title: Added to the top of the figure.
     :param watermark: Written to the right of the figure.
     :param legend_columns: Override for the number of columns to include in the legend.
+    :param dpi: Sets the dots per inch of the output image.
     :return: None
     """
 
@@ -595,7 +629,7 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
         if any(r.context_depth == v for r in model_results)
     )
 
-    fig, axes = _create_grid(n_rows=len(context_depths), n_cols=len(quants), sharex=True)
+    fig, axes = _create_grid(n_rows=len(context_depths), n_cols=len(quants), sharex=True, dpi=dpi)
 
     subplot_title_text_size = "medium"
 
@@ -668,4 +702,5 @@ def create_llm_throughput_visualization(  # pylint: disable=too-many-locals,too-
         watermark=watermark,
         legend_columns=legend_columns,
         output_path=output_path,
+        dpi=dpi,
     )
