@@ -12,7 +12,7 @@ from typing import Callable, List, Optional, Tuple
 import click
 import matplotlib.pyplot as plt
 import psutil
-from bonus_click import options
+from bonus_click import bonus_types, options
 from click.decorators import FC
 
 from gpu_box_benchmark.benchmark_dockerfile_wrappers.llama_bench.llama_bench_types import LLMName
@@ -706,63 +706,6 @@ def compare_llms(  # pylint: disable=too-many-arguments, too-many-positional-arg
     )
 
 
-class MatplotlibImageExtension(click.Choice[str]):  # pylint: disable=duplicate-bases
-    """
-    A reusable Click choice type for Matplotlib image formats.
-
-    Inherits from `click.Choice` to provide automatic validation and help text generation.
-    Normalizes inputs (e.g., "svg" -> ".svg") before validating against a standard list of formats.
-
-    Attributes:
-        VALID_FORMATS: A sequence of valid file extensions supported by Matplotlib.
-    """
-
-    VALID_FORMATS: List[str] = [
-        ".png",
-        ".pdf",
-        ".ps",
-        ".eps",
-        ".svg",
-        ".bmp",
-        ".gif",
-        ".icns",
-        ".ico",
-        ".jpeg",
-        ".jpg",
-        ".tiff",
-    ]
-
-    def __init__(self, formats: Optional[List[str]] = None) -> None:
-        """
-        Initialize the choice type.
-
-        :param formats: Optional sequence of valid extensions to use. Defaults to
-        Matplotlib's list if None.
-        """
-        self.formats = formats if formats is not None else self.VALID_FORMATS
-
-        # case_sensitive=False allows inputs like 'SVG' or '.svg'
-        super().__init__(self.formats, case_sensitive=False)
-
-    def convert(
-        self, value: str, param: Optional[click.Parameter], ctx: Optional[click.Context]
-    ) -> str:
-        """
-        Normalize and validate the input extension.
-
-        :param value: The raw string value provided by the user.
-        :param param: The Click parameter object receiving the value.
-        :param ctx: The current Click invocation context.
-        :returns: The normalized, valid extension string.
-        """
-        ext = str(value).strip().lower()
-
-        if not ext.startswith("."):
-            ext = f".{ext}"
-
-        return str(super().convert(ext, param, ctx))
-
-
 @cli.command(
     name="compare-llm-families",
     short_help=(
@@ -783,7 +726,7 @@ class MatplotlibImageExtension(click.Choice[str]):  # pylint: disable=duplicate-
 )
 @click.option(
     "--ext",
-    type=MatplotlibImageExtension(),
+    type=bonus_types.MATPLOTLIB_IMAGE_EXTENSION,
     default=".png",
     help="Output image format (choose from: .png, .svg, .pdf...)",
 )

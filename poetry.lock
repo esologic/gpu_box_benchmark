@@ -121,18 +121,19 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "bonus-click"
-version = "0.3.0"
+version = "0.6.0"
 description = "Convenience wrappers around helpful click patterns."
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "bonus_click-0.3.0-py3-none-any.whl", hash = "sha256:4431d7761669d475903fcd803850311ebac93caf491759ba15fcf4cb624013be"},
-    {file = "bonus_click-0.3.0.tar.gz", hash = "sha256:87bb9a547093259edbc60697a80db981c73432f9f409d985b832bd5dcb0bbb9c"},
+    {file = "bonus_click-0.6.0-py3-none-any.whl", hash = "sha256:d90af8da352aa3da9ce02a42c43944fcab321b8f551d514ef6677151d94e4238"},
+    {file = "bonus_click-0.6.0.tar.gz", hash = "sha256:6a2feda97bdb75fe30006e9301caaf921b796e8946e4e20ccdef5f2966071de1"},
 ]
 
 [package.dependencies]
 click = ">=8.3.0,<9.0.0"
+click-option-group = ">=0.5.9,<0.6.0"
 
 [[package]]
 name = "certifi"
@@ -2864,4 +2865,4 @@ test = ["pytest (>=3.0.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "4e6911e2cad3cad18c3938570f5365a57178177c50969ebc1785db565d15cdde"
+content-hash = "8c13ce7eed0929eff4bd00defe3ab192bd739b43c9a62a6d5df3767ac500adca"
